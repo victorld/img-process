@@ -19,21 +19,22 @@ import (
 	//exif "github.com/dsoprea/go-exif/v3"
 )
 
+var startPath = "/Users/ld/Desktop/pic-new"
+var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7]
+
 var deleteShow = true
-
-// var shootDateShow = true
-var modifyDateShow = true
 var dirDateShow = true
-var md5Show = true
+var modifyDateShow = false
+var md5Show = false
 
-var deleteAction = false
-
-// var shootDateAction = false
+var deleteAction = true
+var dirDateAction = true
 var modifyDateAction = false
-var dirDateAction = false
 var md5Action = false
 
 var suffixMap = make(map[string]int)
+var nost1FileSuffixMap = make(map[string]int) //shoot time没有的照片
+var nost2FileSuffixMap = make(map[string]int) //shoot time没有的照片
 
 var dumpMap = make(map[string][]string)
 var md5Map = make(map[string][]string)
@@ -44,15 +45,13 @@ func showMd5Map() interface{} {
 
 var totalCnt = 0
 
-var fileDateFileList = mapset.NewSet()             //文件名带日期的照片
-var dirDateFileList = mapset.NewSet(1, 2, 3, 4)    //目录与最小日期不匹配，需要移动
-var modifyDateFileList = mapset.NewSet(1, 2, 3, 4) //修改时间与最小日期不匹配，需要修改
-var shootDateFileList = mapset.NewSet(1, 2, 3, 4)  //拍摄时间与最小日期不匹配，需要修改
-var deleteFileList = mapset.NewSet()               //需要删除的文件
+var fileDateFileList = mapset.NewSet()   //文件名带日期的照片
+var dirDateFileList = mapset.NewSet()    //目录与最小日期不匹配，需要移动
+var modifyDateFileList = mapset.NewSet() //修改时间与最小日期不匹配，需要修改
+var shootDateFileList = mapset.NewSet()  //拍摄时间与最小日期不匹配，需要修改
+var deleteFileList = mapset.NewSet()     //需要删除的文件
+var emptyDirList = mapset.NewSet()       //需要删除的文件
 // var tagList = mapset.NewSet()        //
-// var nost1FileList = mapset.NewSet() //shoot time没有的照片
-// var nost2FileList = mapset.NewSet() //shoot time没有的照片
-var nost3FileList = mapset.NewSet() //shoot time没有的照片
 
 var date1Pattern = regexp.MustCompile("^.*(20[012]\\d}(0[1-9]|1[0-2])(0[1-9]|[1-2]\\d|3[01])).*$")
 var data1Template = "20060102"
@@ -71,30 +70,55 @@ var timeTemplateArray = []string{data1Template, data2Template, data3Template, da
 func main() {
 
 	start := time.Now() // 获取当前时间
-	println()
-	rootPath := "/Users/ld/Desktop/pic-new/2008"
+
+	fmt.Println("startPath : ", startPath)
+	fmt.Println("basePath : ", basePath)
 
 	var files []string
 	var dirs []string
 
-	err := walkDir(rootPath, &dirs, &files)
+	err := walkDir(startPath, &dirs, &files)
 	if err != nil {
 		panic(err)
 	}
+	println()
+
+	for _, dir := range dirs {
+		if isEmpty(dir) {
+			emptyDirList.Add(dir)
+			if deleteShow {
+				fmt.Println()
+				fmt.Println("file : ", strWithColor(dir, "blue"))
+				fmt.Println(strWithColor("should delete empty dir :", "yellow"), dir)
+
+			}
+
+			if deleteAction {
+				err := os.Remove(dir)
+				if err != nil {
+					println(strWithColor("delete empty dir failed:", "yellow"), dir, err)
+				} else {
+					println(strWithColor("delete empty dir sucessed:", "green"), dir)
+				}
+			}
+		}
+	}
+
+	fmt.Println(strWithColor("==========ROUND 1: DELETE MODIFY MOVE==========", "red"))
 	for _, file := range files {
 		//fmt.Println(file)
 
 		fileName := path.Base(file)
-		fileSuffix := path.Ext(file)
-		//fileprefix := fileName[0 : len(fileName)-len(fileSuffix)]
-
-		//fmt.Println("fileName : " + fileName)
-		//fmt.Println("fileSuffix : " + fileSuffix)
-		//fmt.Println("fileprefix : " + fileprefix)
+		fileSuffix := strings.ToLower(path.Ext(file))
 
 		if strings.HasPrefix(fileName, ".") || strings.HasSuffix(fileName, "nas_downloading") {
+			deleteFileList.Add(file)
+
 			if deleteShow {
+				fmt.Println()
+				fmt.Println("file : ", strWithColor(file, "blue"))
 				fmt.Println(strWithColor("should delete file :", "yellow"), file)
+
 			}
 
 			if deleteAction {
@@ -104,10 +128,8 @@ func main() {
 				} else {
 					println(strWithColor("delete file sucessed:", "green"), file)
 				}
-
-				deleteFileList.Add(file)
-				continue
 			}
+			continue
 
 		}
 
@@ -123,41 +145,86 @@ func main() {
 
 	}
 
+	fmt.Println()
+	fmt.Println(strWithColor("ROUND 1 STAT: ", "red"))
 	sm, _ := json.Marshal(suffixMap)
 	fmt.Println("suffixMap : ", string(sm))
 
-	fmt.Println("dirDateFileList : ", strWithColor(strconv.Itoa(dirDateFileList.Cardinality()), "red"))
-	fmt.Println("modifyDateFileList : ", strWithColor(strconv.Itoa(modifyDateFileList.Cardinality()), "red"))
-	fmt.Println("shootDateFileList : ", strWithColor(strconv.Itoa(shootDateFileList.Cardinality()), "red"))
-	fmt.Println("deleteFileList : ", strWithColor(strconv.Itoa(deleteFileList.Cardinality()), "red"))
-	//fmt.Println("nost1FileList : ", nost1FileList.Cardinality())
-	//fmt.Println("nost2FileList : ", nost2FileList.Cardinality())
-	fmt.Println("nost3FileList : ", strWithColor(strconv.Itoa(nost3FileList.Cardinality()), "red"))
-	fmt.Println("totalCnt : ", totalCnt)
+	fmt.Println("fileDateFileList(file contain date ,just for print) : ", strWithColor(strconv.Itoa(fileDateFileList.Cardinality()), "red"))
+	fmt.Println("dirDateFileList(move dir) : ", strWithColor(strconv.Itoa(dirDateFileList.Cardinality()), "red"))
+	fmt.Println("modifyDateFileList(change modify date) : ", strWithColor(strconv.Itoa(modifyDateFileList.Cardinality()), "red"))
+	fmt.Println("shootDateFileList(change shoot date) : ", strWithColor(strconv.Itoa(shootDateFileList.Cardinality()), "red"))
+	fmt.Println("deleteFileList(delete file) : ", strWithColor(strconv.Itoa(deleteFileList.Cardinality()), "red"))
+	fmt.Println("emptyDirList(delete empty dir) : ", strWithColor(strconv.Itoa(emptyDirList.Cardinality()), "red"))
+	//fmt.Println("nost1FileSuffixMap(exif parse error 1) : ", strWithColor(strconv.Itoa(len(nost1FileSuffixMap)), "red"))
+	fmt.Println("nost1FileSuffixMap(exif parse error 1) : ", nost1FileSuffixMap)
+	//fmt.Println("nost2FileSuffixMap(exif parse error 2)  : ", strWithColor(strconv.Itoa(len(nost2FileSuffixMap)), "red"))
+	fmt.Println("nost2FileSuffixMap(exif parse error 2)  : ", nost2FileSuffixMap)
+	fmt.Println("totalCnt(file count) : ", strWithColor(strconv.Itoa(totalCnt), "red"))
 	//fmt.Println("tagList : ", tagList)
 
-	for k, v := range md5Map {
-		if len(v) > 1 {
-			if md5Show {
-				//for _, file := range v {
-				//
-				//}
+	elapsed := time.Since(start)
+	fmt.Println("ROUND 1 执行完成耗时：", elapsed)
+
+	start = time.Now() // 获取当前时间
+	if md5Show || md5Action {
+		println()
+		fmt.Println(strWithColor("==========ROUND 2: MD5==========", "red"))
+		shouldDeleteFiles := []string{}
+		for md5, files := range md5Map {
+			if len(files) > 1 {
+				dumpMap[md5] = files
+				minPhoto := ""
+				for _, photo := range files {
+					if minPhoto == "" {
+						minPhoto = photo
+					} else {
+						if getDirDate(minPhoto) > getDirDate(photo) {
+							minPhoto = photo
+						} else if getDirDate(minPhoto) < getDirDate(photo) {
+
+						} else {
+							if path.Base(minPhoto) > path.Base(photo) {
+								minPhoto = photo
+							}
+						}
+					}
+				}
+
+				fmt.Println()
+				fmt.Println("file : ", strWithColor(md5, "blue"))
+				for _, photo := range files {
+					if photo != minPhoto {
+						shouldDeleteFiles = append(shouldDeleteFiles, photo)
+						fmt.Println("choose : ", photo, strWithColor("DELETE", "red"))
+					} else {
+						fmt.Println("choose : ", photo, strWithColor("SAVE", "green"))
+					}
+				}
 
 			}
-			if md5Action {
-				//moveFile
-				//moveFile(photo, targetDir)
-				//fmt.Println("move file ", photo, "to", targetDir)
+		}
+
+		fmt.Println()
+		fmt.Println(strWithColor("ROUND 2 STAT: ", "red"))
+		fmt.Println("dumpMap length: ", strWithColor(strconv.Itoa(len(dumpMap)), "red"))
+		//sm2, _ := json.Marshal(dumpMap)
+		//fmt.Println("dumpMap : ", string(sm2))
+
+		sm3, _ := json.Marshal(shouldDeleteFiles)
+		fmt.Println("shouldDeleteFiles length: ", strWithColor(strconv.Itoa(len(shouldDeleteFiles)), "red"))
+		fmt.Println("shouldDeleteFiles : ", string(sm3))
+
+		if md5Action {
+			for _, photo := range shouldDeleteFiles {
+				deleteFile(photo)
+				fmt.Println(strWithColor("dump file deleted : ", "red"), photo)
 			}
-			dumpMap[k] = v
 		}
 	}
-	sm2, _ := json.Marshal(dumpMap)
-	fmt.Println("dumpMap length: ", strWithColor(strconv.Itoa(len(dumpMap)), "red"))
-	fmt.Println("dumpMap : ", string(sm2))
 
-	elapsed := time.Since(start)
-	fmt.Println("该函数执行完成耗时：", elapsed)
+	elapsed = time.Since(start)
+	fmt.Println("ROUND 2 执行完成耗时：", elapsed)
 
 	//expvar.Publish("a_map", expvar.Func(showMd5Map))
 	//http.ListenAndServe(":8080", nil)
@@ -180,10 +247,13 @@ func walkDir(rootPath string, dirs *[]string, files *[]string) error {
 
 func processOneFile(photo string, suffix string) {
 
-	shootDate, _ := getShootDateMethod2(photo)
-	if shootDate != "" {
-		//fmt.Println("shootDate : " + shootDate)
-		shootDateFileList.Add(photo)
+	shootDate := ""
+	if suffix != ".heic" && suffix != ".mov" && suffix != ".mp4" && suffix != ".png" {
+		shootDate, _ = getShootDateMethod2(photo, suffix)
+		if shootDate != "" {
+			//fmt.Println("shootDate : " + shootDate)
+			shootDateFileList.Add(photo)
+		}
 	}
 
 	dirDate := getDirDate(photo)
@@ -204,7 +274,10 @@ func processOneFile(photo string, suffix string) {
 
 	if dirDate < modifyDate {
 		minDate = dirDate
+	} else {
+		minDate = modifyDate
 	}
+
 	if shootDate != "" && shootDate < minDate {
 		minDate = shootDate
 	}
@@ -215,16 +288,14 @@ func processOneFile(photo string, suffix string) {
 	printDateFlag := false
 	if dirDate != minDate {
 		dirDateFileList.Add(photo)
-		targetDir := filepath.Dir(filepath.Dir(photo)) + string(os.PathSeparator) + minDate
+		targetPhoto := basePath + string(os.PathSeparator) + minDate[0:4] + string(os.PathSeparator) + minDate[0:7] + string(os.PathSeparator) + minDate + string(os.PathSeparator) + path.Base(photo)
 		if dirDateShow {
-			printDate(photo, dirDate, modifyDate, shootDate, fileDate, minDate)
-			printDateFlag = true
-			fmt.Println(strWithColor("should move file ", "yellow"), photo, "to", targetDir)
+			fmt.Println(strWithColor("should move file ", "yellow"), photo, "to", targetPhoto)
 		}
 		if dirDateAction {
 			//moveFile
-			moveFile(photo, targetDir)
-			fmt.Println(strWithColor("move file ", "yellow"), photo, "to", targetDir)
+			moveFile(photo, targetPhoto)
+			fmt.Println(strWithColor("move file ", "yellow"), photo, "to", targetPhoto)
 		}
 	}
 
@@ -308,7 +379,7 @@ func processOneFile(photo string, suffix string) {
 
 }*/
 
-func getShootDateMethod2(path string) (string, error) {
+func getShootDateMethod2(path string, suffix string) (string, error) {
 
 	f, err := os.Open(path)
 	if err != nil {
@@ -323,13 +394,22 @@ func getShootDateMethod2(path string) (string, error) {
 	x, err := exif.Decode(f)
 	if err != nil {
 		//log.Print(err)
+		if value, ok := nost1FileSuffixMap[suffix]; ok {
+			nost1FileSuffixMap[suffix] = value + 1
+		} else {
+			nost1FileSuffixMap[suffix] = 1
+		}
 		return "", err
 	}
 
 	shootTime, err := x.DateTime()
 
 	if err != nil {
-		nost3FileList.Add(path)
+		if value, ok := nost2FileSuffixMap[suffix]; ok {
+			nost2FileSuffixMap[suffix] = value + 1
+		} else {
+			nost2FileSuffixMap[suffix] = 1
+		}
 		return "", errors.New("no shoot time")
 	} else {
 		shootTimeStr := shootTime.Format("2006-01-02")
@@ -340,7 +420,8 @@ func getShootDateMethod2(path string) (string, error) {
 }
 
 func printDate(photo string, dirDate string, modifyDate string, shootDate string, fileDate string, minDate string) {
-	fmt.Println("photo : ", strWithColor(photo, "blue"))
+	fmt.Println()
+	fmt.Println("file : ", strWithColor(photo, "blue"))
 	if dirDate != minDate {
 		fmt.Println("dirDate : ", strWithColor(dirDate, "red"))
 	} else {

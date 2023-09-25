@@ -44,3 +44,14 @@ func deleteFile(filePath string) {
 	os.Remove(filePath)
 
 }
+
+func isEmpty(filePath string) bool {
+
+	dir, _ := os.ReadDir(filePath)
+	if len(dir) == 0 {
+		return true
+	} else {
+		return false
+	}
+
+}
