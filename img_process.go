@@ -24,13 +24,13 @@ var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7]
 
 var deleteShow = true
 var dirDateShow = true
-var modifyDateShow = false
-var md5Show = false
+var modifyDateShow = true
+var md5Show = true
 
 var deleteAction = true
 var dirDateAction = true
-var modifyDateAction = false
-var md5Action = false
+var modifyDateAction = true
+var md5Action = true
 
 var suffixMap = make(map[string]int)
 var nost1FileSuffixMap = make(map[string]int) //shoot time没有的照片
@@ -82,13 +82,13 @@ func main() {
 		panic(err)
 	}
 	println()
-
+	fmt.Println(strWithColor("==========ROUND 0: DELETE DIR==========", "red"))
 	for _, dir := range dirs {
 		if isEmpty(dir) {
 			emptyDirList.Add(dir)
 			if deleteShow {
 				fmt.Println()
-				fmt.Println("file : ", strWithColor(dir, "blue"))
+				fmt.Println("dir : ", strWithColor(dir, "blue"))
 				fmt.Println(strWithColor("should delete empty dir :", "yellow"), dir)
 
 			}
@@ -104,6 +104,7 @@ func main() {
 		}
 	}
 
+	println()
 	fmt.Println(strWithColor("==========ROUND 1: DELETE MODIFY MOVE==========", "red"))
 	for _, file := range files {
 		//fmt.Println(file)
@@ -252,7 +253,7 @@ func processOneFile(photo string, suffix string) {
 		shootDate, _ = getShootDateMethod2(photo, suffix)
 		if shootDate != "" {
 			//fmt.Println("shootDate : " + shootDate)
-			shootDateFileList.Add(photo)
+
 		}
 	}
 
@@ -267,7 +268,6 @@ func processOneFile(photo string, suffix string) {
 	modifyDate := getModifyDate(photo)
 	if modifyDate != "" {
 		//fmt.Println("modifyDate : " + modifyDate)
-		modifyDateFileList.Add(photo)
 	}
 
 	minDate := ""
@@ -290,6 +290,7 @@ func processOneFile(photo string, suffix string) {
 		dirDateFileList.Add(photo)
 		targetPhoto := basePath + string(os.PathSeparator) + minDate[0:4] + string(os.PathSeparator) + minDate[0:7] + string(os.PathSeparator) + minDate + string(os.PathSeparator) + path.Base(photo)
 		if dirDateShow {
+			printDate(photo, dirDate, modifyDate, shootDate, fileDate, minDate)
 			fmt.Println(strWithColor("should move file ", "yellow"), photo, "to", targetPhoto)
 		}
 		if dirDateAction {
@@ -299,7 +300,12 @@ func processOneFile(photo string, suffix string) {
 		}
 	}
 
+	if shootDate != minDate {
+		shootDateFileList.Add(photo)
+	}
+
 	if modifyDate != minDate {
+		modifyDateFileList.Add(photo)
 		tm, _ := time.Parse("2006-01-02", minDate)
 		if modifyDateShow {
 			if !printDateFlag {
