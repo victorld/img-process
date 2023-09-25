@@ -19,7 +19,9 @@ import (
 	//exif "github.com/dsoprea/go-exif/v3"
 )
 
-var startPath = "/Users/ld/Desktop/pic-new"
+// var startPath = "/Users/ld/Desktop/pic-new"
+var startPath = "/Volumes/ld_hardone/pic-new"
+
 var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7]
 
 var deleteShow = true
@@ -27,10 +29,10 @@ var dirDateShow = true
 var modifyDateShow = true
 var md5Show = true
 
-var deleteAction = true
-var dirDateAction = true
-var modifyDateAction = true
-var md5Action = true
+var deleteAction = false
+var dirDateAction = false
+var modifyDateAction = false
+var md5Action = false
 
 var suffixMap = make(map[string]int)
 var nost1FileSuffixMap = make(map[string]int) //shoot time没有的照片
@@ -74,77 +76,73 @@ func main() {
 	fmt.Println("startPath : ", startPath)
 	fmt.Println("basePath : ", basePath)
 
-	var files []string
-	var dirs []string
-
-	err := walkDir(startPath, &dirs, &files)
-	if err != nil {
-		panic(err)
-	}
-	println()
-	fmt.Println(strWithColor("==========ROUND 0: DELETE DIR==========", "red"))
-	for _, dir := range dirs {
-		if isEmpty(dir) {
-			emptyDirList.Add(dir)
-			if deleteShow {
-				fmt.Println()
-				fmt.Println("dir : ", strWithColor(dir, "blue"))
-				fmt.Println(strWithColor("should delete empty dir :", "yellow"), dir)
-
-			}
-
-			if deleteAction {
-				err := os.Remove(dir)
-				if err != nil {
-					println(strWithColor("delete empty dir failed:", "yellow"), dir, err)
-				} else {
-					println(strWithColor("delete empty dir sucessed:", "green"), dir)
-				}
-			}
-		}
-	}
-
 	println()
 	fmt.Println(strWithColor("==========ROUND 1: DELETE MODIFY MOVE==========", "red"))
-	for _, file := range files {
-		//fmt.Println(file)
 
-		fileName := path.Base(file)
-		fileSuffix := strings.ToLower(path.Ext(file))
+	_ = filepath.Walk(startPath, func(file string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			if isEmpty(file) {
+				emptyDirList.Add(file)
+				if deleteShow {
+					fmt.Println()
+					fmt.Println("dir : ", strWithColor(file, "blue"))
+					fmt.Println(strWithColor("should delete empty dir :", "yellow"), file)
 
-		if strings.HasPrefix(fileName, ".") || strings.HasSuffix(fileName, "nas_downloading") {
-			deleteFileList.Add(file)
+				}
 
-			if deleteShow {
-				fmt.Println()
-				fmt.Println("file : ", strWithColor(file, "blue"))
-				fmt.Println(strWithColor("should delete file :", "yellow"), file)
-
-			}
-
-			if deleteAction {
-				err := os.Remove(file)
-				if err != nil {
-					println(strWithColor("delete file failed:", "yellow"), file, err)
-				} else {
-					println(strWithColor("delete file sucessed:", "green"), file)
+				if deleteAction {
+					err := os.Remove(file)
+					if err != nil {
+						println(strWithColor("delete empty dir failed:", "yellow"), file, err)
+					} else {
+						println(strWithColor("delete empty dir sucessed:", "green"), file)
+					}
 				}
 			}
-			continue
-
-		}
-
-		processOneFile(file, fileSuffix)
-
-		if value, ok := suffixMap[fileSuffix]; ok {
-			suffixMap[fileSuffix] = value + 1
 		} else {
-			suffixMap[fileSuffix] = 1
+			//fmt.Println(file)
+			fileName := path.Base(file)
+			fileSuffix := strings.ToLower(path.Ext(file))
+
+			flag := true
+			if strings.HasPrefix(fileName, ".") || strings.HasSuffix(fileName, "nas_downloading") {
+				deleteFileList.Add(file)
+
+				if deleteShow {
+					fmt.Println()
+					fmt.Println("file : ", strWithColor(file, "blue"))
+					fmt.Println(strWithColor("should delete file :", "yellow"), file)
+				}
+
+				if deleteAction {
+					err := os.Remove(file)
+					if err != nil {
+						println(strWithColor("delete file failed:", "yellow"), file, err)
+					} else {
+						println(strWithColor("delete file sucessed:", "green"), file)
+					}
+				}
+				flag = false
+
+			}
+
+			if flag {
+				processOneFile(file, fileSuffix)
+
+				if value, ok := suffixMap[fileSuffix]; ok {
+					suffixMap[fileSuffix] = value + 1
+				} else {
+					suffixMap[fileSuffix] = 1
+				}
+
+				totalCnt = totalCnt + 1
+				if totalCnt%100 == 0 {
+					println("processed ", strWithColor(strconv.Itoa(totalCnt), "red"))
+				}
+			}
 		}
-
-		totalCnt = totalCnt + 1
-
-	}
+		return nil
+	})
 
 	fmt.Println()
 	fmt.Println(strWithColor("ROUND 1 STAT: ", "red"))
@@ -167,69 +165,69 @@ func main() {
 	elapsed := time.Since(start)
 	fmt.Println("ROUND 1 执行完成耗时：", elapsed)
 
-	start = time.Now() // 获取当前时间
 	if md5Show || md5Action {
+		start = time.Now() // 获取当前时间
 		println()
 		fmt.Println(strWithColor("==========ROUND 2: MD5==========", "red"))
-		shouldDeleteFiles := []string{}
-		for md5, files := range md5Map {
-			if len(files) > 1 {
-				dumpMap[md5] = files
-				minPhoto := ""
-				for _, photo := range files {
-					if minPhoto == "" {
-						minPhoto = photo
-					} else {
-						if getDirDate(minPhoto) > getDirDate(photo) {
-							minPhoto = photo
-						} else if getDirDate(minPhoto) < getDirDate(photo) {
+		md5Process()
+		elapsed = time.Since(start)
+		fmt.Println("ROUND 2 执行完成耗时：", elapsed)
+	}
 
-						} else {
-							if path.Base(minPhoto) > path.Base(photo) {
-								minPhoto = photo
-							}
+}
+
+func md5Process() {
+	shouldDeleteFiles := []string{}
+	for md5, files := range md5Map {
+		if len(files) > 1 {
+			dumpMap[md5] = files
+			minPhoto := ""
+			for _, photo := range files {
+				if minPhoto == "" {
+					minPhoto = photo
+				} else {
+					if getDirDate(minPhoto) > getDirDate(photo) {
+						minPhoto = photo
+					} else if getDirDate(minPhoto) < getDirDate(photo) {
+
+					} else {
+						if path.Base(minPhoto) > path.Base(photo) {
+							minPhoto = photo
 						}
 					}
 				}
+			}
 
-				fmt.Println()
-				fmt.Println("file : ", strWithColor(md5, "blue"))
-				for _, photo := range files {
-					if photo != minPhoto {
-						shouldDeleteFiles = append(shouldDeleteFiles, photo)
-						fmt.Println("choose : ", photo, strWithColor("DELETE", "red"))
-					} else {
-						fmt.Println("choose : ", photo, strWithColor("SAVE", "green"))
-					}
+			fmt.Println()
+			fmt.Println("file : ", strWithColor(md5, "blue"))
+			for _, photo := range files {
+				if photo != minPhoto {
+					shouldDeleteFiles = append(shouldDeleteFiles, photo)
+					fmt.Println("choose : ", photo, strWithColor("DELETE", "red"))
+				} else {
+					fmt.Println("choose : ", photo, strWithColor("SAVE", "green"))
 				}
-
 			}
-		}
 
-		fmt.Println()
-		fmt.Println(strWithColor("ROUND 2 STAT: ", "red"))
-		fmt.Println("dumpMap length: ", strWithColor(strconv.Itoa(len(dumpMap)), "red"))
-		//sm2, _ := json.Marshal(dumpMap)
-		//fmt.Println("dumpMap : ", string(sm2))
-
-		sm3, _ := json.Marshal(shouldDeleteFiles)
-		fmt.Println("shouldDeleteFiles length: ", strWithColor(strconv.Itoa(len(shouldDeleteFiles)), "red"))
-		fmt.Println("shouldDeleteFiles : ", string(sm3))
-
-		if md5Action {
-			for _, photo := range shouldDeleteFiles {
-				deleteFile(photo)
-				fmt.Println(strWithColor("dump file deleted : ", "red"), photo)
-			}
 		}
 	}
 
-	elapsed = time.Since(start)
-	fmt.Println("ROUND 2 执行完成耗时：", elapsed)
+	fmt.Println()
+	fmt.Println(strWithColor("ROUND 2 STAT: ", "red"))
+	fmt.Println("dumpMap length: ", strWithColor(strconv.Itoa(len(dumpMap)), "red"))
+	//sm2, _ := json.Marshal(dumpMap)
+	//fmt.Println("dumpMap : ", string(sm2))
 
-	//expvar.Publish("a_map", expvar.Func(showMd5Map))
-	//http.ListenAndServe(":8080", nil)
+	sm3, _ := json.Marshal(shouldDeleteFiles)
+	fmt.Println("shouldDeleteFiles length: ", strWithColor(strconv.Itoa(len(shouldDeleteFiles)), "red"))
+	fmt.Println("shouldDeleteFiles : ", string(sm3))
 
+	if md5Action {
+		for _, photo := range shouldDeleteFiles {
+			deleteFile(photo)
+			fmt.Println(strWithColor("dump file deleted : ", "red"), photo)
+		}
+	}
 }
 
 func walkDir(rootPath string, dirs *[]string, files *[]string) error {
@@ -291,6 +289,7 @@ func processOneFile(photo string, suffix string) {
 		targetPhoto := basePath + string(os.PathSeparator) + minDate[0:4] + string(os.PathSeparator) + minDate[0:7] + string(os.PathSeparator) + minDate + string(os.PathSeparator) + path.Base(photo)
 		if dirDateShow {
 			printDate(photo, dirDate, modifyDate, shootDate, fileDate, minDate)
+			printDateFlag = true
 			fmt.Println(strWithColor("should move file ", "yellow"), photo, "to", targetPhoto)
 		}
 		if dirDateAction {
@@ -386,6 +385,12 @@ func processOneFile(photo string, suffix string) {
 }*/
 
 func getShootDateMethod2(path string, suffix string) (string, error) {
+
+	defer func() {
+		if r := recover(); r != nil {
+			//fmt.Println("Recovered. Error:\n", r)
+		}
+	}()
 
 	f, err := os.Open(path)
 	if err != nil {
