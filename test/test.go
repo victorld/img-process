@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"img_process/tools"
 	"time"
 )
 
@@ -22,5 +23,7 @@ func test() {
 }
 
 func main() {
-	test()
+	fmt.Println()
+	//test()
+	tools.DeleteEmptyDir("/Users/ld/Desktop/pic-new/a/c/d/e/f")
 }
