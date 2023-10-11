@@ -1,6 +1,10 @@
 # github.com/deckarep/golang-set v1.8.0
 ## explicit; go 1.17
 github.com/deckarep/golang-set
+# github.com/panjf2000/ants/v2 v2.8.2
+## explicit; go 1.13
+github.com/panjf2000/ants/v2
+github.com/panjf2000/ants/v2/internal/sync
 # github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 ## explicit
 github.com/rwcarlsen/goexif/exif

@@ -12,15 +12,18 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/mknote"
 	//exif "github.com/dsoprea/go-exif/v3"
+	"github.com/panjf2000/ants/v2"
 )
 
 var startPath = "/Users/ld/Desktop/pic-new"
+var poolSize = 8
 
 //var startPath = "/Volumes/ld_hardone/pic-new"
 
@@ -36,16 +39,12 @@ var dirDateAction = false
 var modifyDateAction = false
 var md5Action = false
 
-var suffixMap = make(map[string]int)
+var suffixMap = map[string]int{}
 var nost1FileSuffixMap = make(map[string]int) //shoot time没有的照片
 var nost2FileSuffixMap = make(map[string]int) //shoot time没有的照片
 
 var dumpMap = make(map[string][]string)
-var md5Map = make(map[string][]string)
-
-func showMd5Map() interface{} {
-	return md5Map
-}
+var md5Map sync.Map
 
 var totalCnt = 0
 
@@ -71,6 +70,8 @@ var datetimeTemplate = "2006:01:02 15:04:05"
 var timePatternArray = []*regexp.Regexp{date1Pattern, date2Pattern, date3Pattern, date4Pattern, datetimePattern}
 var timeTemplateArray = []string{data1Template, data2Template, data3Template, data4Template, datetimeTemplate}
 
+var wg sync.WaitGroup
+
 func main() {
 
 	start := time.Now() // 获取当前时间
@@ -81,6 +82,9 @@ func main() {
 	println()
 
 	fmt.Println(tools.StrWithColor("==========ROUND 1: DELETE MODIFY MOVE==========", "red"))
+
+	p, _ := ants.NewPool(poolSize) //新建一个pool对象，其他同上
+	defer p.Release()
 
 	_ = filepath.Walk(startPath, func(file string, info os.FileInfo, err error) error {
 		if info.IsDir() {
@@ -130,7 +134,11 @@ func main() {
 			}
 
 			if flag {
-				processOneFile(file, fileSuffix)
+
+				wg.Add(1)
+				_ = p.Submit(func() {
+					processOneFile(file, fileSuffix)
+				})
 
 				if value, ok := suffixMap[fileSuffix]; ok {
 					suffixMap[fileSuffix] = value + 1
@@ -146,6 +154,8 @@ func main() {
 		}
 		return nil
 	})
+
+	wg.Wait()
 
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("ROUND 1 STAT: ", "red"))
@@ -180,8 +190,10 @@ func main() {
 }
 
 func md5Process() {
-	shouldDeleteFiles := []string{}
-	for md5, files := range md5Map {
+	shouldDeleteFiles := []string{} //不定义长度的就是切片，可以使用append
+	md5Map.Range(func(key, value interface{}) bool {
+		md5 := key.(string)
+		files := value.([]string)
 		if len(files) > 1 {
 			dumpMap[md5] = files
 			minPhoto := ""
@@ -213,7 +225,8 @@ func md5Process() {
 			}
 
 		}
-	}
+		return true
+	})
 
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("ROUND 2 STAT: ", "red"))
@@ -324,12 +337,14 @@ func processOneFile(photo string, suffix string) {
 
 	if md5Show || md5Action {
 		md5, _ := tools.GetFileMD5(photo)
-		if value, ok := md5Map[md5]; ok {
-			md5Map[md5] = append(value, photo)
+		if value, ok := md5Map.Load(md5); ok {
+			md5Map.Store(md5, append(value.([]string), photo))
 		} else {
-			md5Map[md5] = []string{photo}
+			md5Map.Store(md5, []string{photo})
 		}
 	}
+
+	wg.Done()
 
 }
 
