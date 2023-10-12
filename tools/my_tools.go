@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 func StrWithColor(str string, color string) string {
@@ -75,4 +76,13 @@ func IsEmpty(filePath string) (bool, error) {
 		return false, nil
 	}
 
+}
+
+func GetSyncMapLens(sm sync.Map) int {
+	len := 0
+	sm.Range(func(k, v interface{}) bool {
+		len++
+		return true
+	})
+	return len
 }
