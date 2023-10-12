@@ -31,8 +31,8 @@ var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-
 
 var deleteShow = true
 var dirDateShow = true
-var modifyDateShow = true
-var md5Show = true
+var modifyDateShow = false
+var md5Show = false
 
 var deleteAction = false
 var dirDateAction = false
@@ -181,8 +181,7 @@ func main() {
 			deleteFileProcess(ps) //1、需要删除的文件处理
 		}
 		if ps.isModifyDateFile {
-			printDateFlag = true
-			modifyDateProcess(ps) //2、需要修改时间的文件处理
+			modifyDateProcess(ps, &printDateFlag) //2、需要修改时间的文件处理
 		}
 		if ps.isMoveFile {
 			dirDateProcess(ps, printDateFlag) //3、需要移动的文件处理
@@ -248,7 +247,7 @@ func deleteFileProcess(ps photoStruct) {
 	}
 }
 
-func dirDateProcess(ps photoStruct, printDateFlag bool) bool {
+func dirDateProcess(ps photoStruct, printDateFlag bool) {
 	if dirDateShow || dirDateAction {
 		if !printDateFlag {
 			printDate(ps.photo, ps.dirDate, ps.modifyDate, ps.shootDate, ps.fileDate, ps.minDate)
@@ -259,11 +258,11 @@ func dirDateProcess(ps photoStruct, printDateFlag bool) bool {
 		tools.MoveFile(ps.photo, ps.targetPhoto)
 		fmt.Println(tools.StrWithColor("move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
 	}
-	return printDateFlag
 }
 
-func modifyDateProcess(ps photoStruct) {
+func modifyDateProcess(ps photoStruct, printDateFlag *bool) {
 	if modifyDateShow || modifyDateAction {
+		*printDateFlag = true
 		printDate(ps.photo, ps.dirDate, ps.modifyDate, ps.shootDate, ps.fileDate, ps.minDate)
 		fmt.Println(tools.StrWithColor("should modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate)
 	}
