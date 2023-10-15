@@ -31,8 +31,8 @@ var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-
 
 var deleteShow = true
 var dirDateShow = true
-var modifyDateShow = false
-var md5Show = false
+var modifyDateShow = true
+var md5Show = true
 
 var deleteAction = false
 var dirDateAction = false
@@ -173,23 +173,22 @@ func main() {
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT DETAIL TYPE1(delete file,modify date,move file): ", "red"))
 	for _, ps := range processFileList {
-		fmt.Println("file : ", tools.StrWithColor(ps.photo, "blue"))
 
+		printFileFlag := false
 		printDateFlag := false
 
 		if ps.isDeleteFile {
-			deleteFileProcess(ps) //1、需要删除的文件处理
+			deleteFileProcess(ps, &printFileFlag, &printDateFlag) //1、需要删除的文件处理
 		}
 		if ps.isModifyDateFile {
-			modifyDateProcess(ps, &printDateFlag) //2、需要修改时间的文件处理
+			modifyDateProcess(ps, &printFileFlag, &printDateFlag) //2、需要修改时间的文件处理
 		}
 		if ps.isMoveFile {
-			dirDateProcess(ps, printDateFlag) //3、需要移动的文件处理
+			dirDateProcess(ps, &printFileFlag, &printDateFlag) //3、需要移动的文件处理
 		}
 
-		fmt.Println()
-
 	}
+	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT DETAIL TYPE2(empty dir): ", "red"))
 	emptyDirProcess() //4、空目录处理
 
@@ -232,8 +231,11 @@ func main() {
 
 }
 
-func deleteFileProcess(ps photoStruct) {
+func deleteFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
 	if deleteShow || deleteAction {
+		fmt.Println()
+		fmt.Println("file : ", tools.StrWithColor(ps.photo, "blue"))
+		*printFileFlag = true
 		fmt.Println(tools.StrWithColor("should delete file :", "yellow"), ps.photo)
 	}
 
@@ -247,29 +249,42 @@ func deleteFileProcess(ps photoStruct) {
 	}
 }
 
-func dirDateProcess(ps photoStruct, printDateFlag bool) {
-	if dirDateShow || dirDateAction {
-		if !printDateFlag {
-			printDate(ps.photo, ps.dirDate, ps.modifyDate, ps.shootDate, ps.fileDate, ps.minDate)
-		}
-		fmt.Println(tools.StrWithColor("should move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
-	}
-	if dirDateAction {
-		tools.MoveFile(ps.photo, ps.targetPhoto)
-		fmt.Println(tools.StrWithColor("move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
-	}
-}
-
-func modifyDateProcess(ps photoStruct, printDateFlag *bool) {
+func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
 	if modifyDateShow || modifyDateAction {
-		*printDateFlag = true
-		printDate(ps.photo, ps.dirDate, ps.modifyDate, ps.shootDate, ps.fileDate, ps.minDate)
+		if !*printFileFlag {
+			fmt.Println()
+			fmt.Println("file : ", tools.StrWithColor(ps.photo, "blue"))
+			*printFileFlag = true
+		}
+		if !*printDateFlag {
+			printDate(ps.photo, ps.dirDate, ps.modifyDate, ps.shootDate, ps.fileDate, ps.minDate)
+			*printDateFlag = true
+		}
 		fmt.Println(tools.StrWithColor("should modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate)
 	}
 	if modifyDateAction {
 		tm, _ := time.Parse("2006-01-02", ps.minDate)
 		changeModifyDate(ps.photo, tm)
 		fmt.Println(tools.StrWithColor("modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate, "get realdate", getModifyDate(ps.photo))
+	}
+}
+
+func dirDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
+	if dirDateShow || dirDateAction {
+		if !*printFileFlag {
+			fmt.Println()
+			fmt.Println("file : ", tools.StrWithColor(ps.photo, "blue"))
+			*printFileFlag = true
+		}
+		if !*printDateFlag {
+			printDate(ps.photo, ps.dirDate, ps.modifyDate, ps.shootDate, ps.fileDate, ps.minDate)
+			*printDateFlag = true
+		}
+		fmt.Println(tools.StrWithColor("should move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
+	}
+	if dirDateAction {
+		tools.MoveFile(ps.photo, ps.targetPhoto)
+		fmt.Println(tools.StrWithColor("move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
 	}
 }
 
