@@ -22,16 +22,18 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
-var startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
-var poolSize = 8                            //并行处理的线程
+// var startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
+var poolSize = 8 //并行处理的线程
 
 //var startPath = "/Volumes/ld_hardone/pic-new"
+
+var startPath = "/Volumes/ld_hardraid/pic-new"
 
 var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
 var deleteShow = true
 var dirDateShow = true
-var modifyDateShow = true
+var modifyDateShow = false
 var md5Show = true
 
 var deleteAction = false
