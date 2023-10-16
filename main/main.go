@@ -43,8 +43,7 @@ var suffixMap = map[string]int{} //后缀统计
 var nost1FileSuffixMap sync.Map  //shoot time没有的照片
 var nost2FileSuffixMap sync.Map  //shoot time没有的照片
 
-var md5Map sync.Map                     //以md5为key存储文件
-var dumpMap = make(map[string][]string) //md5Map里筛选出有重复文件的Map
+var md5Map sync.Map //以md5为key存储文件
 
 var totalCnt = 0 //照片总量
 
@@ -193,7 +192,7 @@ func main() {
 	emptyDirProcess() //4、空目录处理
 
 	fmt.Println(tools.StrWithColor("PRINT DETAIL TYPE3(dump file): ", "red"))
-	dumpFileProcess() //5、重复文件处理处理
+	dumpMap := dumpFileProcess() //5、重复文件处理处理
 
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT STAT TYPE0(comman info): ", "red"))
@@ -221,6 +220,8 @@ func main() {
 	sm3, _ := json.Marshal(shouldDeleteFiles)
 	fmt.Println("shouldDeleteFiles length : ", tools.StrWithColor(strconv.Itoa(len(shouldDeleteFiles)), "red"))
 	fmt.Println("shouldDeleteFiles : ", string(sm3))
+	sm4, _ := json.Marshal(dumpMap)
+	fmt.Println("dumpMap : ", string(sm4))
 
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("==========ROUND 3: PROCESS COST==========", "red"))
@@ -310,7 +311,9 @@ func emptyDirProcess() {
 	}
 }
 
-func dumpFileProcess() {
+func dumpFileProcess() map[string][]string {
+	var dumpMap = make(map[string][]string) //md5Map里筛选出有重复文件的Map
+
 	if md5Show || md5Action {
 		md5Map.Range(func(key, value interface{}) bool {
 			md5 := key.(string)
@@ -356,6 +359,7 @@ func dumpFileProcess() {
 			}
 		}
 	}
+	return dumpMap
 }
 
 func processOneFile(photo string) {
