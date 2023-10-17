@@ -22,13 +22,15 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
-var startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
-var poolSize = 8                            //并行处理的线程
-var md5Retry = 3                            //文件md5计算重试次数
+// var startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
+var poolSize = 8 //并行处理的线程
+var md5Retry = 3 //文件md5计算重试次数
 
 //var startPath = "/Volumes/ld_hardone/pic-new"
 
-//var startPath = "/Volumes/ld_hardraid/pic-new"
+var startPath = "/Volumes/ld_hardraid/pic-new"
+
+//var startPath = "/Volumes/ld_ssd1/pic-new/2023"
 
 var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
@@ -428,7 +430,7 @@ func processOneFile(photo string) {
 	if md5Show || md5Action {
 		md5, err := getFileMD5WithRetry(photo)
 		if err != nil {
-			log.Print("GetFileMD5 err for", md5Retry, "times : ", err)
+			log.Print("GetFileMD5 err for ", md5Retry, " times : ", err)
 			md5EmptyFileListMu.Lock()
 			md5EmptyFileList = append(md5EmptyFileList, photo)
 			md5EmptyFileListMu.Unlock()
@@ -476,6 +478,7 @@ func getShootDateMethod2(path string, suffix string) (string, error) {
 	}()
 
 	f, err := os.Open(path)
+	defer f.Close()
 	if err != nil {
 		log.Print(err)
 		return "", err

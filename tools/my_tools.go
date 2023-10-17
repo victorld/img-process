@@ -27,6 +27,7 @@ func StrWithColor(str string, color string) string {
 
 func GetFileMD5(filePath string) (string, error) {
 	file, err := os.Open(filePath)
+	defer file.Close()
 	if err != nil {
 		return "", err
 	}
