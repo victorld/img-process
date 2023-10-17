@@ -45,7 +45,7 @@ var suffixMap = map[string]int{} //后缀统计
 var nost1FileSuffixMap sync.Map  //shoot time没有的照片
 var nost2FileSuffixMap sync.Map  //shoot time没有的照片
 
-var md5Map sync.Map //以md5为key存储文件
+var md5Map = make(map[string][]string) //以md5为key存储文件
 
 var totalCnt = 0 //照片总量
 
@@ -56,9 +56,9 @@ var dirDateFileList = mapset.NewSet()    //目录与最小日期不匹配，需�
 var modifyDateFileList = mapset.NewSet() //修改时间与最小日期不匹配，需要修改
 var shootDateFileList = mapset.NewSet()  //拍摄时间与最小日期不匹配，需要修改
 
-var processDirList = []dirStruct{}    //需要处理的目录结构体列表（空目录）
-var processFileList = []photoStruct{} //需要处理的文件结构体列表（非法格式删除、移动、修改时间、重复文件删除）
-var shouldDeleteFiles = []string{}    //统计需要删除的文件
+var processDirList []dirStruct    //需要处理的目录结构体列表（空目录）
+var processFileList []photoStruct //需要处理的文件结构体列表（非法格式删除、移动、修改时间、重复文件删除）
+var shouldDeleteFiles []string    //统计需要删除的文件
 
 var date1Pattern = regexp.MustCompile("^.*(20[012]\\d}(0[1-9]|1[0-2])(0[1-9]|[1-2]\\d|3[01])).*$")
 var data1Template = "20060102"
@@ -100,6 +100,9 @@ type photoStruct struct { //照片打印需要的结构体
 
 var processFileListMu sync.Mutex
 var md5MapMu sync.Mutex
+
+var md5EmptyFileListMu sync.Mutex
+var md5EmptyFileList []string //获取md5为空的文件
 
 func main() {
 
@@ -222,8 +225,8 @@ func main() {
 	sm3, _ := json.Marshal(shouldDeleteFiles)
 	fmt.Println("shouldDeleteFiles length : ", tools.StrWithColor(strconv.Itoa(len(shouldDeleteFiles)), "red"))
 	fmt.Println("shouldDeleteFiles : ", string(sm3))
-	sm4, _ := json.Marshal(dumpMap)
-	fmt.Println("dumpMap : ", string(sm4))
+	sm4, _ := json.Marshal(md5EmptyFileList)
+	fmt.Println("md5EmptyFileList : ", string(sm4))
 
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("==========ROUND 3: PROCESS COST==========", "red"))
@@ -317,9 +320,7 @@ func dumpFileProcess() map[string][]string {
 	var dumpMap = make(map[string][]string) //md5Map里筛选出有重复文件的Map
 
 	if md5Show || md5Action {
-		md5Map.Range(func(key, value interface{}) bool {
-			md5 := key.(string)
-			files := value.([]string)
+		for md5, files := range md5Map {
 			if len(files) > 1 {
 				dumpMap[md5] = files
 				minPhoto := ""
@@ -351,8 +352,7 @@ func dumpFileProcess() map[string][]string {
 				fmt.Println()
 
 			}
-			return true
-		})
+		}
 
 		if md5Action {
 			for _, photo := range shouldDeleteFiles {
@@ -424,14 +424,26 @@ func processOneFile(photo string) {
 	}
 
 	if md5Show || md5Action {
-		md5, _ := tools.GetFileMD5(photo)
-		md5MapMu.Lock()
-		if value, ok := md5Map.Load(md5); ok {
-			md5Map.Store(md5, append(value.([]string), photo))
+		md5, err := tools.GetFileMD5(photo)
+		if err != nil {
+			log.Print("GetFileMD5 err : ", err)
+			md5EmptyFileListMu.Lock()
+			md5EmptyFileList = append(md5EmptyFileList, photo)
+			md5EmptyFileListMu.Unlock()
+		} else if md5 == "d41d8cd98f00b204e9800998ecf8427e" {
+			log.Print("GetFileMD5 is null : ", photo)
+			md5EmptyFileListMu.Lock()
+			md5EmptyFileList = append(md5EmptyFileList, photo)
+			md5EmptyFileListMu.Unlock()
 		} else {
-			md5Map.Store(md5, []string{photo})
+			md5MapMu.Lock()
+			if value, ok := md5Map[md5]; ok {
+				md5Map[md5] = append(value, photo)
+			} else {
+				md5Map[md5] = []string{photo}
+			}
+			md5MapMu.Unlock()
 		}
-		md5MapMu.Unlock()
 	}
 
 	if flag {

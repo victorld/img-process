@@ -26,8 +26,6 @@ func main() {
 	fmt.Println()
 	//test()
 	//tools.DeleteEmptyDir("/Users/ld/Desktop/pic-new/a/c/d/e/f")
-	fmt.Println(tools.GetFileMD5("/Volumes/ld_hardraid/pic-new/2011/2011-01/2011-01-28/DSCF0958.JPG"))
-	fmt.Println(tools.GetFileMD5("/Volumes/ld_hardraid/pic-new/2011/2011-01/2011-01-28/DSCF0970.JPG"))
-	fmt.Println(tools.GetFileMD5("/Volumes/ld_hardraid/pic-new/2017/2017-05/2017-05-28/IMG_0058.MOV"))
-	fmt.Println(tools.GetFileMD5("/Volumes/ld_hardraid/pic-new/2020/2020-07/2020-07-18/1595040414861789.mp4"))
+	fmt.Println(tools.GetFileMD5("/Volumes/ld_hardraid/pic-new/2022/2022-08/2022-08-27/IMG_6633.MOV"))
+	fmt.Println(tools.GetFileMD5("/Volumes/ld_hardraid/pic-new/2022/2022-08/2022-08-27/IMG_6658.HEIC"))
 }
