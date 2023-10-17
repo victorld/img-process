@@ -22,12 +22,13 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
-// var startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
-var poolSize = 8 //并行处理的线程
+var startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
+var poolSize = 8                            //并行处理的线程
+var md5Retry = 3                            //文件md5计算重试次数
 
 //var startPath = "/Volumes/ld_hardone/pic-new"
 
-var startPath = "/Volumes/ld_hardraid/pic-new"
+//var startPath = "/Volumes/ld_hardraid/pic-new"
 
 var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
@@ -225,6 +226,7 @@ func main() {
 	sm3, _ := json.Marshal(shouldDeleteFiles)
 	fmt.Println("shouldDeleteFiles length : ", tools.StrWithColor(strconv.Itoa(len(shouldDeleteFiles)), "red"))
 	fmt.Println("shouldDeleteFiles : ", string(sm3))
+	fmt.Println("md5 get error length : ", tools.StrWithColor(strconv.Itoa(len(md5EmptyFileList)), "red"))
 	sm4, _ := json.Marshal(md5EmptyFileList)
 	fmt.Println("md5EmptyFileList : ", string(sm4))
 
@@ -424,14 +426,9 @@ func processOneFile(photo string) {
 	}
 
 	if md5Show || md5Action {
-		md5, err := tools.GetFileMD5(photo)
+		md5, err := getFileMD5WithRetry(photo)
 		if err != nil {
-			log.Print("GetFileMD5 err : ", err)
-			md5EmptyFileListMu.Lock()
-			md5EmptyFileList = append(md5EmptyFileList, photo)
-			md5EmptyFileListMu.Unlock()
-		} else if md5 == "d41d8cd98f00b204e9800998ecf8427e" {
-			log.Print("GetFileMD5 is null : ", photo)
+			log.Print("GetFileMD5 err for", md5Retry, "times : ", err)
 			md5EmptyFileListMu.Lock()
 			md5EmptyFileList = append(md5EmptyFileList, photo)
 			md5EmptyFileListMu.Unlock()
@@ -454,6 +451,20 @@ func processOneFile(photo string) {
 
 	wg.Done()
 
+}
+
+func getFileMD5WithRetry(photo string) (string, error) {
+	var md5 string
+	var err error
+	for i := 0; i < md5Retry; i++ {
+		md5, err = tools.GetFileMD5(photo)
+		if err != nil {
+			time.Sleep(1 * time.Second)
+		} else {
+			break
+		}
+	}
+	return md5, err
 }
 
 func getShootDateMethod2(path string, suffix string) (string, error) {
