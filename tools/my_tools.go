@@ -31,7 +31,10 @@ func GetFileMD5(filePath string) (string, error) {
 		return "", err
 	}
 	hash := md5.New()
-	_, _ = io.Copy(hash, file)
+	_, err = io.Copy(hash, file)
+	if err != nil {
+		return "", err
+	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
