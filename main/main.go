@@ -22,13 +22,13 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
-// var startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
-var poolSize = 8 //并行处理的线程
-var md5Retry = 3 //文件md5计算重试次数
+var startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
+var poolSize = 8                            //并行处理的线程
+var md5Retry = 3                            //文件md5计算重试次数
 
 //var startPath = "/Volumes/ld_hardone/pic-new"
 
-var startPath = "/Volumes/ld_hardraid/pic-new"
+//var startPath = "/Volumes/ld_hardraid/pic-new"
 
 //var startPath = "/Volumes/ld_ssd1/pic-new/2023"
 
@@ -42,7 +42,6 @@ var md5Show = true
 var deleteAction = false
 var dirDateAction = false
 var modifyDateAction = false
-var md5Action = false
 
 var suffixMap = map[string]int{} //后缀统计
 var nost1FileSuffixMap sync.Map  //shoot time没有的照片
@@ -209,6 +208,7 @@ func main() {
 	fmt.Println("photo total : ", tools.StrWithColor(strconv.Itoa(totalCnt), "red"))
 	fmt.Println("file contain date(just for print) : ", tools.StrWithColor(strconv.Itoa(fileDateFileList.Cardinality()), "red"))
 
+	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT STAT TYPE1(delete file,modify date,move file): ", "red"))
 	fmt.Println("delete file total : ", tools.StrWithColor(strconv.Itoa(deleteFileList.Cardinality()), "red"))
 	fmt.Println("modify date total : ", tools.StrWithColor(strconv.Itoa(modifyDateFileList.Cardinality()), "red"))
@@ -220,17 +220,36 @@ func main() {
 	fmt.Println("exif parse error 2 : ", tools.StrWithColor(strconv.Itoa(tools.GetSyncMapLens(nost2FileSuffixMap)), "red"))
 	//fmt.Println("exif parse error 2 list : ", nost2FileSuffixMap)
 
+	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT STAT TYPE2(empty dir) : ", "red"))
 	fmt.Println("empty dir total : ", tools.StrWithColor(strconv.Itoa(len(processDirList)), "red"))
 
+	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT STAT TYPE3(dump file) : ", "red"))
 	fmt.Println("dump file total : ", tools.StrWithColor(strconv.Itoa(len(dumpMap)), "red"))
-	sm3, _ := json.Marshal(shouldDeleteFiles)
+
 	fmt.Println("shouldDeleteFiles length : ", tools.StrWithColor(strconv.Itoa(len(shouldDeleteFiles)), "red"))
-	fmt.Println("shouldDeleteFiles : ", string(sm3))
+	if len(shouldDeleteFiles) != 0 {
+		sm3, _ := json.Marshal(shouldDeleteFiles)
+		fmt.Println("shouldDeleteFiles print : ", string(sm3))
+		fileUuid, err := tools.WriteStringToFile(string(sm3))
+		if err != nil {
+			return
+		}
+		filePath := "/tmp/" + fileUuid
+		//fmt.Println("file path : ", filePath)
+		fileContent2, err := tools.ReadFileString(filePath)
+		if err != nil {
+			return
+		}
+		fmt.Println("shouldDeleteFiles files : ", fileContent2)
+		fmt.Println("tmp file md5 : ", tools.StrWithColor(fileUuid, "red"))
+	}
 	fmt.Println("md5 get error length : ", tools.StrWithColor(strconv.Itoa(len(md5EmptyFileList)), "red"))
-	sm4, _ := json.Marshal(md5EmptyFileList)
-	fmt.Println("md5EmptyFileList : ", string(sm4))
+	if len(md5EmptyFileList) != 0 {
+		sm4, _ := json.Marshal(md5EmptyFileList)
+		fmt.Println("md5EmptyFileList : ", string(sm4))
+	}
 
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("==========ROUND 3: PROCESS COST==========", "red"))
@@ -323,7 +342,7 @@ func emptyDirProcess() {
 func dumpFileProcess() map[string][]string {
 	var dumpMap = make(map[string][]string) //md5Map里筛选出有重复文件的Map
 
-	if md5Show || md5Action {
+	if md5Show {
 		for md5, files := range md5Map {
 			if len(files) > 1 {
 				dumpMap[md5] = files
@@ -358,12 +377,6 @@ func dumpFileProcess() map[string][]string {
 			}
 		}
 
-		if md5Action {
-			for _, photo := range shouldDeleteFiles {
-				tools.DeleteFile(photo)
-				fmt.Println(tools.StrWithColor("dump file deleted : ", "red"), photo)
-			}
-		}
 	}
 	return dumpMap
 }
@@ -427,7 +440,7 @@ func processOneFile(photo string) {
 		flag = true
 	}
 
-	if md5Show || md5Action {
+	if md5Show {
 		md5, err := getFileMD5WithRetry(photo)
 		if err != nil {
 			log.Print("GetFileMD5 err for ", md5Retry, " times : ", err)

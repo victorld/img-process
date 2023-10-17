@@ -8,3 +8,5 @@ require (
 )
 
 require github.com/panjf2000/ants/v2 v2.8.2
+
+require github.com/google/uuid v1.3.1 // indirect

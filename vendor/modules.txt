@@ -1,6 +1,9 @@
 # github.com/deckarep/golang-set v1.8.0
 ## explicit; go 1.17
 github.com/deckarep/golang-set
+# github.com/google/uuid v1.3.1
+## explicit
+github.com/google/uuid
 # github.com/panjf2000/ants/v2 v2.8.2
 ## explicit; go 1.13
 github.com/panjf2000/ants/v2

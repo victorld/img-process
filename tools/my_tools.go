@@ -4,9 +4,11 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -39,8 +41,29 @@ func GetFileMD5(filePath string) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
+func Exists(path string) bool {
+	_, err := os.Stat(path) //os.Stat获取文件信息
+	if err != nil {
+		if os.IsExist(err) {
+			return true
+		}
+		return false
+	}
+	return true
+}
+
 func MoveFile(src string, dst string) {
 
+	parentDir := filepath.Dir(dst)
+	if !Exists(parentDir) {
+		err := os.MkdirAll(parentDir, os.ModePerm)
+		if err != nil {
+			fmt.Println(err)
+			return
+		} else {
+			fmt.Println("创建父目录：", parentDir)
+		}
+	}
 	// 移动文件
 	os.Rename(src, dst)
 }
@@ -89,4 +112,24 @@ func GetSyncMapLens(sm sync.Map) int {
 		return true
 	})
 	return len
+}
+
+func WriteStringToFile(content string) (string, error) {
+	contentBytes := []byte(content)
+	var uuid1, err = uuid.NewUUID()
+	if err != nil {
+		return "", err
+	}
+	fileUuid := strings.ReplaceAll(uuid1.String(), "-", "")
+	filepath := "/tmp/" + fileUuid
+	os.WriteFile(filepath, contentBytes, 0666)
+	return fileUuid, nil
+}
+
+func ReadFileString(fileName string) (string, error) {
+	f, err := os.ReadFile(fileName)
+	if err != nil {
+		return "", err
+	}
+	return string(f), nil
 }
