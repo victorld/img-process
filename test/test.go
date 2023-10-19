@@ -49,10 +49,22 @@ func testMd5Delete() {
 	}
 }
 
+func testModifyDate() {
+	file := "/Users/ld/Desktop/pic-new/2023/2023-09/2023-09-08/11028_1670298127.mp4"
+	fmt.Println("file modify date change before : ", tools.GetModifyDate(file))
+
+	tm, _ := time.Parse("2006-01-02", "2023-09-08")
+	tools.ChangeModifyDate(file, tm)
+
+	fmt.Println("file modify date change after : ", tools.GetModifyDate(file))
+
+}
+
 func main() {
 	fmt.Println()
 
 	//testDate()
 	//testGetMD5()
-	testMd5Delete()
+	//testMd5Delete()
+	testModifyDate()
 }

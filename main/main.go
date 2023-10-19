@@ -9,7 +9,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -61,20 +60,6 @@ var shootDateFileList = mapset.NewSet()  //拍摄时间与最小日期不匹配�
 var processDirList []dirStruct    //需要处理的目录结构体列表（空目录）
 var processFileList []photoStruct //需要处理的文件结构体列表（非法格式删除、移动、修改时间、重复文件删除）
 var shouldDeleteFiles []string    //统计需要删除的文件
-
-var date1Pattern = regexp.MustCompile("^.*(20[012]\\d}(0[1-9]|1[0-2])(0[1-9]|[1-2]\\d|3[01])).*$")
-var data1Template = "20060102"
-var date2Pattern = regexp.MustCompile("^.*((0[1-9]|[1-2]\\d|3[01])-(0[1-9]|1[0-2])-[012]\\d).*$")
-var data2Template = "02-01-06" // 31-12-19
-var date3Pattern = regexp.MustCompile("^.*(20[012]\\d:(0[1-9]|1[0-2]):(0[1-9]|[1-2]\\d|3[01])).*$")
-var data3Template = "2006:01:02" //
-var date4Pattern = regexp.MustCompile("^.*(20[012]\\d-(0[1-9]|1[0-2])-(0[1-9]|[1-2]\\d|3[01])).*$")
-var data4Template = "2006-01-02" //
-var datetimePattern *regexp.Regexp = regexp.MustCompile("^.*(20[012]\\d:(0[1-9]|1[0-2]):(0[1-9]|[1-2]\\d|3[01]) (\\d{2}:\\d{2}:\\d{2})).*$")
-var datetimeTemplate = "2006:01:02 15:04:05"
-
-var timePatternArray = []*regexp.Regexp{date1Pattern, date2Pattern, date3Pattern, date4Pattern, datetimePattern}
-var timeTemplateArray = []string{data1Template, data2Template, data3Template, data4Template, datetimeTemplate}
 
 var wg sync.WaitGroup
 
@@ -286,15 +271,15 @@ func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool)
 			*printFileFlag = true
 		}
 		if !*printDateFlag {
-			printDate(ps.photo, ps.dirDate, ps.modifyDate, ps.shootDate, ps.fileDate, ps.minDate)
+			tools.PrintDate(ps.photo, ps.dirDate, ps.modifyDate, ps.shootDate, ps.fileDate, ps.minDate)
 			*printDateFlag = true
 		}
 		fmt.Println(tools.StrWithColor("should modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate)
 	}
 	if modifyDateAction {
 		tm, _ := time.Parse("2006-01-02", ps.minDate)
-		changeModifyDate(ps.photo, tm)
-		fmt.Println(tools.StrWithColor("modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate, "get realdate", getModifyDate(ps.photo))
+		tools.ChangeModifyDate(ps.photo, tm)
+		fmt.Println(tools.StrWithColor("modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate, "get realdate", tools.GetModifyDate(ps.photo))
 	}
 }
 
@@ -306,7 +291,7 @@ func dirDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
 			*printFileFlag = true
 		}
 		if !*printDateFlag {
-			printDate(ps.photo, ps.dirDate, ps.modifyDate, ps.shootDate, ps.fileDate, ps.minDate)
+			tools.PrintDate(ps.photo, ps.dirDate, ps.modifyDate, ps.shootDate, ps.fileDate, ps.minDate)
 			*printDateFlag = true
 		}
 		fmt.Println(tools.StrWithColor("should move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
@@ -351,9 +336,9 @@ func dumpFileProcess() map[string][]string {
 					if minPhoto == "" {
 						minPhoto = photo
 					} else {
-						if getDirDate(minPhoto) > getDirDate(photo) {
+						if tools.GetDirDate(minPhoto) > tools.GetDirDate(photo) {
 							minPhoto = photo
-						} else if getDirDate(minPhoto) < getDirDate(photo) {
+						} else if tools.GetDirDate(minPhoto) < tools.GetDirDate(photo) {
 
 						} else {
 							if path.Base(minPhoto) > path.Base(photo) {
@@ -394,14 +379,14 @@ func processOneFile(photo string) {
 		}
 	}
 
-	dirDate := getDirDate(photo)
+	dirDate := tools.GetDirDate(photo)
 
-	fileDate := getFileDate(photo)
+	fileDate := tools.GetFileDate(photo)
 	if fileDate != "" {
 		fileDateFileList.Add(photo)
 	}
 
-	modifyDate := getModifyDate(photo)
+	modifyDate := tools.GetModifyDate(photo)
 
 	minDate := ""
 
@@ -441,7 +426,7 @@ func processOneFile(photo string) {
 	}
 
 	if md5Show {
-		md5, err := getFileMD5WithRetry(photo)
+		md5, err := tools.GetFileMD5WithRetry(photo, md5Retry)
 		if err != nil {
 			log.Print("GetFileMD5 err for ", md5Retry, " times : ", err)
 			md5EmptyFileListMu.Lock()
@@ -468,20 +453,6 @@ func processOneFile(photo string) {
 
 }
 
-func getFileMD5WithRetry(photo string) (string, error) {
-	var md5 string
-	var err error
-	for i := 0; i < md5Retry; i++ {
-		md5, err = tools.GetFileMD5(photo)
-		if err != nil {
-			time.Sleep(1 * time.Second)
-		} else {
-			break
-		}
-	}
-	return md5, err
-}
-
 func getShootDateMethod2(path string, suffix string) (string, error) {
 
 	defer func() {
@@ -493,7 +464,7 @@ func getShootDateMethod2(path string, suffix string) (string, error) {
 	f, err := os.Open(path)
 	defer f.Close()
 	if err != nil {
-		log.Print(err)
+		fmt.Print(err)
 		return "", err
 	}
 
@@ -527,58 +498,4 @@ func getShootDateMethod2(path string, suffix string) (string, error) {
 		return shootTimeStr, nil
 	}
 
-}
-
-func printDate(photo string, dirDate string, modifyDate string, shootDate string, fileDate string, minDate string) {
-	if dirDate != minDate {
-		fmt.Println("dirDate : ", tools.StrWithColor(dirDate, "red"))
-	} else {
-		fmt.Println("dirDate : ", tools.StrWithColor(dirDate, "green"))
-	}
-	if modifyDate != minDate {
-		fmt.Println("modifyDate : ", tools.StrWithColor(modifyDate, "red"))
-	} else {
-		fmt.Println("modifyDate : ", tools.StrWithColor(modifyDate, "green"))
-	}
-	if shootDate != minDate {
-		fmt.Println("shootDate : ", tools.StrWithColor(shootDate, "red"))
-	} else {
-		fmt.Println("shootDate : ", tools.StrWithColor(shootDate, "green"))
-	}
-	fmt.Println("minDate : ", tools.StrWithColor(minDate, "green"))
-}
-
-func getDirDate(photo string) string {
-	parentDir := filepath.Dir(photo)
-	dirDate := path.Base(parentDir)
-	return dirDate
-}
-
-func getFileDate(photo string) string {
-	filename := path.Base(photo)
-
-	var fileDate string
-	for i, v := range timePatternArray {
-		if match := v.FindStringSubmatch(filename); match != nil {
-			stamp, _ := time.ParseInLocation(timeTemplateArray[i], match[1], time.Local)
-			fileDate = stamp.Format("2006-01-02")
-		}
-	}
-	return fileDate
-
-}
-
-func getModifyDate(photo string) string {
-	fileInfo, err := os.Stat(photo)
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	modify := fileInfo.ModTime()
-	modifyDate := modify.Format("2006-01-02")
-	return modifyDate
-}
-
-func changeModifyDate(photo string, time time.Time) {
-	os.Chtimes(photo, time, time)
 }

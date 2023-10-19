@@ -7,10 +7,26 @@ import (
 	"github.com/google/uuid"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
+	"time"
 )
+
+var date1Pattern = regexp.MustCompile("^.*(20[012]\\d}(0[1-9]|1[0-2])(0[1-9]|[1-2]\\d|3[01])).*$")
+var data1Template = "20060102"
+var date2Pattern = regexp.MustCompile("^.*((0[1-9]|[1-2]\\d|3[01])-(0[1-9]|1[0-2])-[012]\\d).*$")
+var data2Template = "02-01-06" // 31-12-19
+var date3Pattern = regexp.MustCompile("^.*(20[012]\\d:(0[1-9]|1[0-2]):(0[1-9]|[1-2]\\d|3[01])).*$")
+var data3Template = "2006:01:02" //
+var date4Pattern = regexp.MustCompile("^.*(20[012]\\d-(0[1-9]|1[0-2])-(0[1-9]|[1-2]\\d|3[01])).*$")
+var data4Template = "2006-01-02" //
+var datetimePattern *regexp.Regexp = regexp.MustCompile("^.*(20[012]\\d:(0[1-9]|1[0-2]):(0[1-9]|[1-2]\\d|3[01]) (\\d{2}:\\d{2}:\\d{2})).*$")
+var datetimeTemplate = "2006:01:02 15:04:05"
+var timePatternArray = []*regexp.Regexp{date1Pattern, date2Pattern, date3Pattern, date4Pattern, datetimePattern}
+var timeTemplateArray = []string{data1Template, data2Template, data3Template, data4Template, datetimeTemplate}
 
 func StrWithColor(str string, color string) string {
 	if color == "red" {
@@ -132,4 +148,72 @@ func ReadFileString(fileName string) (string, error) {
 		return "", err
 	}
 	return string(f), nil
+}
+
+func GetFileMD5WithRetry(photo string, retry int) (string, error) {
+	var md5 string
+	var err error
+	for i := 0; i < retry; i++ {
+		md5, err = GetFileMD5(photo)
+		if err != nil {
+			time.Sleep(1 * time.Second)
+		} else {
+			break
+		}
+	}
+	return md5, err
+}
+
+func PrintDate(photo string, dirDate string, modifyDate string, shootDate string, fileDate string, minDate string) {
+	if dirDate != minDate {
+		fmt.Println("dirDate : ", StrWithColor(dirDate, "red"))
+	} else {
+		fmt.Println("dirDate : ", StrWithColor(dirDate, "green"))
+	}
+	if modifyDate != minDate {
+		fmt.Println("modifyDate : ", StrWithColor(modifyDate, "red"))
+	} else {
+		fmt.Println("modifyDate : ", StrWithColor(modifyDate, "green"))
+	}
+	if shootDate != minDate {
+		fmt.Println("shootDate : ", StrWithColor(shootDate, "red"))
+	} else {
+		fmt.Println("shootDate : ", StrWithColor(shootDate, "green"))
+	}
+	fmt.Println("minDate : ", StrWithColor(minDate, "green"))
+}
+
+func GetDirDate(photo string) string {
+	parentDir := filepath.Dir(photo)
+	dirDate := path.Base(parentDir)
+	return dirDate
+}
+
+func GetFileDate(photo string) string {
+	filename := path.Base(photo)
+
+	var fileDate string
+	for i, v := range timePatternArray {
+		if match := v.FindStringSubmatch(filename); match != nil {
+			stamp, _ := time.ParseInLocation(timeTemplateArray[i], match[1], time.Local)
+			fileDate = stamp.Format("2006-01-02")
+		}
+	}
+	return fileDate
+
+}
+
+func GetModifyDate(photo string) string {
+	fileInfo, err := os.Stat(photo)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	modify := fileInfo.ModTime()
+	modifyDate := modify.Format("2006-01-02")
+	return modifyDate
+}
+
+func ChangeModifyDate(photo string, time time.Time) {
+	os.Chtimes(photo, time, time)
 }
