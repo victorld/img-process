@@ -215,5 +215,8 @@ func GetModifyDate(photo string) string {
 }
 
 func ChangeModifyDate(photo string, time time.Time) {
-	os.Chtimes(photo, time, time)
+	err := os.Chtimes(photo, time, time)
+	if err != nil {
+		fmt.Print("ChangeModifyDate error : ", photo)
+	}
 }
