@@ -132,7 +132,6 @@ func main() {
 
 			if flag {
 
-				wg.Add(1)
 				_ = p.Submit(func() {
 					processOneFile(file) //单个文件处理，数据放到不同的归档里
 				})
@@ -146,6 +145,7 @@ func main() {
 				totalCnt = totalCnt + 1
 				if totalCnt%100 == 0 {
 					println("processed ", tools.StrWithColor(strconv.Itoa(totalCnt), "red"))
+					println("pool running size : ", p.Running())
 				}
 			}
 		}
@@ -367,6 +367,8 @@ func dumpFileProcess() map[string][]string {
 }
 
 func processOneFile(photo string) {
+
+	wg.Add(1)
 
 	suffix := strings.ToLower(path.Ext(photo))
 

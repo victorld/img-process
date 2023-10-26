@@ -27,6 +27,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"fmt"
 
 	syncx "github.com/panjf2000/ants/v2/internal/sync"
 )
@@ -335,6 +336,7 @@ func (p *Pool) retrieveWorker() (w worker, err error) {
 retry:
 	// First try to fetch the worker from the queue.
 	if w = p.workers.detach(); w != nil {
+		//println("start worker",w)
 		p.lock.Unlock()
 		return
 	}
@@ -345,6 +347,7 @@ retry:
 		p.lock.Unlock()
 		w = p.workerCache.Get().(*goWorker)
 		w.run()
+		//println("start worker",w)
 		return
 	}
 
@@ -377,6 +380,7 @@ func (p *Pool) revertWorker(worker *goWorker) bool {
 	worker.lastUsed = p.nowTime()
 
 	p.lock.Lock()
+
 	// To avoid memory leaks, add a double check in the lock scope.
 	// Issue: https://github.com/panjf2000/ants/issues/113
 	if p.IsClosed() {
@@ -390,6 +394,10 @@ func (p *Pool) revertWorker(worker *goWorker) bool {
 	// Notify the invoker stuck in 'retrieveWorker()' of there is an available worker in the worker queue.
 	p.cond.Signal()
 	p.lock.Unlock()
+	if time.Since(worker.lastUsed).Seconds()>1{
+		fmt.Println("release worker" ,worker,time.Since(worker.lastUsed))
+	}
+	//fmt.Println("release worker" ,worker,time.Since(worker.lastUsed))
 
 	return true
 }
