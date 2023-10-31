@@ -8,8 +8,8 @@ import (
 )
 
 func testGetMD5() {
-	fmt.Println(tools.GetFileMD5("/Volumes/ld_hardraid/pic-new/2023/2023-01/2023-01-08/IMG_6193.PNG"))
-	fmt.Println(tools.GetFileMD5("/Volumes/ld_hardraid/pic-new/2023/2023-02/2023-02-05/OLCW2070.MP4"))
+	fmt.Println(tools.GetFileMD5("/Users/ld/my-file/temp/weiyunresona_2.1.3.166_mac_ca3d2c8c33911ba2f73ee060577a28be07924ab1.dmg"))
+	fmt.Println(tools.GetFileMD5("/Users/ld/my-file/temp/Docker.dmg"))
 
 }
 
@@ -60,11 +60,26 @@ func testModifyDate() {
 
 }
 
+func testChan() {
+
+	messages := make(chan string)
+	go func() {
+		println("waiting fot get message from chan")
+		messages <- "ping"
+	}()
+	println("start")
+	time.Sleep(3 * time.Second)
+	msg := <-messages
+	println("already get message from chan")
+	fmt.Println(msg)
+}
+
 func main() {
 	fmt.Println()
 
 	//testDate()
 	//testGetMD5()
 	//testMd5Delete()
-	testModifyDate()
+	//testModifyDate()
+	testChan()
 }

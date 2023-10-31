@@ -164,25 +164,6 @@ func GetFileMD5WithRetry(photo string, retry int) (string, error) {
 	return md5, err
 }
 
-func PrintDate(photo string, dirDate string, modifyDate string, shootDate string, fileDate string, minDate string) {
-	if dirDate != minDate {
-		fmt.Println("dirDate : ", StrWithColor(dirDate, "red"))
-	} else {
-		fmt.Println("dirDate : ", StrWithColor(dirDate, "green"))
-	}
-	if modifyDate != minDate {
-		fmt.Println("modifyDate : ", StrWithColor(modifyDate, "red"))
-	} else {
-		fmt.Println("modifyDate : ", StrWithColor(modifyDate, "green"))
-	}
-	if shootDate != minDate {
-		fmt.Println("shootDate : ", StrWithColor(shootDate, "red"))
-	} else {
-		fmt.Println("shootDate : ", StrWithColor(shootDate, "green"))
-	}
-	fmt.Println("minDate : ", StrWithColor(minDate, "green"))
-}
-
 func GetDirDate(photo string) string {
 	parentDir := filepath.Dir(photo)
 	dirDate := path.Base(parentDir)

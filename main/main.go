@@ -21,9 +21,18 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
-var startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
-var poolSize = 8                            //并行处理的线程
-var md5Retry = 3                            //文件md5计算重试次数
+const startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
+const poolSize = 8                            //并行处理的线程
+const md5Retry = 3                            //文件md5计算重试次数
+
+const deleteShow = true
+const dirDateShow = true
+const modifyDateShow = true
+const md5Show = true
+
+const deleteAction = false
+const dirDateAction = false
+const modifyDateAction = false
 
 //var startPath = "/Volumes/ld_hardone/pic-new"
 
@@ -32,15 +41,6 @@ var md5Retry = 3                            //文件md5计算重试次数
 //var startPath = "/Volumes/ld_ssd1/pic-new/2023"
 
 var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
-
-var deleteShow = true
-var dirDateShow = true
-var modifyDateShow = false
-var md5Show = true
-
-var deleteAction = false
-var dirDateAction = false
-var modifyDateAction = false
 
 var suffixMap = map[string]int{} //后缀统计
 var nost1FileSuffixMap sync.Map  //shoot time没有的照片
@@ -61,28 +61,41 @@ var processDirList []dirStruct    //需要处理的目录结构体列表（空�
 var processFileList []photoStruct //需要处理的文件结构体列表（非法格式删除、移动、修改时间、重复文件删除）
 var shouldDeleteFiles []string    //统计需要删除的文件
 
-var wg sync.WaitGroup
-
 type dirStruct struct { //目录打印需要的结构体
-	dir string
-
+	dir        string
 	isEmptyDir bool
 }
 
 type photoStruct struct { //照片打印需要的结构体
-	photo      string
-	dirDate    string
-	modifyDate string
-	shootDate  string
-	fileDate   string
-	minDate    string
-
-	isDeleteFile bool
-
-	isMoveFile  bool
-	targetPhoto string
-
+	photo            string
+	dirDate          string
+	modifyDate       string
+	shootDate        string
+	fileDate         string
+	minDate          string
+	isDeleteFile     bool
+	isMoveFile       bool
+	targetPhoto      string
 	isModifyDateFile bool
+}
+
+func (ps *photoStruct) psPrint() {
+	if ps.dirDate != ps.minDate {
+		fmt.Println("dirDate : ", tools.StrWithColor(ps.dirDate, "red"))
+	} else {
+		fmt.Println("dirDate : ", tools.StrWithColor(ps.dirDate, "green"))
+	}
+	if ps.modifyDate != ps.minDate {
+		fmt.Println("modifyDate : ", tools.StrWithColor(ps.modifyDate, "red"))
+	} else {
+		fmt.Println("modifyDate : ", tools.StrWithColor(ps.modifyDate, "green"))
+	}
+	if ps.shootDate != ps.minDate {
+		fmt.Println("shootDate : ", tools.StrWithColor(ps.shootDate, "red"))
+	} else {
+		fmt.Println("shootDate : ", tools.StrWithColor(ps.shootDate, "green"))
+	}
+	fmt.Println("minDate : ", tools.StrWithColor(ps.minDate, "green"))
 }
 
 var processFileListMu sync.Mutex
@@ -90,6 +103,8 @@ var md5MapMu sync.Mutex
 
 var md5EmptyFileListMu sync.Mutex
 var md5EmptyFileList []string //获取md5为空的文件
+
+var wg sync.WaitGroup //异步照片处理等待
 
 func main() {
 
@@ -163,7 +178,7 @@ func main() {
 	fmt.Println(tools.StrWithColor("==========ROUND 2: PROCESS FILE==========", "red"))
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT DETAIL TYPE1(delete file,modify date,move file): ", "red"))
-	for _, ps := range processFileList {
+	for _, ps := range processFileList { //第一个参数是下标
 
 		printFileFlag := false
 		printDateFlag := false
@@ -271,7 +286,7 @@ func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool)
 			*printFileFlag = true
 		}
 		if !*printDateFlag {
-			tools.PrintDate(ps.photo, ps.dirDate, ps.modifyDate, ps.shootDate, ps.fileDate, ps.minDate)
+			ps.psPrint()
 			*printDateFlag = true
 		}
 		fmt.Println(tools.StrWithColor("should modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate)
@@ -291,7 +306,7 @@ func dirDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
 			*printFileFlag = true
 		}
 		if !*printDateFlag {
-			tools.PrintDate(ps.photo, ps.dirDate, ps.modifyDate, ps.shootDate, ps.fileDate, ps.minDate)
+			ps.psPrint()
 			*printDateFlag = true
 		}
 		fmt.Println(tools.StrWithColor("should move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
@@ -436,7 +451,7 @@ func processOneFile(photo string) {
 			md5EmptyFileListMu.Unlock()
 		} else {
 			md5MapMu.Lock()
-			if value, ok := md5Map[md5]; ok {
+			if value, ok := md5Map[md5]; ok { //返回值ok表示是否存在这个值
 				md5Map[md5] = append(value, photo)
 			} else {
 				md5Map[md5] = []string{photo}
