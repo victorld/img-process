@@ -3,6 +3,7 @@ package tools
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
 	"io"
@@ -200,4 +201,9 @@ func ChangeModifyDate(photo string, time time.Time) {
 	if err != nil {
 		fmt.Print("ChangeModifyDate error : ", photo)
 	}
+}
+
+func MarshalPrint(v any) string {
+	sm, _ := json.Marshal(v)
+	return string(sm)
 }

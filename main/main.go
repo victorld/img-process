@@ -1,9 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	mapset "github.com/deckarep/golang-set"
+	"github.com/rwcarlsen/goexif/exif"
+	"github.com/rwcarlsen/goexif/mknote"
 	"img_process/tools"
 	"log"
 	"os"
@@ -13,10 +15,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	mapset "github.com/deckarep/golang-set"
-	"github.com/rwcarlsen/goexif/exif"
-	"github.com/rwcarlsen/goexif/mknote"
 	//exif "github.com/dsoprea/go-exif/v3"
 	"github.com/panjf2000/ants/v2"
 )
@@ -43,10 +41,6 @@ const modifyDateAction = false
 var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
 var suffixMap = map[string]int{} //后缀统计
-var nost1FileSuffixMap sync.Map  //shoot time没有的照片
-var nost2FileSuffixMap sync.Map  //shoot time没有的照片
-
-var md5Map = make(map[string][]string) //以md5为key存储文件
 
 var totalCnt = 0 //照片总量
 
@@ -57,9 +51,7 @@ var dirDateFileList = mapset.NewSet()    //目录与最小日期不匹配，需�
 var modifyDateFileList = mapset.NewSet() //修改时间与最小日期不匹配，需要修改
 var shootDateFileList = mapset.NewSet()  //拍摄时间与最小日期不匹配，需要修改
 
-var processDirList []dirStruct    //需要处理的目录结构体列表（空目录）
-var processFileList []photoStruct //需要处理的文件结构体列表（非法格式删除、移动、修改时间、重复文件删除）
-var shouldDeleteFiles []string    //统计需要删除的文件
+var shouldDeleteFiles []string //统计需要删除的文件
 
 type dirStruct struct { //目录打印需要的结构体
 	dir        string
@@ -98,8 +90,19 @@ func (ps *photoStruct) psPrint() {
 	fmt.Println("minDate : ", tools.StrWithColor(ps.minDate, "green"))
 }
 
+var processDirList []dirStruct    //需要处理的目录结构体列表（空目录）
+var processFileList []photoStruct //需要处理的文件结构体列表（非法格式删除、移动、修改时间、重复文件删除）
 var processFileListMu sync.Mutex
+
+var md5Map = make(map[string][]string) //以md5为key存储文件
 var md5MapMu sync.Mutex
+
+var nost1FileSuffixMap = map[string]int{} //shoot time没有的照片
+var nost1FileSet = mapset.NewSet()        //shoot time没有的照片
+var nost2FileSuffixMap = map[string]int{} //shoot time没有的照片
+var nost2FileSet = mapset.NewSet()        //shoot time没有的照片
+var nost1FileMu sync.Mutex
+var nost2FileMu sync.Mutex
 
 var md5EmptyFileListMu sync.Mutex
 var md5EmptyFileList []string //获取md5为空的文件
@@ -205,8 +208,7 @@ func main() {
 
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT STAT TYPE0(comman info): ", "red"))
-	sm, _ := json.Marshal(suffixMap)
-	fmt.Println("suffixMap : ", string(sm))
+	fmt.Println("suffixMap : ", tools.MarshalPrint(suffixMap))
 	fmt.Println("photo total : ", tools.StrWithColor(strconv.Itoa(totalCnt), "red"))
 	fmt.Println("file contain date(just for print) : ", tools.StrWithColor(strconv.Itoa(fileDateFileList.Cardinality()), "red"))
 
@@ -217,10 +219,12 @@ func main() {
 	fmt.Println("move file total : ", tools.StrWithColor(strconv.Itoa(dirDateFileList.Cardinality()), "red"))
 	fmt.Println("shoot date total : ", tools.StrWithColor(strconv.Itoa(shootDateFileList.Cardinality()), "red"))
 
-	fmt.Println("exif parse error 1 : ", tools.StrWithColor(strconv.Itoa(tools.GetSyncMapLens(nost1FileSuffixMap)), "red"))
-	//fmt.Println("exif parse error 1 list : ", nost1FileSuffixMap)
-	fmt.Println("exif parse error 2 : ", tools.StrWithColor(strconv.Itoa(tools.GetSyncMapLens(nost2FileSuffixMap)), "red"))
-	//fmt.Println("exif parse error 2 list : ", nost2FileSuffixMap)
+	fmt.Println("exif parse error 1 : ", tools.StrWithColor(tools.MarshalPrint(nost1FileSuffixMap), "red"))
+	fmt.Println("exif parse error 1 : ", tools.StrWithColor(strconv.Itoa(nost1FileSet.Cardinality()), "red"))
+	//fmt.Println("exif parse error 1 list : ", nost1FileSet)
+	fmt.Println("exif parse error 2 : ", tools.StrWithColor(tools.MarshalPrint(nost2FileSuffixMap), "red"))
+	fmt.Println("exif parse error 2 : ", tools.StrWithColor(strconv.Itoa(nost2FileSet.Cardinality()), "red"))
+	//fmt.Println("exif parse error 2 list : ", nost2FileSet)
 
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT STAT TYPE2(empty dir) : ", "red"))
@@ -232,9 +236,9 @@ func main() {
 
 	fmt.Println("shouldDeleteFiles length : ", tools.StrWithColor(strconv.Itoa(len(shouldDeleteFiles)), "red"))
 	if len(shouldDeleteFiles) != 0 {
-		sm3, _ := json.Marshal(shouldDeleteFiles)
-		fmt.Println("shouldDeleteFiles print : ", string(sm3))
-		fileUuid, err := tools.WriteStringToFile(string(sm3))
+		sm3 := tools.MarshalPrint(shouldDeleteFiles)
+		fmt.Println("shouldDeleteFiles print : ", sm3)
+		fileUuid, err := tools.WriteStringToFile(sm3)
 		if err != nil {
 			return
 		}
@@ -249,8 +253,7 @@ func main() {
 	}
 	fmt.Println("md5 get error length : ", tools.StrWithColor(strconv.Itoa(len(md5EmptyFileList)), "red"))
 	if len(md5EmptyFileList) != 0 {
-		sm4, _ := json.Marshal(md5EmptyFileList)
-		fmt.Println("md5EmptyFileList : ", string(sm4))
+		fmt.Println("md5EmptyFileList : ", tools.MarshalPrint(md5EmptyFileList))
 	}
 
 	fmt.Println()
@@ -385,6 +388,8 @@ func dumpFileProcess() map[string][]string {
 
 func processOneFile(photo string) {
 
+	defer wg.Done()
+
 	suffix := strings.ToLower(path.Ext(photo))
 
 	shootDate := ""
@@ -392,7 +397,6 @@ func processOneFile(photo string) {
 		shootDate, _ = getShootDateMethod2(photo, suffix)
 		if shootDate != "" {
 			//fmt.Println("shootDate : " + shootDate)
-
 		}
 	}
 
@@ -466,20 +470,19 @@ func processOneFile(photo string) {
 		processFileListMu.Unlock()
 	}
 
-	wg.Done()
-
 }
 
 func getShootDateMethod2(path string, suffix string) (string, error) {
 
+	f, err := os.Open(path)
+
 	defer func() {
 		if r := recover(); r != nil {
-			//fmt.Println("Recovered. Error:\n", r)
+			fmt.Println("Recovered. Error:\n", r)
 		}
+		f.Close()
 	}()
 
-	f, err := os.Open(path)
-	defer f.Close()
 	if err != nil {
 		fmt.Print(err)
 		return "", err
@@ -492,22 +495,30 @@ func getShootDateMethod2(path string, suffix string) (string, error) {
 	x, err := exif.Decode(f)
 	if err != nil {
 		//log.Print(err)
-		if value, ok := nost1FileSuffixMap.Load(suffix); ok {
-			nost1FileSuffixMap.Store(suffix, value.(int)+1)
+		nost1FileMu.Lock()
+		if value, ok := nost1FileSuffixMap[suffix]; ok {
+			nost1FileSuffixMap[suffix] = value + 1
 		} else {
-			nost1FileSuffixMap.Store(suffix, 1)
+			nost1FileSuffixMap[suffix] = 1
 		}
-		return "", err
+		nost1FileSet.Add(path)
+		nost1FileMu.Unlock()
+
+		return "", errors.New("exif decode error")
 	}
 
 	shootTime, err := x.DateTime()
 
 	if err != nil {
-		if value, ok := nost2FileSuffixMap.Load(suffix); ok {
-			nost2FileSuffixMap.Store(suffix, value.(int)+1)
+		nost2FileMu.Lock()
+		if value, ok := nost2FileSuffixMap[suffix]; ok {
+			nost2FileSuffixMap[suffix] = value + 1
 		} else {
-			nost2FileSuffixMap.Store(suffix, 1)
+			nost2FileSuffixMap[suffix] = 1
 		}
+		nost2FileSet.Add(path)
+		nost2FileMu.Unlock()
+
 		return "", errors.New("no shoot time")
 	} else {
 		shootTimeStr := shootTime.Format("2006-01-02")
