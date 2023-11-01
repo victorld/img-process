@@ -19,10 +19,9 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
-const startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
-//const startPath = "/Volumes/ld_hardone/pic-new"
-//const startPath = "/Volumes/ld_hardraid/pic-new"
-//const startPath = "/Volumes/ld_ssd1/pic-new"
+// const startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
+// const startPath = "/Volumes/ld_hardone/pic-new"
+const startPath = "/Volumes/ld_hardraid/old-pic/pic-new"
 
 const poolSize = 8 //并行处理的线程
 const md5Retry = 3 //文件md5计算重试次数
@@ -476,7 +475,7 @@ func getShootDateMethod2(path string, suffix string) (string, error) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Recovered. Error:\n", r)
+			//fmt.Println("Recovered. Error:\n", r)
 		}
 		f.Close()
 	}()
