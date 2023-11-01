@@ -147,6 +147,8 @@ func main() {
 
 			if flag {
 
+				wg.Add(1)
+
 				_ = p.Submit(func() {
 					processOneFile(file) //单个文件处理，数据放到不同的归档里
 				})
@@ -382,8 +384,6 @@ func dumpFileProcess() map[string][]string {
 }
 
 func processOneFile(photo string) {
-
-	wg.Add(1)
 
 	suffix := strings.ToLower(path.Ext(photo))
 
