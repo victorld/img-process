@@ -98,8 +98,11 @@ var nost1FileSuffixMap = map[string]int{} //shoot time error1后缀
 var nost1FileSet = mapset.NewSet()        //shoot time error1照片
 var nost2FileSuffixMap = map[string]int{} //shoot time error2后缀
 var nost2FileSet = mapset.NewSet()        //shoot time error2照片
+var nost3FileSuffixMap = map[string]int{} //shoot time error3后缀
+var nost3FileSet = mapset.NewSet()        //shoot time error3照片
 var nost1FileMu sync.Mutex
 var nost2FileMu sync.Mutex
+var nost3FileMu sync.Mutex
 
 var md5EmptyFileList []string //获取md5为空的文件
 var md5EmptyFileListMu sync.Mutex
@@ -215,6 +218,9 @@ func main() {
 	fmt.Println("exif parse error 2 : ", tools.StrWithColor(tools.MarshalPrint(nost2FileSuffixMap), "red"))
 	fmt.Println("exif parse error 2 : ", tools.StrWithColor(strconv.Itoa(nost2FileSet.Cardinality()), "red"))
 	//fmt.Println("exif parse error 2 list : ", nost2FileSet)
+	fmt.Println("exif parse error 3 : ", tools.StrWithColor(tools.MarshalPrint(nost3FileSuffixMap), "red"))
+	fmt.Println("exif parse error 3 : ", tools.StrWithColor(strconv.Itoa(nost3FileSet.Cardinality()), "red"))
+	//fmt.Println("exif parse error 3 list : ", nost3FileSet)
 
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT STAT TYPE1(delete file,modify date,move file): ", "red"))
@@ -476,6 +482,14 @@ func getShootDateMethod2(path string, suffix string) (string, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			//fmt.Println("Recovered. Error:\n", r)
+			nost3FileMu.Lock()
+			if value, ok := nost3FileSuffixMap[suffix]; ok {
+				nost3FileSuffixMap[suffix] = value + 1
+			} else {
+				nost3FileSuffixMap[suffix] = 1
+			}
+			nost3FileSet.Add(path)
+			nost3FileMu.Unlock()
 		}
 		f.Close()
 	}()
