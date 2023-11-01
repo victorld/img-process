@@ -20,23 +20,21 @@ import (
 )
 
 const startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
-const poolSize = 8                            //并行处理的线程
-const md5Retry = 3                            //文件md5计算重试次数
+//const startPath = "/Volumes/ld_hardone/pic-new"
+//const startPath = "/Volumes/ld_hardraid/pic-new"
+//const startPath = "/Volumes/ld_ssd1/pic-new"
 
-const deleteShow = true
-const dirDateShow = true
-const modifyDateShow = true
-const md5Show = true
+const poolSize = 8 //并行处理的线程
+const md5Retry = 3 //文件md5计算重试次数
 
-const deleteAction = false
-const dirDateAction = false
-const modifyDateAction = false
+const deleteShow = true     //是否统计并显示非法文件和空目录
+const dirDateShow = true    //是否统计并显示需要移动目录的文件
+const modifyDateShow = true //是否统计并显示需要修改日期的文件
+const md5Show = true        //是否统计并显示重复文件
 
-//var startPath = "/Volumes/ld_hardone/pic-new"
-
-//var startPath = "/Volumes/ld_hardraid/pic-new"
-
-//var startPath = "/Volumes/ld_ssd1/pic-new/2023"
+const deleteAction = false     //是否操作删除非法文件和空目录
+const dirDateAction = false    //是否操作需要移动目录的文件
+const modifyDateAction = false //是否操作修改日期的文件
 
 var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
@@ -51,7 +49,7 @@ var dirDateFileList = mapset.NewSet()    //目录与最小日期不匹配，需�
 var modifyDateFileList = mapset.NewSet() //修改时间与最小日期不匹配，需要修改
 var shootDateFileList = mapset.NewSet()  //拍摄时间与最小日期不匹配，需要修改
 
-var shouldDeleteFiles []string //统计需要删除的文件
+var shouldDeleteMd5Files []string //统计需要删除的文件
 
 type dirStruct struct { //目录打印需要的结构体
 	dir        string
@@ -71,7 +69,7 @@ type photoStruct struct { //照片打印需要的结构体
 	isModifyDateFile bool
 }
 
-func (ps *photoStruct) psPrint() {
+func (ps *photoStruct) psPrint() { //打印照片相关信息
 	if ps.dirDate != ps.minDate {
 		fmt.Println("dirDate : ", tools.StrWithColor(ps.dirDate, "red"))
 	} else {
@@ -97,15 +95,15 @@ var processFileListMu sync.Mutex
 var md5Map = make(map[string][]string) //以md5为key存储文件
 var md5MapMu sync.Mutex
 
-var nost1FileSuffixMap = map[string]int{} //shoot time没有的照片
-var nost1FileSet = mapset.NewSet()        //shoot time没有的照片
-var nost2FileSuffixMap = map[string]int{} //shoot time没有的照片
-var nost2FileSet = mapset.NewSet()        //shoot time没有的照片
+var nost1FileSuffixMap = map[string]int{} //shoot time error1后缀
+var nost1FileSet = mapset.NewSet()        //shoot time error1照片
+var nost2FileSuffixMap = map[string]int{} //shoot time error2后缀
+var nost2FileSet = mapset.NewSet()        //shoot time error2照片
 var nost1FileMu sync.Mutex
 var nost2FileMu sync.Mutex
 
-var md5EmptyFileListMu sync.Mutex
 var md5EmptyFileList []string //获取md5为空的文件
+var md5EmptyFileListMu sync.Mutex
 
 var wg sync.WaitGroup //异步照片处理等待
 
@@ -121,12 +119,12 @@ func main() {
 	fmt.Println(tools.StrWithColor("==========ROUND 1: SCAN FILE==========", "red"))
 	fmt.Println()
 
-	p, _ := ants.NewPool(poolSize) //新建一个pool对象，其他同上
+	p, _ := ants.NewPool(poolSize) //新建一个pool对象
 	defer p.Release()
 
 	_ = filepath.Walk(startPath, func(file string, info os.FileInfo, err error) error {
 		if info.IsDir() { //遍历目录
-			if flag, err := tools.IsEmpty(file); err == nil && flag {
+			if flag, err := tools.IsEmpty(file); err == nil && flag { //空目录加入待处理列表
 				ds := dirStruct{isEmptyDir: true, dir: file}
 				processDirList = append(processDirList, ds)
 
@@ -137,7 +135,7 @@ func main() {
 			fileSuffix := strings.ToLower(path.Ext(file))
 
 			flag := true
-			if strings.HasPrefix(fileName, ".") || strings.HasSuffix(fileName, "nas_downloading") {
+			if strings.HasPrefix(fileName, ".") || strings.HasSuffix(fileName, "nas_downloading") { //非法文件加入待处理列表
 				ps := photoStruct{isDeleteFile: true, photo: file}
 				processFileListMu.Lock()
 				processFileList = append(processFileList, ps)
@@ -153,17 +151,17 @@ func main() {
 				wg.Add(1)
 
 				_ = p.Submit(func() {
-					processOneFile(file) //单个文件处理，数据放到不同的归档里
+					processOneFile(file) //单个文件协程处理
 				})
 
-				if value, ok := suffixMap[fileSuffix]; ok {
+				if value, ok := suffixMap[fileSuffix]; ok { //统计文件的后缀
 					suffixMap[fileSuffix] = value + 1
 				} else {
 					suffixMap[fileSuffix] = 1
 				}
 
 				totalCnt = totalCnt + 1
-				if totalCnt%100 == 0 {
+				if totalCnt%100 == 0 { //每隔100行打印一次
 					println("processed ", tools.StrWithColor(strconv.Itoa(totalCnt), "red"))
 					println("pool running size : ", p.Running())
 				}
@@ -202,6 +200,7 @@ func main() {
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT DETAIL TYPE2(empty dir): ", "red"))
 	emptyDirProcess() //4、空目录处理
+	fmt.Println()
 
 	fmt.Println(tools.StrWithColor("PRINT DETAIL TYPE3(dump file): ", "red"))
 	dumpMap := dumpFileProcess() //5、重复文件处理处理
@@ -211,6 +210,12 @@ func main() {
 	fmt.Println("suffixMap : ", tools.MarshalPrint(suffixMap))
 	fmt.Println("photo total : ", tools.StrWithColor(strconv.Itoa(totalCnt), "red"))
 	fmt.Println("file contain date(just for print) : ", tools.StrWithColor(strconv.Itoa(fileDateFileList.Cardinality()), "red"))
+	fmt.Println("exif parse error 1 : ", tools.StrWithColor(tools.MarshalPrint(nost1FileSuffixMap), "red"))
+	fmt.Println("exif parse error 1 : ", tools.StrWithColor(strconv.Itoa(nost1FileSet.Cardinality()), "red"))
+	//fmt.Println("exif parse error 1 list : ", nost1FileSet)
+	fmt.Println("exif parse error 2 : ", tools.StrWithColor(tools.MarshalPrint(nost2FileSuffixMap), "red"))
+	fmt.Println("exif parse error 2 : ", tools.StrWithColor(strconv.Itoa(nost2FileSet.Cardinality()), "red"))
+	//fmt.Println("exif parse error 2 list : ", nost2FileSet)
 
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT STAT TYPE1(delete file,modify date,move file): ", "red"))
@@ -218,13 +223,6 @@ func main() {
 	fmt.Println("modify date total : ", tools.StrWithColor(strconv.Itoa(modifyDateFileList.Cardinality()), "red"))
 	fmt.Println("move file total : ", tools.StrWithColor(strconv.Itoa(dirDateFileList.Cardinality()), "red"))
 	fmt.Println("shoot date total : ", tools.StrWithColor(strconv.Itoa(shootDateFileList.Cardinality()), "red"))
-
-	fmt.Println("exif parse error 1 : ", tools.StrWithColor(tools.MarshalPrint(nost1FileSuffixMap), "red"))
-	fmt.Println("exif parse error 1 : ", tools.StrWithColor(strconv.Itoa(nost1FileSet.Cardinality()), "red"))
-	//fmt.Println("exif parse error 1 list : ", nost1FileSet)
-	fmt.Println("exif parse error 2 : ", tools.StrWithColor(tools.MarshalPrint(nost2FileSuffixMap), "red"))
-	fmt.Println("exif parse error 2 : ", tools.StrWithColor(strconv.Itoa(nost2FileSet.Cardinality()), "red"))
-	//fmt.Println("exif parse error 2 list : ", nost2FileSet)
 
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT STAT TYPE2(empty dir) : ", "red"))
@@ -234,10 +232,10 @@ func main() {
 	fmt.Println(tools.StrWithColor("PRINT STAT TYPE3(dump file) : ", "red"))
 	fmt.Println("dump file total : ", tools.StrWithColor(strconv.Itoa(len(dumpMap)), "red"))
 
-	fmt.Println("shouldDeleteFiles length : ", tools.StrWithColor(strconv.Itoa(len(shouldDeleteFiles)), "red"))
-	if len(shouldDeleteFiles) != 0 {
-		sm3 := tools.MarshalPrint(shouldDeleteFiles)
-		fmt.Println("shouldDeleteFiles print : ", sm3)
+	fmt.Println("shouldDeleteMd5Files length : ", tools.StrWithColor(strconv.Itoa(len(shouldDeleteMd5Files)), "red"))
+	if len(shouldDeleteMd5Files) != 0 {
+		sm3 := tools.MarshalPrint(shouldDeleteMd5Files)
+		fmt.Println("shouldDeleteMd5Files print origin : ", sm3)
 		fileUuid, err := tools.WriteStringToFile(sm3)
 		if err != nil {
 			return
@@ -248,7 +246,7 @@ func main() {
 		if err != nil {
 			return
 		}
-		fmt.Println("shouldDeleteFiles files : ", fileContent2)
+		fmt.Println("shouldDeleteMd5Files print reread : ", fileContent2)
 		fmt.Println("tmp file md5 : ", tools.StrWithColor(fileUuid, "red"))
 	}
 	fmt.Println("md5 get error length : ", tools.StrWithColor(strconv.Itoa(len(md5EmptyFileList)), "red"))
@@ -371,7 +369,7 @@ func dumpFileProcess() map[string][]string {
 				fmt.Println("file : ", tools.StrWithColor(md5, "blue"))
 				for _, photo := range files {
 					if photo != minPhoto {
-						shouldDeleteFiles = append(shouldDeleteFiles, photo)
+						shouldDeleteMd5Files = append(shouldDeleteMd5Files, photo)
 						fmt.Println("choose : ", photo, tools.StrWithColor("DELETE", "red"))
 					} else {
 						fmt.Println("choose : ", photo, tools.StrWithColor("SAVE", "green"))
@@ -393,7 +391,7 @@ func processOneFile(photo string) {
 	suffix := strings.ToLower(path.Ext(photo))
 
 	shootDate := ""
-	if suffix != ".heic" && suffix != ".mov" && suffix != ".mp4" && suffix != ".png" {
+	if suffix != ".heic" && suffix != ".mov" && suffix != ".mp4" && suffix != ".png" { //exif拍摄时间获取
 		shootDate, _ = getShootDateMethod2(photo, suffix)
 		if shootDate != "" {
 			//fmt.Println("shootDate : " + shootDate)
@@ -446,7 +444,7 @@ func processOneFile(photo string) {
 		flag = true
 	}
 
-	if md5Show {
+	if md5Show { //如果需要计算md5，则把所有照片按照md5整理
 		md5, err := tools.GetFileMD5WithRetry(photo, md5Retry)
 		if err != nil {
 			log.Print("GetFileMD5 err for ", md5Retry, " times : ", err)
@@ -464,7 +462,7 @@ func processOneFile(photo string) {
 		}
 	}
 
-	if flag {
+	if flag { //根据分类统计的结果，判断是否需要放入待处理列表里
 		processFileListMu.Lock()
 		processFileList = append(processFileList, ps)
 		processFileListMu.Unlock()
@@ -488,8 +486,7 @@ func getShootDateMethod2(path string, suffix string) (string, error) {
 		return "", err
 	}
 
-	// Optionally register camera makenote data parsing - currently Nikon and
-	// Canon are supported.
+	// Optionally register camera makenote data parsing - currently Nikon and Canon are supported.
 	exif.RegisterParsers(mknote.All...)
 
 	x, err := exif.Decode(f)
