@@ -19,9 +19,9 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
-// const startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
+const startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
 // const startPath = "/Volumes/ld_hardone/pic-new"
-const startPath = "/Volumes/ld_hardraid/old-pic/pic-new"
+//const startPath = "/Volumes/ld_hardraid/old-pic/pic-new"
 
 const poolSize = 8 //并行处理的线程
 const md5Retry = 3 //文件md5计算重试次数
@@ -38,8 +38,10 @@ const modifyDateAction = false //是否操作修改日期的文件
 var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
 var suffixMap = map[string]int{} //后缀统计
+var yearMap = map[string]int{}   //年份统计
 
-var totalCnt = 0 //照片总量
+var fileTotalCnt = 0 //文件总量
+var dirTotalCnt = 0  //目录总量
 
 var fileDateFileList = mapset.NewSet() //文件名带日期的照片
 
@@ -131,6 +133,7 @@ func main() {
 				processDirList = append(processDirList, ds)
 
 			}
+			dirTotalCnt = dirTotalCnt + 1
 		} else { //遍历文件
 			//fmt.Println(file)
 			fileName := path.Base(file)
@@ -162,16 +165,25 @@ func main() {
 					suffixMap[fileSuffix] = 1
 				}
 
-				totalCnt = totalCnt + 1
-				if totalCnt%100 == 0 { //每隔100行打印一次
-					println("processed ", tools.StrWithColor(strconv.Itoa(totalCnt), "red"))
+				dirDate := tools.GetDirDate(file)
+				year := dirDate[0:4]
+
+				if value, ok := yearMap[year]; ok { //统计照片年份
+					yearMap[year] = value + 1
+				} else {
+					yearMap[year] = 1
+				}
+
+				fileTotalCnt = fileTotalCnt + 1
+				if fileTotalCnt%100 == 0 { //每隔100行打印一次
+					println("processed ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
 					println("pool running size : ", p.Running())
 				}
 			}
 		}
 		return nil
 	})
-	fmt.Println("processed(end)", tools.StrWithColor(strconv.Itoa(totalCnt), "red"))
+	fmt.Println("processed(end)", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
 
 	wg.Wait()
 
@@ -210,7 +222,9 @@ func main() {
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT STAT TYPE0(comman info): ", "red"))
 	fmt.Println("suffixMap : ", tools.MarshalPrint(suffixMap))
-	fmt.Println("photo total : ", tools.StrWithColor(strconv.Itoa(totalCnt), "red"))
+	fmt.Println("yearMap : ", tools.MarshalPrint(yearMap))
+	fmt.Println("file total : ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
+	fmt.Println("dir total : ", tools.StrWithColor(strconv.Itoa(dirTotalCnt), "red"))
 	fmt.Println("file contain date(just for print) : ", tools.StrWithColor(strconv.Itoa(fileDateFileList.Cardinality()), "red"))
 	fmt.Println("exif parse error 1 : ", tools.StrWithColor(tools.MarshalPrint(nost1FileSuffixMap), "red"))
 	fmt.Println("exif parse error 1 : ", tools.StrWithColor(strconv.Itoa(nost1FileSet.Cardinality()), "red"))
