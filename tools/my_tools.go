@@ -17,17 +17,24 @@ import (
 )
 
 var date1Pattern = regexp.MustCompile("^.*(20[012]\\d}(0[1-9]|1[0-2])(0[1-9]|[1-2]\\d|3[01])).*$")
-var data1Template = "20060102"
+
+const Data1Template = "20060102"
+
 var date2Pattern = regexp.MustCompile("^.*((0[1-9]|[1-2]\\d|3[01])-(0[1-9]|1[0-2])-[012]\\d).*$")
-var data2Template = "02-01-06" // 31-12-19
+
+const Data2Template = "02-01-06" // 31-12-19
 var date3Pattern = regexp.MustCompile("^.*(20[012]\\d:(0[1-9]|1[0-2]):(0[1-9]|[1-2]\\d|3[01])).*$")
-var data3Template = "2006:01:02" //
+
+const Data3Template = "2006:01:02" //
 var date4Pattern = regexp.MustCompile("^.*(20[012]\\d-(0[1-9]|1[0-2])-(0[1-9]|[1-2]\\d|3[01])).*$")
-var data4Template = "2006-01-02" //
+
+const Data4Template = "2006-01-02" //
 var datetimePattern *regexp.Regexp = regexp.MustCompile("^.*(20[012]\\d:(0[1-9]|1[0-2]):(0[1-9]|[1-2]\\d|3[01]) (\\d{2}:\\d{2}:\\d{2})).*$")
-var datetimeTemplate = "2006:01:02 15:04:05"
+
+const DatetimeTemplate = "2006:01:02 15:04:05"
+
 var timePatternArray = []*regexp.Regexp{date1Pattern, date2Pattern, date3Pattern, date4Pattern, datetimePattern}
-var timeTemplateArray = []string{data1Template, data2Template, data3Template, data4Template, datetimeTemplate}
+var timeTemplateArray = []string{Data1Template, Data2Template, Data3Template, Data4Template, DatetimeTemplate}
 
 func StrWithColor(str string, color string) string {
 	if color == "red" {

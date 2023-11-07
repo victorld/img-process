@@ -127,10 +127,15 @@ func main() {
 	defer p.Release()
 
 	// 计时器
+	//ticker := time.NewTicker(time.Second * 2)
 	ticker := time.NewTicker(time.Minute * 5)
+	tickerSize := 0
 	go func() {
 		for t := range ticker.C {
-			fmt.Println("Tick at", t)
+			fmt.Print(tools.StrWithColor("Tick at "+t.Format(tools.DatetimeTemplate), "red"))
+			fmt.Print(tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCnt-tickerSize), "red"))
+			tickerSize = fileTotalCnt
+			fmt.Println()
 		}
 	}()
 
@@ -195,6 +200,9 @@ func main() {
 
 	wg.Wait()
 
+	fmt.Print(tools.StrWithColor("Tick at "+time.Now().Format(tools.DatetimeTemplate), "red"))
+	fmt.Print(tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCnt-tickerSize), "red"))
+	fmt.Println()
 	ticker.Stop() //计时终止
 
 	elapsed := time.Since(start)
