@@ -31,9 +31,9 @@ const dirDateShow = true    //是否统计并显示需要移动目录的文件
 const modifyDateShow = true //是否统计并显示需要修改日期的文件
 const md5Show = true        //是否统计并显示重复文件
 
-const deleteAction = false     //是否操作删除非法文件和空目录
-const dirDateAction = false    //是否操作需要移动目录的文件
-const modifyDateAction = false //是否操作修改日期的文件
+const deleteAction = true     //是否操作删除非法文件和空目录
+const dirDateAction = true    //是否操作需要移动目录的文件
+const modifyDateAction = true //是否操作修改日期的文件
 
 var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
@@ -248,9 +248,21 @@ func main() {
 
 	fmt.Println()
 	fmt.Println(tools.StrWithColor("PRINT STAT TYPE1(delete file,modify date,move file): ", "red"))
-	fmt.Println("delete file total : ", tools.StrWithColor(strconv.Itoa(deleteFileList.Cardinality()), "red"))
-	fmt.Println("modify date total : ", tools.StrWithColor(strconv.Itoa(modifyDateFileList.Cardinality()), "red"))
-	fmt.Println("move file total : ", tools.StrWithColor(strconv.Itoa(dirDateFileList.Cardinality()), "red"))
+	fmt.Print("delete file total : ", tools.StrWithColor(strconv.Itoa(deleteFileList.Cardinality()), "red"))
+	if deleteFileList.Cardinality() > 0 && deleteAction {
+		fmt.Print(tools.StrWithColor("   actioned", "red"))
+	}
+	fmt.Println()
+	fmt.Print("modify date total : ", tools.StrWithColor(strconv.Itoa(modifyDateFileList.Cardinality()), "red"))
+	if modifyDateFileList.Cardinality() > 0 && modifyDateAction {
+		fmt.Print(tools.StrWithColor("   actioned", "red"))
+	}
+	fmt.Println()
+	fmt.Print("move file total : ", tools.StrWithColor(strconv.Itoa(dirDateFileList.Cardinality()), "red"))
+	if dirDateFileList.Cardinality() > 0 && dirDateAction {
+		fmt.Print(tools.StrWithColor("   actioned", "red"))
+	}
+	fmt.Println()
 	fmt.Println("shoot date total : ", tools.StrWithColor(strconv.Itoa(shootDateFileList.Cardinality()), "red"))
 
 	fmt.Println()
