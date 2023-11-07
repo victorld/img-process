@@ -126,6 +126,14 @@ func main() {
 	p, _ := ants.NewPool(poolSize) //新建一个pool对象
 	defer p.Release()
 
+	// 计时器
+	ticker := time.NewTicker(time.Minute * 5)
+	go func() {
+		for t := range ticker.C {
+			fmt.Println("Tick at", t)
+		}
+	}()
+
 	_ = filepath.Walk(startPath, func(file string, info os.FileInfo, err error) error {
 		if info.IsDir() { //遍历目录
 			if flag, err := tools.IsEmpty(file); err == nil && flag { //空目录加入待处理列表
@@ -186,6 +194,8 @@ func main() {
 	fmt.Println("processed(end)", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
 
 	wg.Wait()
+
+	ticker.Stop() //计时终止
 
 	elapsed := time.Since(start)
 

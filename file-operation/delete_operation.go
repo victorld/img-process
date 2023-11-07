@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"img_process/tools"
+	"strconv"
 )
 
 var fileMD5 = "2e8c25d66cd311eeaf2ee2b55ff2d813"
@@ -19,6 +20,7 @@ func deleteMD5DupFiles(filePath string) {
 		tools.DeleteFile(photo)
 		fmt.Println(tools.StrWithColor("dump file deleted : ", "red"), photo)
 	}
+	fmt.Println(tools.StrWithColor("dump file deleted total : ", "red"), strconv.Itoa(len(shouldDeleteFiles)))
 }
 
 func main() {
