@@ -35,10 +35,15 @@ const deleteAction = true     //是否操作删除非法文件和空目录
 const dirDateAction = true    //是否操作需要移动目录的文件
 const modifyDateAction = true //是否操作修改日期的文件
 
+const monthFilter = "xx" //月份过滤
+const dayFilter = "xx"   //日期过滤
+
 var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
 var suffixMap = map[string]int{} //后缀统计
 var yearMap = map[string]int{}   //年份统计
+var monthMap = map[string]int{}  //月份统计
+var dayMap = map[string]int{}    //日期统计
 
 var fileTotalCnt = 0 //文件总量
 var dirTotalCnt = 0  //目录总量
@@ -178,13 +183,26 @@ func main() {
 					suffixMap[fileSuffix] = 1
 				}
 
-				dirDate := tools.GetDirDate(file)
-				year := dirDate[0:4]
+				day := tools.GetDirDate(file)
+				year := day[0:4]
+				month := day[0:7]
 
 				if value, ok := yearMap[year]; ok { //统计照片年份
 					yearMap[year] = value + 1
 				} else {
 					yearMap[year] = 1
+				}
+
+				if value, ok := monthMap[month]; ok { //统计照片年份
+					monthMap[month] = value + 1
+				} else {
+					monthMap[month] = 1
+				}
+
+				if value, ok := dayMap[day]; ok { //统计照片年份
+					dayMap[day] = value + 1
+				} else {
+					dayMap[day] = 1
 				}
 
 				fileTotalCnt = fileTotalCnt + 1
@@ -241,6 +259,10 @@ func main() {
 	fmt.Println(tools.StrWithColor("PRINT STAT TYPE0(comman info): ", "red"))
 	fmt.Println("suffixMap : ", tools.MarshalPrint(suffixMap))
 	fmt.Println("yearMap : ", tools.MarshalPrint(yearMap))
+	fmt.Println("month count: ")
+	tools.MapPrintWithFilter(monthMap, monthFilter)
+	fmt.Println("day count: ")
+	tools.MapPrintWithFilter(dayMap, dayFilter)
 	fmt.Println("file total : ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
 	fmt.Println("dir total : ", tools.StrWithColor(strconv.Itoa(dirTotalCnt), "red"))
 	fmt.Println("file contain date(just for print) : ", tools.StrWithColor(strconv.Itoa(fileDateFileList.Cardinality()), "red"))

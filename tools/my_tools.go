@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -213,4 +214,22 @@ func ChangeModifyDate(photo string, time time.Time) {
 func MarshalPrint(v any) string {
 	sm, _ := json.Marshal(v)
 	return string(sm)
+}
+
+func MapPrintWithFilter[T any](m map[string]T, filter string) {
+
+	keys := []string{}
+
+	for key := range m {
+		keys = append(keys, key)
+	}
+	// 给key排序，从小到大
+	sort.Sort(sort.StringSlice(keys))
+
+	for _, key := range keys {
+		if strings.Contains(key, filter) {
+			fmt.Printf("%v --- %v\n", key, m[key])
+		}
+	}
+
 }
