@@ -308,7 +308,7 @@ func main() {
 	if len(shouldDeleteMd5Files) != 0 {
 		sm3 := tools.MarshalPrint(shouldDeleteMd5Files)
 		fmt.Println("shouldDeleteMd5Files print origin : ", sm3)
-		fileUuid, err := tools.WriteStringToFile(sm3)
+		fileUuid, err := tools.WriteStringToUuidFile(sm3)
 		if err != nil {
 			return
 		}
@@ -417,6 +417,7 @@ func emptyDirProcess() {
 func dumpFileProcess() map[string][]string {
 	var dumpMap = make(map[string][]string) //md5Map里筛选出有重复文件的Map
 
+	timeStr := time.Now().Format(tools.DatetimeDirTemplate)
 	if md5Show {
 		for md5, files := range md5Map {
 			if len(files) > 1 {
@@ -440,12 +441,19 @@ func dumpFileProcess() map[string][]string {
 
 				fmt.Println("file : ", tools.StrWithColor(md5, "blue"))
 				for _, photo := range files {
+					flag := ""
 					if photo != minPhoto {
 						shouldDeleteMd5Files = append(shouldDeleteMd5Files, photo)
 						fmt.Println("choose : ", photo, tools.StrWithColor("DELETE", "red"))
+						flag = "DELETE"
 					} else {
 						fmt.Println("choose : ", photo, tools.StrWithColor("SAVE", "green"))
+						flag = "SAVE"
 					}
+					targetFile := "/tmp/" + timeStr + "/" + md5 + "/" + flag + "_" + tools.GetDirDate(photo) + "_" + path.Base(photo)
+					targetFileDir := filepath.Dir(targetFile)
+					os.MkdirAll(targetFileDir, os.ModePerm)
+					tools.CopyFile(photo, targetFile)
 				}
 				fmt.Println()
 

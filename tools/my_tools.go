@@ -33,6 +33,7 @@ const Data4Template = "2006-01-02" //
 var datetimePattern *regexp.Regexp = regexp.MustCompile("^.*(20[012]\\d:(0[1-9]|1[0-2]):(0[1-9]|[1-2]\\d|3[01]) (\\d{2}:\\d{2}:\\d{2})).*$")
 
 const DatetimeTemplate = "2006:01:02 15:04:05"
+const DatetimeDirTemplate = "2006-01-02-15-04-05"
 
 var timePatternArray = []*regexp.Regexp{date1Pattern, date2Pattern, date3Pattern, date4Pattern, datetimePattern}
 var timeTemplateArray = []string{Data1Template, Data2Template, Data3Template, Data4Template, DatetimeTemplate}
@@ -97,6 +98,28 @@ func MoveFile(src string, dst string) {
 	os.Rename(src, dst)
 }
 
+func CopyFile(src, dst string) (int64, error) {
+	sourceFileStat, err := os.Stat(src)
+	if err != nil {
+		return 0, err
+	}
+	if !sourceFileStat.Mode().IsRegular() {
+		return 0, fmt.Errorf("%s is not a regular file", src)
+	}
+	source, err := os.Open(src)
+	if err != nil {
+		return 0, err
+	}
+	defer source.Close()
+	destination, err := os.Create(dst)
+	if err != nil {
+		return 0, err
+	}
+	defer destination.Close()
+	nBytes, err := io.Copy(destination, source)
+	return nBytes, err
+}
+
 func DeleteFile(filePath string) {
 
 	// 删除文件
@@ -143,15 +166,19 @@ func GetSyncMapLens(sm sync.Map) int {
 	return len
 }
 
-func WriteStringToFile(content string) (string, error) {
+func WriteStringToFile(content string, filepath string) {
 	contentBytes := []byte(content)
+	os.WriteFile(filepath, contentBytes, 0666)
+}
+
+func WriteStringToUuidFile(content string) (string, error) {
 	var uuid1, err = uuid.NewUUID()
 	if err != nil {
 		return "", err
 	}
 	fileUuid := strings.ReplaceAll(uuid1.String(), "-", "")
 	filepath := "/tmp/" + fileUuid
-	os.WriteFile(filepath, contentBytes, 0666)
+	WriteStringToFile(content, filepath)
 	return fileUuid, nil
 }
 

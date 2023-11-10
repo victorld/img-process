@@ -32,7 +32,7 @@ func testDate() {
 
 func testMd5Delete() {
 	fileContent := ` ["/Users/ld/Desktop/pic-new/2023/2023-05/2023-05-15/VVFR1089.JPG","/Users/ld/Desktop/pic-new/2023/2023-07/2023-07-22/IMG_7834.JPG","/Users/ld/Desktop/pic-new/2023/2023-05/2023-05-15/VPLK2407.JPG","/Users/ld/Desktop/pic-new/2023/2023-07/2023-07-22/IMG_9801.HEIC","/Users/ld/Desktop/pic-new/2023/2023-07/2023-07-22/IMG_7839.HEIC","/Users/ld/Desktop/pic-new/2008/2008-12/2008-12-01/31-10-08_0835的副本.jpg","/Users/ld/Desktop/pic-new/200808-12/2008-12-01/31-10-08_0835.jpg","/Users/ld/Desktop/pic-new/2023/2023-05/2023-05-15/PRIZ6173.JPG","/Users/ld/Desktop/pic-new/2023/2023-05/2023-05-15/IMG_7334.JPG","/Users/ld/Desktop/pic-new/2023/2023-05/2023-05-15/MTIF4266.JPG","/Users/ld/Desktop/pic-new/2023/2023-05/2023-05-15/IMG_7335.JPG","/Users/ld/Desktop/pic-new/2023/2023-07/2023-07-22/IMG_9801.MOV","/Users/ld/Desktop/pic-new/2023/2023-07/2023-07-22/IMG_7839.MOV","/Users/ld/Desktop/pic-new/2023/2023-05/2023-05-15/IMG_7333.JPG","/Users/ld/Desktop/pic-new/2023/2023-07/2023-07-22/IMG_9800.PNG","/Users/ld/Desktop/pic-new/2023/2023-05/2023-05-15/VNTV3378.JPG","/Users/ld/Desktop/pic-new/2023/2023-07/2023-07-22/IMG_E7839.MOV","/Users/ld/Desktop/pic-new/2023/2023-05/2023-05-15/EVAI2226.JPG","/Users/ld/Desktop/pic-new/2008/2008-11/2008-11-19/19-11-08_1139.jpg","/Users/ld/Desktop/pic-new/2023/2023-05/2023-05-15/QYEE5834.JPG"]`
-	fileUuid, err := tools.WriteStringToFile(fileContent)
+	fileUuid, err := tools.WriteStringToUuidFile(fileContent)
 	if err != nil {
 		return
 	}
