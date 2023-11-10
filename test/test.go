@@ -8,8 +8,9 @@ import (
 )
 
 func testGetMD5() {
-	fmt.Println(tools.GetFileMD5("/Users/ld/my-file/temp/weiyunresona_2.1.3.166_mac_ca3d2c8c33911ba2f73ee060577a28be07924ab1.dmg"))
-	fmt.Println(tools.GetFileMD5("/Users/ld/my-file/temp/Docker.dmg"))
+	v, _ := tools.GetFileMD5("/Users/ld/my-file/temp/desca (2).crt", 0)
+	fmt.Println("md5 : ", v)
+	//fmt.Println("md5 : ", tools.GetFileMD5("/Users/ld/my-file/temp/Docker.dmg"))
 
 }
 
@@ -78,8 +79,8 @@ func main() {
 	fmt.Println()
 
 	//testDate()
-	//testGetMD5()
+	testGetMD5()
 	//testMd5Delete()
 	//testModifyDate()
-	testChan()
+	//testChan()
 }

@@ -52,15 +52,19 @@ func StrWithColor(str string, color string) string {
 	return str
 }
 
-func GetFileMD5(filePath string) (string, error) {
+func GetFileMD5(filePath string, length int64) (string, error) {
 	file, err := os.Open(filePath)
 	defer file.Close()
 	if err != nil {
 		return "", err
 	}
 	hash := md5.New()
-	_, err = io.Copy(hash, file)
-	if err != nil {
+	if length <= 0 {
+		_, err = io.Copy(hash, file)
+	} else {
+		_, err = io.CopyN(hash, file, length)
+	}
+	if err != nil && err.Error() != "EOF" {
 		return "", err
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
@@ -159,11 +163,11 @@ func ReadFileString(fileName string) (string, error) {
 	return string(f), nil
 }
 
-func GetFileMD5WithRetry(photo string, retry int) (string, error) {
+func GetFileMD5WithRetry(photo string, retry int, length int64) (string, error) {
 	var md5 string
 	var err error
 	for i := 0; i < retry; i++ {
-		md5, err = GetFileMD5(photo)
+		md5, err = GetFileMD5(photo, length)
 		if err != nil {
 			time.Sleep(1 * time.Second)
 		} else {
@@ -224,7 +228,7 @@ func MapPrintWithFilter[T any](m map[string]T, filter string) {
 		keys = append(keys, key)
 	}
 	// 给key排序，从小到大
-	sort.Sort(sort.StringSlice(keys))
+	sort.Strings(keys)
 
 	for _, key := range keys {
 		if strings.Contains(key, filter) {

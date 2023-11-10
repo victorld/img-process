@@ -23,17 +23,18 @@ const startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须�
 // const startPath = "/Volumes/ld_hardone/pic-new"
 //const startPath = "/Volumes/ld_hardraid/old-pic/pic-new"
 
-const poolSize = 8 //并行处理的线程
-const md5Retry = 3 //文件md5计算重试次数
+const poolSize = 8                     //并行处理的线程
+const md5Retry = 3                     //文件md5计算重试次数
+const md5CountLength = 5 * 1024 * 1024 //md5计算的长度
 
 const deleteShow = true     //是否统计并显示非法文件和空目录
 const dirDateShow = true    //是否统计并显示需要移动目录的文件
 const modifyDateShow = true //是否统计并显示需要修改日期的文件
 const md5Show = true        //是否统计并显示重复文件
 
-const deleteAction = true     //是否操作删除非法文件和空目录
-const dirDateAction = true    //是否操作需要移动目录的文件
-const modifyDateAction = true //是否操作修改日期的文件
+const deleteAction = false     //是否操作删除非法文件和空目录
+const dirDateAction = false    //是否操作需要移动目录的文件
+const modifyDateAction = false //是否操作修改日期的文件
 
 const monthFilter = "xx" //月份过滤
 const dayFilter = "xx"   //日期过滤
@@ -516,7 +517,7 @@ func processOneFile(photo string) {
 	}
 
 	if md5Show { //如果需要计算md5，则把所有照片按照md5整理
-		md5, err := tools.GetFileMD5WithRetry(photo, md5Retry)
+		md5, err := tools.GetFileMD5WithRetry(photo, md5Retry, md5CountLength)
 		if err != nil {
 			log.Print("GetFileMD5 err for ", md5Retry, " times : ", err)
 			md5EmptyFileListMu.Lock()
