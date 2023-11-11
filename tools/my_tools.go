@@ -120,10 +120,11 @@ func CopyFile(src, dst string) (int64, error) {
 	return nBytes, err
 }
 
-func DeleteFile(filePath string) {
+func DeleteFile(filePath string) error {
 
 	// 删除文件
-	os.Remove(filePath)
+	err := os.Remove(filePath)
+	return err
 
 }
 

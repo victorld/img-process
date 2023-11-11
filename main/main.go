@@ -19,13 +19,15 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
-const startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
+// const startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
+const startPath = "/Volumes/ld_ssd/pic-new"
+
 // const startPath = "/Volumes/ld_hardone/pic-new"
 //const startPath = "/Volumes/ld_hardraid/old-pic/pic-new"
 
-const poolSize = 8                     //并行处理的线程
-const md5Retry = 3                     //文件md5计算重试次数
-const md5CountLength = 5 * 1024 * 1024 //md5计算的长度
+const poolSize = 8                //并行处理的线程
+const md5Retry = 3                //文件md5计算重试次数
+const md5CountLength = 1024 * 128 //md5计算的长度
 
 const deleteShow = true     //是否统计并显示非法文件和空目录
 const dirDateShow = true    //是否统计并显示需要移动目录的文件
