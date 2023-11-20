@@ -1,4 +1,4 @@
-package main
+package service
 
 import (
 	"encoding/json"
@@ -7,9 +7,7 @@ import (
 	"strconv"
 )
 
-var fileMD5 = "f14d431c7fd811eeb4d7265653c10cb8"
-
-func deleteMD5DupFiles(filePath string) {
+func DeleteMD5DupFiles(filePath string) {
 	fileContent2, err := tools.ReadFileString(filePath)
 	if err != nil {
 		return
@@ -31,14 +29,5 @@ func deleteMD5DupFiles(filePath string) {
 	fmt.Print(tools.StrWithColor("dump file total : ", "red"), strconv.Itoa(len(shouldDeleteFiles)))
 	fmt.Print(tools.StrWithColor(" dump file deleted total : ", "red"), strconv.Itoa(count))
 	fmt.Println()
-
-}
-
-func main() {
-
-	fmt.Println()
-	filePath := "/tmp/" + fileMD5
-	fmt.Println("file path : ", filePath)
-	deleteMD5DupFiles(filePath)
 
 }
