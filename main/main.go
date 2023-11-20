@@ -27,15 +27,6 @@ const poolSize = 8                //并行处理的线程
 const md5Retry = 3                //文件md5计算重试次数
 const md5CountLength = 1024 * 128 //md5计算的长度
 
-const deleteShow = true     //是否统计并显示非法文件和空目录
-const dirDateShow = true    //是否统计并显示需要移动目录的文件
-const modifyDateShow = true //是否统计并显示需要修改日期的文件
-const md5Show = true        //是否统计并显示重复文件
-
-const deleteAction = false     //是否操作删除非法文件和空目录
-const dirDateAction = false    //是否操作需要移动目录的文件
-const modifyDateAction = false //是否操作修改日期的文件
-
 const monthFilter = "xx" //月份过滤
 const dayFilter = "xx"   //日期过滤
 
@@ -54,7 +45,7 @@ var dirTotalCnt = 0  //目录总量
 var fileDateFileList = mapset.NewSet() //文件名带日期的照片
 
 var deleteFileList = mapset.NewSet()     //需要删除的文件
-var dirDateFileList = mapset.NewSet()    //目录与最小日期不匹配，需要移动
+var moveFileList = mapset.NewSet()       //目录与最小日期不匹配，需要移动
 var modifyDateFileList = mapset.NewSet() //修改时间与最小日期不匹配，需要修改
 var shootDateFileList = mapset.NewSet()  //拍摄时间与最小日期不匹配，需要修改
 
@@ -121,6 +112,34 @@ var wg sync.WaitGroup //异步照片处理等待
 
 func main() {
 
+	const deleteShow = true     //是否统计并显示非法文件和空目录
+	const moveFileShow = true   //是否统计并显示需要移动目录的文件
+	const modifyDateShow = true //是否统计并显示需要修改日期的文件
+	const md5Show = true        //是否统计并显示重复文件
+
+	const deleteAction = false     //是否操作删除非法文件和空目录
+	const moveFileAction = false   //是否操作需要移动目录的文件
+	const modifyDateAction = false //是否操作修改日期的文件
+
+	DoScan(
+		deleteShow,
+		moveFileShow,
+		modifyDateShow,
+		md5Show,
+		deleteAction,
+		moveFileAction,
+		modifyDateAction)
+}
+
+func DoScan(
+	deleteShow bool,
+	moveFileShow bool,
+	modifyDateShow bool,
+	md5Show bool,
+	deleteAction bool,
+	moveFileAction bool,
+	modifyDateAction bool) {
+
 	defer sl.Sync()
 
 	start := time.Now() // 获取当前时间
@@ -181,7 +200,7 @@ func main() {
 				wg.Add(1)
 
 				_ = p.Submit(func() {
-					processOneFile(file) //单个文件协程处理
+					processOneFile(file, md5Show) //单个文件协程处理
 				})
 
 				if value, ok := suffixMap[fileSuffix]; ok { //统计文件的后缀
@@ -243,23 +262,23 @@ func main() {
 		printDateFlag := false
 
 		if ps.isDeleteFile {
-			deleteFileProcess(ps, &printFileFlag, &printDateFlag) //1、需要删除的文件处理
+			deleteFileProcess(ps, &printFileFlag, &printDateFlag, deleteShow, deleteAction) //1、需要删除的文件处理
 		}
 		if ps.isModifyDateFile {
-			modifyDateProcess(ps, &printFileFlag, &printDateFlag) //2、需要修改时间的文件处理
+			modifyDateProcess(ps, &printFileFlag, &printDateFlag, modifyDateShow, modifyDateAction) //2、需要修改时间的文件处理
 		}
 		if ps.isMoveFile {
-			dirDateProcess(ps, &printFileFlag, &printDateFlag) //3、需要移动的文件处理
+			moveFileProcess(ps, &printFileFlag, &printDateFlag, moveFileShow, moveFileAction) //3、需要移动的文件处理
 		}
 
 	}
 	sl.Info()
 	sl.Info(tools.StrWithColor("PRINT DETAIL TYPE2(empty dir): ", "red"))
-	emptyDirProcess() //4、空目录处理
+	emptyDirProcess(deleteShow, deleteAction) //4、空目录处理
 	sl.Info()
 
 	sl.Info(tools.StrWithColor("PRINT DETAIL TYPE3(dump file): ", "red"))
-	dumpMap := dumpFileProcess() //5、重复文件处理处理
+	dumpMap := dumpFileProcess(md5Show) //5、重复文件处理处理
 
 	sl.Info(tools.StrWithColor("PRINT STAT TYPE0(comman info): ", "red"))
 	sl.Info("suffixMap : ", tools.MarshalPrint(suffixMap))
@@ -293,8 +312,8 @@ func main() {
 		pr = pr + tools.StrWithColor("   actioned", "red")
 	}
 	sl.Info(pr)
-	pr = "move file total : " + tools.StrWithColor(strconv.Itoa(dirDateFileList.Cardinality()), "red")
-	if dirDateFileList.Cardinality() > 0 && dirDateAction {
+	pr = "move file total : " + tools.StrWithColor(strconv.Itoa(moveFileList.Cardinality()), "red")
+	if moveFileList.Cardinality() > 0 && moveFileAction {
 		pr = pr + tools.StrWithColor("   actioned", "red")
 	}
 	sl.Info(pr)
@@ -340,7 +359,7 @@ func main() {
 
 }
 
-func deleteFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
+func deleteFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool, deleteShow bool, deleteAction bool) {
 	if deleteShow || deleteAction {
 		sl.Info()
 		sl.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
@@ -358,7 +377,7 @@ func deleteFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool)
 	}
 }
 
-func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
+func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool, modifyDateShow bool, modifyDateAction bool) {
 	if modifyDateShow || modifyDateAction {
 		if !*printFileFlag {
 			sl.Info()
@@ -378,8 +397,8 @@ func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool)
 	}
 }
 
-func dirDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
-	if dirDateShow || dirDateAction {
+func moveFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool, moveFileShow bool, moveFileAction bool) {
+	if moveFileShow || moveFileAction {
 		if !*printFileFlag {
 			sl.Info()
 			sl.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
@@ -391,13 +410,13 @@ func dirDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
 		}
 		sl.Info(tools.StrWithColor("should move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
 	}
-	if dirDateAction {
+	if moveFileAction {
 		tools.MoveFile(ps.photo, ps.targetPhoto)
 		sl.Info(tools.StrWithColor("move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
 	}
 }
 
-func emptyDirProcess() {
+func emptyDirProcess(deleteShow bool, deleteAction bool) {
 	for _, ds := range processDirList {
 		if ds.isEmptyDir {
 			if deleteShow || deleteAction {
@@ -419,7 +438,7 @@ func emptyDirProcess() {
 	}
 }
 
-func dumpFileProcess() map[string][]string {
+func dumpFileProcess(md5Show bool) map[string][]string {
 	var dumpMap = make(map[string][]string) //md5Map里筛选出有重复文件的Map
 
 	timeStr := time.Now().Format(tools.DatetimeDirTemplate)
@@ -469,7 +488,7 @@ func dumpFileProcess() map[string][]string {
 	return dumpMap
 }
 
-func processOneFile(photo string) {
+func processOneFile(photo string, md5Show bool) {
 
 	defer wg.Done()
 
@@ -511,7 +530,7 @@ func processOneFile(photo string) {
 	flag := false
 
 	if dirDate != minDate {
-		dirDateFileList.Add(photo)
+		moveFileList.Add(photo)
 		targetPhoto := basePath + string(os.PathSeparator) + minDate[0:4] + string(os.PathSeparator) + minDate[0:7] + string(os.PathSeparator) + minDate + string(os.PathSeparator) + path.Base(photo)
 		ps.isMoveFile = true
 		ps.targetPhoto = targetPhoto
