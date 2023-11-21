@@ -7,7 +7,7 @@ import (
 
 func main() {
 
-	const fileMD5 = "01d530b4877211ee9a78acde48001122"
+	const fileMD5 = "96249558882011eeb2e8acde48001122"
 
 	fmt.Println()
 	filePath := "/tmp/" + fileMD5

@@ -31,26 +31,18 @@ const md5CountLength = 1024 * 128 //md5计算的长度
 const monthFilter = "xx" //月份过滤
 const dayFilter = "xx"   //日期过滤
 
+var processFileListMu sync.Mutex
+var md5MapMu sync.Mutex
+var exifErr1FileMu sync.Mutex
+var exifErr2FileMu sync.Mutex
+var exifErr3FileMu sync.Mutex
+var md5EmptyFileListMu sync.Mutex
+
+var wg sync.WaitGroup //异步照片处理等待
+
 var sl = tools.InitLogger()
 
 var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
-
-var suffixMap = map[string]int{} //后缀统计
-var yearMap = map[string]int{}   //年份统计
-var monthMap = map[string]int{}  //月份统计
-var dayMap = map[string]int{}    //日期统计
-
-var fileTotalCnt = 0 //文件总量
-var dirTotalCnt = 0  //目录总量
-
-var fileDateFileList = mapset.NewSet() //文件名带日期的照片
-
-var deleteFileList = mapset.NewSet()     //需要删除的文件
-var moveFileList = mapset.NewSet()       //目录与最小日期不匹配，需要移动
-var modifyDateFileList = mapset.NewSet() //修改时间与最小日期不匹配，需要修改
-var shootDateFileList = mapset.NewSet()  //拍摄时间与最小日期不匹配，需要修改
-
-var shouldDeleteMd5Files []string //统计需要删除的文件
 
 type dirStruct struct { //目录打印需要的结构体
 	dir        string
@@ -113,28 +105,6 @@ func (ps *photoStruct) psPrint() { //打印照片相关信息
 	sl.Info("minDate : ", tools.StrWithColor(ps.minDate, "green"))
 }
 
-var deleteDirList []dirStruct     //需要处理的目录结构体列表（空目录）
-var processFileList []photoStruct //需要处理的文件结构体列表（非法格式删除、移动、修改时间、重复文件删除）
-var processFileListMu sync.Mutex
-
-var md5Map = make(map[string][]string) //以md5为key存储文件
-var md5MapMu sync.Mutex
-
-var exifErr1FileSuffixMap = map[string]int{} //shoot time error1后缀
-var exifErr1FileSet = mapset.NewSet()        //shoot time error1照片
-var exifErr2FileSuffixMap = map[string]int{} //shoot time error2后缀
-var exifErr2FileSet = mapset.NewSet()        //shoot time error2照片
-var exifErr3FileSuffixMap = map[string]int{} //shoot time error3后缀
-var exifErr3FileSet = mapset.NewSet()        //shoot time error3照片
-var exifErr1FileMu sync.Mutex
-var exifErr2FileMu sync.Mutex
-var exifErr3FileMu sync.Mutex
-
-var md5EmptyFileList []string //获取md5为空的文件
-var md5EmptyFileListMu sync.Mutex
-
-var wg sync.WaitGroup //异步照片处理等待
-
 func DoScan(
 	deleteShow bool,
 	moveFileShow bool,
@@ -143,6 +113,37 @@ func DoScan(
 	deleteAction bool,
 	moveFileAction bool,
 	modifyDateAction bool) string {
+
+	var suffixMap = map[string]int{} //后缀统计
+	var yearMap = map[string]int{}   //年份统计
+	var monthMap = map[string]int{}  //月份统计
+	var dayMap = map[string]int{}    //日期统计
+
+	var fileTotalCnt = 0 //文件总量
+	var dirTotalCnt = 0  //目录总量
+
+	var fileDateFileList = mapset.NewSet() //文件名带日期的照片
+
+	var deleteFileList = mapset.NewSet()     //需要删除的文件
+	var moveFileList = mapset.NewSet()       //目录与最小日期不匹配，需要移动
+	var modifyDateFileList = mapset.NewSet() //修改时间与最小日期不匹配，需要修改
+	var shootDateFileList = mapset.NewSet()  //拍摄时间与最小日期不匹配，需要修改
+
+	var shouldDeleteMd5Files []string //统计需要删除的文件
+
+	var deleteDirList []dirStruct     //需要处理的目录结构体列表（空目录）
+	var processFileList []photoStruct //需要处理的文件结构体列表（非法格式删除、移动、修改时间、重复文件删除）
+
+	var md5Map = make(map[string][]string) //以md5为key存储文件
+
+	var exifErr1FileSuffixMap = map[string]int{} //shoot time error1后缀
+	var exifErr1FileSet = mapset.NewSet()        //shoot time error1照片
+	var exifErr2FileSuffixMap = map[string]int{} //shoot time error2后缀
+	var exifErr2FileSet = mapset.NewSet()        //shoot time error2照片
+	var exifErr3FileSuffixMap = map[string]int{} //shoot time error3后缀
+	var exifErr3FileSet = mapset.NewSet()        //shoot time error3照片
+
+	var md5EmptyFileList []string //获取md5为空的文件
 
 	defer sl.Sync()
 
@@ -204,7 +205,22 @@ func DoScan(
 				wg.Add(1)
 
 				_ = p.Submit(func() {
-					processOneFile(file, md5Show) //单个文件协程处理
+					processOneFile(
+						file,
+						md5Show,
+						&processFileList,
+						fileDateFileList,
+						moveFileList,
+						modifyDateFileList,
+						shootDateFileList,
+						md5EmptyFileList,
+						md5Map,
+						exifErr1FileSuffixMap,
+						exifErr1FileSet,
+						exifErr2FileSuffixMap,
+						exifErr2FileSet,
+						exifErr3FileSuffixMap,
+						exifErr3FileSet) //单个文件协程处理
 				})
 
 				if value, ok := suffixMap[fileSuffix]; ok { //统计文件的后缀
@@ -278,11 +294,11 @@ func DoScan(
 	}
 	sl.Info()
 	sl.Info(tools.StrWithColor("PRINT DETAIL TYPE2(empty dir): ", "red"))
-	emptyDirProcess(deleteShow, deleteAction) //4、空目录处理
+	emptyDirProcess(deleteShow, deleteAction, deleteDirList) //4、空目录处理
 	sl.Info()
 
 	sl.Info(tools.StrWithColor("PRINT DETAIL TYPE3(dump file): ", "red"))
-	dumpMap := dumpFileProcess(md5Show) //5、重复文件处理处理
+	dumpMap := dumpFileProcess(md5Show, md5Map, &shouldDeleteMd5Files) //5、重复文件处理处理
 
 	sl.Info(tools.StrWithColor("PRINT STAT TYPE0(comman info): ", "red"))
 	sl.Info("suffixMap : ", tools.MarshalPrint(suffixMap))
@@ -441,7 +457,7 @@ func moveFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool, m
 	}
 }
 
-func emptyDirProcess(deleteShow bool, deleteAction bool) {
+func emptyDirProcess(deleteShow bool, deleteAction bool, deleteDirList []dirStruct) {
 	for _, ds := range deleteDirList {
 		if ds.isEmptyDir {
 			if deleteShow || deleteAction {
@@ -463,7 +479,7 @@ func emptyDirProcess(deleteShow bool, deleteAction bool) {
 	}
 }
 
-func dumpFileProcess(md5Show bool) map[string][]string {
+func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Files *[]string) map[string][]string {
 	var dumpMap = make(map[string][]string) //md5Map里筛选出有重复文件的Map
 
 	timeStr := time.Now().Format(tools.DatetimeDirTemplate)
@@ -492,7 +508,7 @@ func dumpFileProcess(md5Show bool) map[string][]string {
 				for _, photo := range files {
 					flag := ""
 					if photo != minPhoto {
-						shouldDeleteMd5Files = append(shouldDeleteMd5Files, photo)
+						*shouldDeleteMd5Files = append(*shouldDeleteMd5Files, photo)
 						sl.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"))
 						flag = "DELETE"
 					} else {
@@ -513,7 +529,22 @@ func dumpFileProcess(md5Show bool) map[string][]string {
 	return dumpMap
 }
 
-func processOneFile(photo string, md5Show bool) {
+func processOneFile(
+	photo string,
+	md5Show bool,
+	processFileList *[]photoStruct,
+	fileDateFileList mapset.Set,
+	moveFileList mapset.Set,
+	modifyDateFileList mapset.Set,
+	shootDateFileList mapset.Set,
+	md5EmptyFileList []string,
+	md5Map map[string][]string,
+	exifErr1FileSuffixMap map[string]int,
+	exifErr1FileSet mapset.Set,
+	exifErr2FileSuffixMap map[string]int,
+	exifErr2FileSet mapset.Set,
+	exifErr3FileSuffixMap map[string]int,
+	exifErr3FileSet mapset.Set) {
 
 	defer wg.Done()
 
@@ -521,7 +552,15 @@ func processOneFile(photo string, md5Show bool) {
 
 	shootDate := ""
 	if suffix != ".heic" && suffix != ".mov" && suffix != ".mp4" && suffix != ".png" { //exif拍摄时间获取
-		shootDate, _ = getShootDateMethod2(photo, suffix)
+		shootDate, _ = getShootDateMethod2(
+			photo,
+			suffix,
+			exifErr1FileSuffixMap,
+			exifErr1FileSet,
+			exifErr2FileSuffixMap,
+			exifErr2FileSet,
+			exifErr3FileSuffixMap,
+			exifErr3FileSet)
 		if shootDate != "" {
 			//sl.Info("shootDate : " + shootDate)
 		}
@@ -593,13 +632,22 @@ func processOneFile(photo string, md5Show bool) {
 
 	if flag { //根据分类统计的结果，判断是否需要放入待处理列表里
 		processFileListMu.Lock()
-		processFileList = append(processFileList, ps)
+		*processFileList = append(*processFileList, ps)
 		processFileListMu.Unlock()
 	}
 
 }
 
-func getShootDateMethod2(path string, suffix string) (string, error) {
+func getShootDateMethod2(
+	path string,
+	suffix string,
+	exifErr1FileSuffixMap map[string]int,
+	exifErr1FileSet mapset.Set,
+	exifErr2FileSuffixMap map[string]int,
+	exifErr2FileSet mapset.Set,
+	exifErr3FileSuffixMap map[string]int,
+	exifErr3FileSet mapset.Set,
+) (string, error) {
 
 	f, err := os.Open(path)
 
