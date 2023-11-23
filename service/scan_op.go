@@ -112,7 +112,7 @@ func DoScan(
 	md5Show bool,
 	deleteAction bool,
 	moveFileAction bool,
-	modifyDateAction bool) string {
+	modifyDateAction bool) (string, error) {
 
 	var suffixMap = map[string]int{} //后缀统计
 	var yearMap = map[string]int{}   //年份统计
@@ -396,7 +396,7 @@ func DoScan(
 	//imgRecord.ExifErr2Map = exifErr2FileSet.String()
 	//imgRecord.ExifErr3Map = exifErr3FileSet.String()
 
-	return tools.MarshalPrint(imgRecord)
+	return tools.MarshalPrint(imgRecord), nil
 
 }
 

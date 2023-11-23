@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"img_process/service"
+	"img_process/tools"
 )
 
 type ScanArgs struct {
@@ -16,7 +17,16 @@ type ScanArgs struct {
 
 type Img struct{}
 
+var sl = tools.InitLogger()
+
 func (img *Img) DoScan(args *ScanArgs, reply *string) error {
-	*reply = service.DoScan(args.DeleteShow, args.MoveFileShow, args.ModifyDateShow, args.Md5Show, args.DeleteAction, args.MoveFileAction, args.ModifyDateAction)
+	sl.Info("received call")
+	ret, err := service.DoScan(args.DeleteShow, args.MoveFileShow, args.ModifyDateShow, args.Md5Show, args.DeleteAction, args.MoveFileAction, args.ModifyDateAction)
+	if err != nil {
+		*reply = ""
+		return err
+	} else {
+		*reply = ret
+	}
 	return nil
 }
