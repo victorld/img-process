@@ -115,6 +115,8 @@ func DoScan(
 	moveFileAction bool,
 	modifyDateAction bool) (string, error) {
 
+	sl.Info("DoScan args : ", deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
+
 	var suffixMap = map[string]int{} //后缀统计
 	var yearMap = map[string]int{}   //年份统计
 	var monthMap = map[string]int{}  //月份统计
@@ -660,7 +662,7 @@ func getShootDateMethod2(
 	defer func() {
 		f.Close()
 		if r := recover(); r != nil {
-			sl.Info("Recovered. Error:\n", r, " path : ", path)
+			fmt.Println("exifErr3 Recovered. Error : ", r, " path : ", path)
 			exifErr3FileMu.Lock()
 			if value, ok := exifErr3FileSuffixMap[suffix]; ok {
 				exifErr3FileSuffixMap[suffix] = value + 1
@@ -679,6 +681,7 @@ func getShootDateMethod2(
 
 	x, err := exif.Decode(f)
 	if err != nil {
+		//fmt.Println("exifErr1 Decode Error : ", err, " path : ", path)
 		exifErr1FileMu.Lock()
 		if value, ok := exifErr1FileSuffixMap[suffix]; ok {
 			exifErr1FileSuffixMap[suffix] = value + 1
