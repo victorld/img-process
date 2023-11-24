@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	mapset "github.com/deckarep/golang-set"
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/mknote"
@@ -65,7 +66,7 @@ type photoStruct struct { //照片打印需要的结构体
 type ImgRecord struct {
 	FileTotal          int            //文件总数
 	DirTotal           int            //目录总数
-	CreateDate         time.Time      //记录时间
+	StartDate          time.Time      //记录时间
 	UseTime            int            //用时
 	BasePath           string         //基础目录
 	SuffixMap          map[string]int //后缀统计
@@ -379,7 +380,7 @@ func DoScan(
 	imgRecord := ImgRecord{}
 	imgRecord.FileTotal = fileTotalCnt
 	imgRecord.DirTotal = dirTotalCnt
-	imgRecord.CreateDate = time.Now()
+	imgRecord.StartDate = start
 	imgRecord.UseTime = int(math.Ceil(elapsed.Seconds()))
 	imgRecord.BasePath = basePath
 	imgRecord.SuffixMap = suffixMap
@@ -399,7 +400,9 @@ func DoScan(
 	imgRecord.ExifErr2Map = exifErr2FileSuffixMap
 	imgRecord.ExifErr3Map = exifErr3FileSuffixMap
 
-	return tools.MarshalPrint(imgRecord), nil
+	ret := tools.MarshalPrint(imgRecord)
+	fmt.Println("scan result : ", ret)
+	return ret, nil
 
 }
 

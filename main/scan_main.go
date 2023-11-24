@@ -16,11 +16,9 @@ func main() {
 	const moveFileAction = false   //是否操作需要移动目录的文件
 	const modifyDateAction = false //是否操作修改日期的文件
 
-	scanResult, err := service.DoScan(deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
+	_, err := service.DoScan(deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
 	if err != nil {
 		fmt.Println("scan result error : ", err)
-	} else {
-		fmt.Println("scan result : ", scanResult)
 	}
 
 }
