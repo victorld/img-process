@@ -81,9 +81,9 @@ type ImgRecord struct {
 	ExifErr1Cnt        int            //exif错误1数
 	ExifErr2Cnt        int            //exif错误2数
 	ExifErr3Cnt        int            //exif错误3数
-	ExifErr1Map        string         //exif错误1统计
-	ExifErr2Map        string         //exif错误2统计
-	ExifErr3Map        string         //exif错误3统计
+	ExifErr1Map        map[string]int //exif错误1统计
+	ExifErr2Map        map[string]int //exif错误2统计
+	ExifErr3Map        map[string]int //exif错误3统计
 }
 
 func (ps *photoStruct) psPrint() { //打印照片相关信息
@@ -174,6 +174,9 @@ func DoScan(
 			sl.Info()
 		}
 	}()
+
+	// Optionally register camera makenote data parsing - currently Nikon and Canon are supported.
+	exif.RegisterParsers(mknote.All...)
 
 	_ = filepath.Walk(startPath, func(file string, info os.FileInfo, err error) error {
 		if info.IsDir() { //遍历目录
@@ -392,9 +395,9 @@ func DoScan(
 	imgRecord.ExifErr1Cnt = exifErr1FileSet.Cardinality()
 	imgRecord.ExifErr2Cnt = exifErr2FileSet.Cardinality()
 	imgRecord.ExifErr3Cnt = exifErr3FileSet.Cardinality()
-	//imgRecord.ExifErr1Map = exifErr1FileSet.String()
-	//imgRecord.ExifErr2Map = exifErr2FileSet.String()
-	//imgRecord.ExifErr3Map = exifErr3FileSet.String()
+	imgRecord.ExifErr1Map = exifErr1FileSuffixMap
+	imgRecord.ExifErr2Map = exifErr2FileSuffixMap
+	imgRecord.ExifErr3Map = exifErr3FileSuffixMap
 
 	return tools.MarshalPrint(imgRecord), nil
 
@@ -652,8 +655,9 @@ func getShootDateMethod2(
 	f, err := os.Open(path)
 
 	defer func() {
+		f.Close()
 		if r := recover(); r != nil {
-			//sl.Info("Recovered. Error:\n", r)
+			sl.Info("Recovered. Error:\n", r, " path : ", path)
 			exifErr3FileMu.Lock()
 			if value, ok := exifErr3FileSuffixMap[suffix]; ok {
 				exifErr3FileSuffixMap[suffix] = value + 1
@@ -663,16 +667,12 @@ func getShootDateMethod2(
 			exifErr3FileSet.Add(path)
 			exifErr3FileMu.Unlock()
 		}
-		f.Close()
 	}()
 
 	if err != nil {
 		sl.Error(err)
 		return "", err
 	}
-
-	// Optionally register camera makenote data parsing - currently Nikon and Canon are supported.
-	exif.RegisterParsers(mknote.All...)
 
 	x, err := exif.Decode(f)
 	if err != nil {
