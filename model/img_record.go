@@ -29,6 +29,8 @@ type ImgRecordDB struct {
 	ExifErr1Map        string     `json:"exifErr1Map" form:"exifErr1Map" gorm:"column:exif_err1_map;comment:exif错误1统计;size:255;"`                                  //exif错误1统计
 	ExifErr2Map        string     `json:"exifErr2Map" form:"exifErr2Map" gorm:"column:exif_err2_map;comment:exif错误2统计;size:255;"`                                  //exif错误2统计
 	ExifErr3Map        string     `json:"exifErr3Map" form:"exifErr3Map" gorm:"column:exif_err3_map;comment:exif错误3统计;size:255;"`                                  //exif错误3统计
+	IsComplete         *int       `json:"isComplete" form:"isComplete" gorm:"type:int(10);column:is_complete;comment:是否完整;size:10;"`
+	Remark             string     `json:"remark" form:"remark" gorm:"column:remark;comment:备注;size:255;"`
 }
 
 // TableName imgRecord表 ImgRecord自定义表名 img_record

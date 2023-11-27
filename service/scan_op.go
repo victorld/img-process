@@ -86,6 +86,8 @@ type ImgRecord struct {
 	ExifErr1Map        map[string]int //exif错误1统计
 	ExifErr2Map        map[string]int //exif错误2统计
 	ExifErr3Map        map[string]int //exif错误3统计
+	IsComplete         int            //是否完整
+	Remark             string         //备注
 }
 
 type ScanArgs struct {
@@ -193,7 +195,13 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 	// Optionally register camera makenote data parsing - currently Nikon and Canon are supported.
 	exif.RegisterParsers(mknote.All...)
 
+	IsComplete := 1
 	_ = filepath.Walk(startPath, func(file string, info os.FileInfo, err error) error {
+		if err != nil {
+			fmt.Printf("WALK ERROR : %v", err)
+			IsComplete = 0
+			return err
+		}
 		if info.IsDir() { //遍历目录
 			if flag, err := tools.IsEmpty(file); err == nil && flag { //空目录加入待处理列表
 				ds := dirStruct{isEmptyDir: true, dir: file}
@@ -414,6 +422,8 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 	imgRecord.ExifErr2Map = exifErr2FileSuffixMap
 	imgRecord.ExifErr3Map = exifErr3FileSuffixMap
 	imgRecord.ScanArgs = tools.MarshalPrint(scanArgs)
+	imgRecord.IsComplete = IsComplete
+	imgRecord.Remark = ""
 
 	ret := tools.MarshalPrint(imgRecord)
 	fmt.Println("scan result : ", ret)
