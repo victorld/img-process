@@ -1,9 +1,18 @@
 # github.com/deckarep/golang-set v1.8.0
 ## explicit; go 1.17
 github.com/deckarep/golang-set
+# github.com/go-sql-driver/mysql v1.7.0
+## explicit; go 1.13
+github.com/go-sql-driver/mysql
 # github.com/google/uuid v1.3.1
 ## explicit
 github.com/google/uuid
+# github.com/jinzhu/inflection v1.0.0
+## explicit
+github.com/jinzhu/inflection
+# github.com/jinzhu/now v1.1.5
+## explicit; go 1.12
+github.com/jinzhu/now
 # github.com/panjf2000/ants/v2 v2.8.2
 ## explicit; go 1.13
 github.com/panjf2000/ants/v2
@@ -30,3 +39,15 @@ go.uber.org/zap/zapcore
 # gopkg.in/natefinch/lumberjack.v2 v2.2.1
 ## explicit; go 1.13
 gopkg.in/natefinch/lumberjack.v2
+# gorm.io/driver/mysql v1.5.2
+## explicit; go 1.14
+gorm.io/driver/mysql
+# gorm.io/gorm v1.25.5
+## explicit; go 1.18
+gorm.io/gorm
+gorm.io/gorm/callbacks
+gorm.io/gorm/clause
+gorm.io/gorm/logger
+gorm.io/gorm/migrator
+gorm.io/gorm/schema
+gorm.io/gorm/utils

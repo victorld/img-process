@@ -1,8 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"img_process/dao"
+	"img_process/model"
 	"img_process/service"
+	"img_process/tools"
 )
 
 func main() {
@@ -16,9 +20,29 @@ func main() {
 	const moveFileAction = false   //是否操作需要移动目录的文件
 	const modifyDateAction = false //是否操作修改日期的文件
 
-	_, err := service.DoScan(deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
+	imgRecordString, err := service.DoScan(deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
 	if err != nil {
 		fmt.Println("scan result error : ", err)
+	}
+
+	var imgRecord service.ImgRecord
+	json.Unmarshal([]byte(imgRecordString), &imgRecord)
+
+	var imgRecordDB model.ImgRecordDB
+	json.Unmarshal([]byte(imgRecordString), &imgRecordDB)
+
+	imgRecordDB.SuffixMap = tools.MarshalPrint(imgRecord.SuffixMap)
+	imgRecordDB.YearMap = tools.MarshalPrint(imgRecord.YearMap)
+	imgRecordDB.DumpFileDeleteList = tools.MarshalPrint(imgRecord.DumpFileDeleteList)
+	imgRecordDB.ExifErr1Map = tools.MarshalPrint(imgRecord.ExifErr1Map)
+	imgRecordDB.ExifErr2Map = tools.MarshalPrint(imgRecord.ExifErr2Map)
+	imgRecordDB.ExifErr3Map = tools.MarshalPrint(imgRecord.ExifErr3Map)
+
+	tools.GormMysql()
+	var imgRecordService = dao.ImgRecordService{}
+	if err = imgRecordService.CreateImgRecord(&imgRecordDB); err != nil {
+		fmt.Println("create error : ", err)
+		return
 	}
 
 }
