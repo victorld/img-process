@@ -180,7 +180,7 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 
 	// 计时器
 	//ticker := time.NewTicker(time.Second * 2)
-	ticker := time.NewTicker(time.Minute * 5)
+	ticker := time.NewTicker(time.Minute * 1)
 	tickerSize := 0
 	go func() {
 		for t := range ticker.C {
