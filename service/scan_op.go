@@ -64,6 +64,7 @@ type photoStruct struct { //照片打印需要的结构体
 }
 
 type ImgRecord struct {
+	ScanArgs           string         //扫描参数
 	FileTotal          int            //文件总数
 	DirTotal           int            //目录总数
 	StartDate          time.Time      //记录时间
@@ -87,6 +88,16 @@ type ImgRecord struct {
 	ExifErr3Map        map[string]int //exif错误3统计
 }
 
+type ScanArgs struct {
+	DeleteShow       bool
+	MoveFileShow     bool
+	ModifyDateShow   bool
+	Md5Show          bool
+	DeleteAction     bool
+	MoveFileAction   bool
+	ModifyDateAction bool
+}
+
 func (ps *photoStruct) psPrint() { //打印照片相关信息
 	if ps.dirDate != ps.minDate {
 		sl.Info("dirDate : ", tools.StrWithColor(ps.dirDate, "red"))
@@ -106,14 +117,15 @@ func (ps *photoStruct) psPrint() { //打印照片相关信息
 	sl.Info("minDate : ", tools.StrWithColor(ps.minDate, "green"))
 }
 
-func DoScan(
-	deleteShow bool,
-	moveFileShow bool,
-	modifyDateShow bool,
-	md5Show bool,
-	deleteAction bool,
-	moveFileAction bool,
-	modifyDateAction bool) (string, error) {
+func DoScan(scanArgs ScanArgs) (string, error) {
+
+	deleteShow := scanArgs.DeleteShow
+	moveFileShow := scanArgs.MoveFileShow
+	modifyDateShow := scanArgs.ModifyDateShow
+	md5Show := scanArgs.Md5Show
+	deleteAction := scanArgs.DeleteAction
+	moveFileAction := scanArgs.MoveFileAction
+	modifyDateAction := scanArgs.MoveFileAction
 
 	sl.Info("DoScan args : ", deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
 
@@ -401,6 +413,7 @@ func DoScan(
 	imgRecord.ExifErr1Map = exifErr1FileSuffixMap
 	imgRecord.ExifErr2Map = exifErr2FileSuffixMap
 	imgRecord.ExifErr3Map = exifErr3FileSuffixMap
+	imgRecord.ScanArgs = tools.MarshalPrint(scanArgs)
 
 	ret := tools.MarshalPrint(imgRecord)
 	fmt.Println("scan result : ", ret)

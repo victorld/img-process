@@ -1,3 +1,5 @@
+# github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+## explicit
 # github.com/deckarep/golang-set v1.8.0
 ## explicit; go 1.17
 github.com/deckarep/golang-set
@@ -17,11 +19,15 @@ github.com/jinzhu/now
 ## explicit; go 1.13
 github.com/panjf2000/ants/v2
 github.com/panjf2000/ants/v2/internal/sync
+# github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
+## explicit
 # github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 ## explicit
 github.com/rwcarlsen/goexif/exif
 github.com/rwcarlsen/goexif/mknote
 github.com/rwcarlsen/goexif/tiff
+# github.com/stretchr/testify v1.8.4
+## explicit; go 1.20
 # go.uber.org/multierr v1.11.0
 ## explicit; go 1.19
 go.uber.org/multierr

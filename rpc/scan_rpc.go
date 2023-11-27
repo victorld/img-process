@@ -5,23 +5,14 @@ import (
 	"img_process/tools"
 )
 
-type ScanArgs struct {
-	DeleteShow       bool
-	MoveFileShow     bool
-	ModifyDateShow   bool
-	Md5Show          bool
-	DeleteAction     bool
-	MoveFileAction   bool
-	ModifyDateAction bool
-}
-
 type Img struct{}
 
 var sl = tools.InitLogger()
 
-func (img *Img) DoScan(args *ScanArgs, reply *string) error {
+func (img *Img) DoScan(scanArgs *service.ScanArgs, reply *string) error {
 	sl.Info("received call")
-	ret, err := service.DoScan(args.DeleteShow, args.MoveFileShow, args.ModifyDateShow, args.Md5Show, args.DeleteAction, args.MoveFileAction, args.ModifyDateAction)
+
+	ret, err := service.DoScan(*scanArgs)
 	if err != nil {
 		*reply = ""
 		return err

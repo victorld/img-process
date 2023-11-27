@@ -8,9 +8,15 @@ import (
 type ImgRecordService struct {
 }
 
+func (imgRecordService *ImgRecordService) RegisterImgRecord(imgRecord *model.ImgRecordDB) (err error) {
+	err = tools.ImgMysqlDB.AutoMigrate(&imgRecord)
+	return err
+}
+
 // CreateImgRecord 创建imgRecord表记录
 // Author [piexlmax](https://github.com/piexlmax)
 func (imgRecordService *ImgRecordService) CreateImgRecord(imgRecord *model.ImgRecordDB) (err error) {
+	//
 	err = tools.ImgMysqlDB.Create(imgRecord).Error
 	return err
 }

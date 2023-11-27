@@ -20,7 +20,9 @@ func main() {
 	const moveFileAction = false   //是否操作需要移动目录的文件
 	const modifyDateAction = false //是否操作修改日期的文件
 
-	imgRecordString, err := service.DoScan(deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
+	scanArgs := service.ScanArgs{deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction}
+
+	imgRecordString, err := service.DoScan(scanArgs)
 	if err != nil {
 		fmt.Println("scan result error : ", err)
 	}
@@ -39,7 +41,13 @@ func main() {
 	imgRecordDB.ExifErr3Map = tools.MarshalPrint(imgRecord.ExifErr3Map)
 
 	tools.GormMysql()
+
 	var imgRecordService = dao.ImgRecordService{}
+	if err = imgRecordService.RegisterImgRecord(&imgRecordDB); err != nil {
+		fmt.Println("register error : ", err)
+		return
+	}
+
 	if err = imgRecordService.CreateImgRecord(&imgRecordDB); err != nil {
 		fmt.Println("create error : ", err)
 		return

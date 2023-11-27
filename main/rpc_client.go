@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	img_rpc "img_process/rpc"
+	"img_process/service"
 	"net"
 	"net/rpc"
 	"net/rpc/jsonrpc"
@@ -27,7 +27,7 @@ func main() {
 	// 使用JSON协议
 	client := rpc.NewClientWithCodec(jsonrpc.NewClientCodec(conn))
 	// 同步调用
-	args := &img_rpc.ScanArgs{deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction}
+	args := &service.ScanArgs{deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction}
 	fmt.Println("img_rpc call args :", *args)
 	var reply string
 	err = client.Call("Img.DoScan", args, &reply)
