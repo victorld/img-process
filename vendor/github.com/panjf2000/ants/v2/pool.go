@@ -27,7 +27,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"fmt"
 
 	syncx "github.com/panjf2000/ants/v2/internal/sync"
 )
@@ -391,10 +390,6 @@ func (p *Pool) revertWorker(worker *goWorker) bool {
 	// Notify the invoker stuck in 'retrieveWorker()' of there is an available worker in the worker queue.
 	p.cond.Signal()
 	p.lock.Unlock()
-	if time.Since(worker.lastUsed).Seconds()>0.5{  //单文件处理超过0.5秒后打印显示
-		fmt.Println("release worker" ,worker,time.Since(worker.lastUsed))
-	}
-	//fmt.Println("release worker" ,worker,time.Since(worker.lastUsed))
 
 	return true
 }

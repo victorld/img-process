@@ -75,12 +75,24 @@ func testChan() {
 	fmt.Println(msg)
 }
 
+func testViper() {
+	viper := tools.InitViper()
+	//打印文件读取出来的内容:
+	fmt.Println(viper.Get("database.username"))
+	fmt.Println(viper.Get("database.password"))
+	fmt.Println(viper.Get("database.host"))
+	fmt.Println(viper.Get("database.port"))
+	fmt.Println(viper.Get("database.dbname"))
+	fmt.Println(viper.Get("database.config"))
+
+}
 func main() {
 	fmt.Println()
 
 	//testDate()
-	testGetMD5()
+	//testGetMD5()
 	//testMd5Delete()
 	//testModifyDate()
 	//testChan()
+	testViper()
 }

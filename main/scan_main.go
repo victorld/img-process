@@ -22,6 +22,9 @@ func main() {
 
 	scanArgs := service.ScanArgs{deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction}
 
+	viper := tools.InitViper()
+	tools.InitMysql(viper)
+
 	imgRecordString, err := service.DoScan(scanArgs)
 	if err != nil {
 		fmt.Println("scan result error : ", err)
@@ -39,8 +42,6 @@ func main() {
 	imgRecordDB.ExifErr1Map = tools.MarshalPrint(imgRecord.ExifErr1Map)
 	imgRecordDB.ExifErr2Map = tools.MarshalPrint(imgRecord.ExifErr2Map)
 	imgRecordDB.ExifErr3Map = tools.MarshalPrint(imgRecord.ExifErr3Map)
-
-	tools.GormMysql()
 
 	var imgRecordService = dao.ImgRecordService{}
 	if err = imgRecordService.RegisterImgRecord(&imgRecordDB); err != nil {
