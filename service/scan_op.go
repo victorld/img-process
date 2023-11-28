@@ -188,7 +188,6 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 		for t := range ticker.C {
 			sl.Info(tools.StrWithColor("Tick at "+t.Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCnt-tickerSize), "red"))
 			tickerSize = fileTotalCnt
-			sl.Info()
 		}
 	}()
 
@@ -214,7 +213,6 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 			fileName := path.Base(file)
 			fileSuffix := strings.ToLower(path.Ext(file))
 
-			flag := true
 			if strings.HasPrefix(fileName, ".") || strings.HasSuffix(fileName, "nas_downloading") { //非法文件加入待处理列表
 				ps := photoStruct{isDeleteFile: true, photo: file}
 				processFileListMu.Lock()
@@ -222,32 +220,7 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 				processFileListMu.Unlock()
 				deleteFileList.Add(file)
 
-				flag = false
-
-			}
-
-			if flag {
-
-				wg.Add(1)
-
-				_ = p.Submit(func() {
-					processOneFile(
-						file,
-						md5Show,
-						&processFileList,
-						fileDateFileList,
-						moveFileList,
-						modifyDateFileList,
-						shootDateFileList,
-						md5EmptyFileList,
-						md5Map,
-						exifErr1FileSuffixMap,
-						exifErr1FileSet,
-						exifErr2FileSuffixMap,
-						exifErr2FileSet,
-						exifErr3FileSuffixMap,
-						exifErr3FileSet) //单个文件协程处理
-				})
+			} else {
 
 				if value, ok := suffixMap[fileSuffix]; ok { //统计文件的后缀
 					suffixMap[fileSuffix] = value + 1
@@ -282,6 +255,28 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 					sl.Info("processed ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
 					sl.Info("pool running size : ", p.Running())
 				}
+
+				wg.Add(1)
+
+				_ = p.Submit(func() {
+					processOneFile(
+						file,
+						md5Show,
+						&processFileList,
+						fileDateFileList,
+						moveFileList,
+						modifyDateFileList,
+						shootDateFileList,
+						md5EmptyFileList,
+						md5Map,
+						exifErr1FileSuffixMap,
+						exifErr1FileSet,
+						exifErr2FileSuffixMap,
+						exifErr2FileSet,
+						exifErr3FileSuffixMap,
+						exifErr3FileSet) //单个文件协程处理
+				})
+
 			}
 		}
 		return nil
