@@ -24,7 +24,7 @@ func InitMysql(viper *viper.Viper) {
 		viper.GetString("database.host"),
 		viper.GetString("database.port"),
 		viper.GetString("database.dbname"),
-		viper.GetString("usedatabase.configrname"),
+		viper.GetString("database.config"),
 	}
 	GormMysql(mysqlArgs)
 }
@@ -32,6 +32,8 @@ func InitMysql(viper *viper.Viper) {
 // GormMysql 初始化Mysql数据库
 func GormMysql(mysqlArgs MysqlArgs) {
 	dsn := mysqlArgs.Username + ":" + mysqlArgs.Password + "@tcp(" + mysqlArgs.Host + ":" + mysqlArgs.Port + ")/" + mysqlArgs.Dbname + "?" + mysqlArgs.Config
+	Logger.Info("dsn : ", dsn)
+
 	ImgMysqlDB, _ = gorm.Open(mysql.New(mysql.Config{
 		DSN:                       dsn,   // DSN data source name
 		DefaultStringSize:         256,   // string 类型字段的默认长度

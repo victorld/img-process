@@ -11,6 +11,10 @@ import (
 
 func main() {
 
+	tools.InitLogger()
+	viper := tools.InitViper()
+	tools.InitMysql(viper)
+
 	const deleteShow = true     //是否统计并显示非法文件和空目录
 	const moveFileShow = true   //是否统计并显示需要移动目录的文件
 	const modifyDateShow = true //是否统计并显示需要修改日期的文件
@@ -21,9 +25,6 @@ func main() {
 	const modifyDateAction = false //是否操作修改日期的文件
 
 	scanArgs := service.ScanArgs{deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction}
-
-	viper := tools.InitViper()
-	tools.InitMysql(viper)
 
 	imgRecordString, err := service.DoScan(scanArgs)
 	if err != nil {
@@ -44,10 +45,10 @@ func main() {
 	imgRecordDB.ExifErr3Map = tools.MarshalPrint(imgRecord.ExifErr3Map)
 
 	var imgRecordService = dao.ImgRecordService{}
-	if err = imgRecordService.RegisterImgRecord(&imgRecordDB); err != nil {
+	/*if err = imgRecordService.RegisterImgRecord(&imgRecordDB); err != nil {
 		fmt.Println("register error : ", err)
 		return
-	}
+	}*/
 
 	if err = imgRecordService.CreateImgRecord(&imgRecordDB); err != nil {
 		fmt.Println("create error : ", err)

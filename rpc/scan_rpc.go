@@ -1,16 +1,14 @@
 package rpc
 
 import (
+	"fmt"
 	"img_process/service"
-	"img_process/tools"
 )
 
 type Img struct{}
 
-var sl = tools.InitLogger()
-
 func (img *Img) DoScan(scanArgs *service.ScanArgs, reply *string) error {
-	sl.Info("received call")
+	fmt.Println("received call")
 
 	ret, err := service.DoScan(*scanArgs)
 	if err != nil {

@@ -41,8 +41,6 @@ var md5EmptyFileListMu sync.Mutex
 
 var wg sync.WaitGroup //异步照片处理等待
 
-var sl = tools.InitLogger()
-
 var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
 type dirStruct struct { //目录打印需要的结构体
@@ -102,21 +100,21 @@ type ScanArgs struct {
 
 func (ps *photoStruct) psPrint() { //打印照片相关信息
 	if ps.dirDate != ps.minDate {
-		sl.Info("dirDate : ", tools.StrWithColor(ps.dirDate, "red"))
+		tools.Logger.Info("dirDate : ", tools.StrWithColor(ps.dirDate, "red"))
 	} else {
-		sl.Info("dirDate : ", tools.StrWithColor(ps.dirDate, "green"))
+		tools.Logger.Info("dirDate : ", tools.StrWithColor(ps.dirDate, "green"))
 	}
 	if ps.modifyDate != ps.minDate {
-		sl.Info("modifyDate : ", tools.StrWithColor(ps.modifyDate, "red"))
+		tools.Logger.Info("modifyDate : ", tools.StrWithColor(ps.modifyDate, "red"))
 	} else {
-		sl.Info("modifyDate : ", tools.StrWithColor(ps.modifyDate, "green"))
+		tools.Logger.Info("modifyDate : ", tools.StrWithColor(ps.modifyDate, "green"))
 	}
 	if ps.shootDate != ps.minDate {
-		sl.Info("shootDate : ", tools.StrWithColor(ps.shootDate, "red"))
+		tools.Logger.Info("shootDate : ", tools.StrWithColor(ps.shootDate, "red"))
 	} else {
-		sl.Info("shootDate : ", tools.StrWithColor(ps.shootDate, "green"))
+		tools.Logger.Info("shootDate : ", tools.StrWithColor(ps.shootDate, "green"))
 	}
-	sl.Info("minDate : ", tools.StrWithColor(ps.minDate, "green"))
+	tools.Logger.Info("minDate : ", tools.StrWithColor(ps.minDate, "green"))
 }
 
 func DoScan(scanArgs ScanArgs) (string, error) {
@@ -129,7 +127,7 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 	moveFileAction := scanArgs.MoveFileAction
 	modifyDateAction := scanArgs.MoveFileAction
 
-	sl.Info("DoScan args : ", deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
+	tools.Logger.Info("DoScan args : ", deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
 
 	var suffixMap = map[string]int{} //后缀统计
 	var yearMap = map[string]int{}   //年份统计
@@ -162,20 +160,20 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 
 	var md5EmptyFileList []string //获取md5为空的文件
 
-	defer sl.Sync()
+	defer tools.Logger.Sync()
 
 	start := time.Now() // 获取当前时间
 
-	sl.Info()
-	sl.Info("————————————————————————————————————————————————————————")
-	sl.Info("time : ", start.Format(tools.DatetimeTemplate))
-	sl.Info("startPath : ", startPath)
-	sl.Info("basePath : ", basePath)
+	tools.Logger.Info()
+	tools.Logger.Info("————————————————————————————————————————————————————————")
+	tools.Logger.Info("time : ", start.Format(tools.DatetimeTemplate))
+	tools.Logger.Info("startPath : ", startPath)
+	tools.Logger.Info("basePath : ", basePath)
 
-	sl.Info()
+	tools.Logger.Info()
 
-	sl.Info(tools.StrWithColor("==========ROUND 1: SCAN FILE==========", "red"))
-	sl.Info()
+	tools.Logger.Info(tools.StrWithColor("==========ROUND 1: SCAN FILE==========", "red"))
+	tools.Logger.Info()
 
 	p, _ := ants.NewPool(poolSize) //新建一个pool对象
 	defer p.Release()
@@ -186,7 +184,7 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 	tickerSize := 0
 	go func() {
 		for t := range ticker.C {
-			sl.Info(tools.StrWithColor("Tick at "+t.Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCnt-tickerSize), "red"))
+			tools.Logger.Info(tools.StrWithColor("Tick at "+t.Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCnt-tickerSize), "red"))
 			tickerSize = fileTotalCnt
 		}
 	}()
@@ -209,7 +207,7 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 			}
 			dirTotalCnt = dirTotalCnt + 1
 		} else { //遍历文件
-			//sl.Info(file)
+			//tools.Logger.Info(file)
 			fileName := path.Base(file)
 			fileSuffix := strings.ToLower(path.Ext(file))
 
@@ -252,8 +250,8 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 
 				fileTotalCnt = fileTotalCnt + 1
 				if fileTotalCnt%1000 == 0 { //每隔1000行打印一次
-					sl.Info("processed ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
-					sl.Info("pool running size : ", p.Running())
+					tools.Logger.Info("processed ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
+					tools.Logger.Info("pool running size : ", p.Running())
 				}
 
 				wg.Add(1)
@@ -281,11 +279,11 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 		}
 		return nil
 	})
-	sl.Info("processed(end) ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
+	tools.Logger.Info("processed(end) ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
 
 	wg.Wait()
 
-	sl.Info(tools.StrWithColor("Tick at "+time.Now().Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCnt-tickerSize), "red"))
+	tools.Logger.Info(tools.StrWithColor("Tick at "+time.Now().Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCnt-tickerSize), "red"))
 
 	ticker.Stop() //计时终止
 
@@ -293,10 +291,10 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 
 	start2 := time.Now() // 获取当前时间
 
-	sl.Info()
-	sl.Info(tools.StrWithColor("==========ROUND 2: PROCESS FILE==========", "red"))
-	sl.Info()
-	sl.Info(tools.StrWithColor("PRINT DETAIL TYPE1(delete file,modify date,move file): ", "red"))
+	tools.Logger.Info()
+	tools.Logger.Info(tools.StrWithColor("==========ROUND 2: PROCESS FILE==========", "red"))
+	tools.Logger.Info()
+	tools.Logger.Info(tools.StrWithColor("PRINT DETAIL TYPE1(delete file,modify date,move file): ", "red"))
 	for _, ps := range processFileList { //第一个参数是下标
 
 		printFileFlag := false
@@ -313,86 +311,86 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 		}
 
 	}
-	sl.Info()
-	sl.Info(tools.StrWithColor("PRINT DETAIL TYPE2(empty dir): ", "red"))
+	tools.Logger.Info()
+	tools.Logger.Info(tools.StrWithColor("PRINT DETAIL TYPE2(empty dir): ", "red"))
 	emptyDirProcess(deleteShow, deleteAction, deleteDirList) //4、空目录处理
-	sl.Info()
+	tools.Logger.Info()
 
-	sl.Info(tools.StrWithColor("PRINT DETAIL TYPE3(dump file): ", "red"))
+	tools.Logger.Info(tools.StrWithColor("PRINT DETAIL TYPE3(dump file): ", "red"))
 	dumpMap := dumpFileProcess(md5Show, md5Map, &shouldDeleteMd5Files) //5、重复文件处理处理
 
-	sl.Info(tools.StrWithColor("PRINT STAT TYPE0(comman info): ", "red"))
-	sl.Info("suffixMap : ", tools.MarshalPrint(suffixMap))
-	sl.Info("yearMap : ", tools.MarshalPrint(yearMap))
-	sl.Info("month count: ")
+	tools.Logger.Info(tools.StrWithColor("PRINT STAT TYPE0(comman info): ", "red"))
+	tools.Logger.Info("suffixMap : ", tools.MarshalPrint(suffixMap))
+	tools.Logger.Info("yearMap : ", tools.MarshalPrint(yearMap))
+	tools.Logger.Info("month count: ")
 	tools.MapPrintWithFilter(monthMap, monthFilter)
-	sl.Info("day count: ")
+	tools.Logger.Info("day count: ")
 	tools.MapPrintWithFilter(dayMap, dayFilter)
-	sl.Info("file total : ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
-	sl.Info("dir total : ", tools.StrWithColor(strconv.Itoa(dirTotalCnt), "red"))
-	sl.Info("file contain date(just for print) : ", tools.StrWithColor(strconv.Itoa(fileDateFileList.Cardinality()), "red"))
-	sl.Info("exif parse error 1 : ", tools.StrWithColor(tools.MarshalPrint(exifErr1FileSuffixMap), "red"))
-	sl.Info("exif parse error 1 : ", tools.StrWithColor(strconv.Itoa(exifErr1FileSet.Cardinality()), "red"))
-	//sl.Info("exif parse error 1 list : ", exifErr1FileSet)
-	sl.Info("exif parse error 2 : ", tools.StrWithColor(tools.MarshalPrint(exifErr2FileSuffixMap), "red"))
-	sl.Info("exif parse error 2 : ", tools.StrWithColor(strconv.Itoa(exifErr2FileSet.Cardinality()), "red"))
-	//sl.Info("exif parse error 2 list : ", exifErr2FileSet)
-	sl.Info("exif parse error 3 : ", tools.StrWithColor(tools.MarshalPrint(exifErr3FileSuffixMap), "red"))
-	sl.Info("exif parse error 3 : ", tools.StrWithColor(strconv.Itoa(exifErr3FileSet.Cardinality()), "red"))
-	//sl.Info("exif parse error 3 list : ", exifErr3FileSet)
+	tools.Logger.Info("file total : ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
+	tools.Logger.Info("dir total : ", tools.StrWithColor(strconv.Itoa(dirTotalCnt), "red"))
+	tools.Logger.Info("file contain date(just for print) : ", tools.StrWithColor(strconv.Itoa(fileDateFileList.Cardinality()), "red"))
+	tools.Logger.Info("exif parse error 1 : ", tools.StrWithColor(tools.MarshalPrint(exifErr1FileSuffixMap), "red"))
+	tools.Logger.Info("exif parse error 1 : ", tools.StrWithColor(strconv.Itoa(exifErr1FileSet.Cardinality()), "red"))
+	//tools.Logger.Info("exif parse error 1 list : ", exifErr1FileSet)
+	tools.Logger.Info("exif parse error 2 : ", tools.StrWithColor(tools.MarshalPrint(exifErr2FileSuffixMap), "red"))
+	tools.Logger.Info("exif parse error 2 : ", tools.StrWithColor(strconv.Itoa(exifErr2FileSet.Cardinality()), "red"))
+	//tools.Logger.Info("exif parse error 2 list : ", exifErr2FileSet)
+	tools.Logger.Info("exif parse error 3 : ", tools.StrWithColor(tools.MarshalPrint(exifErr3FileSuffixMap), "red"))
+	tools.Logger.Info("exif parse error 3 : ", tools.StrWithColor(strconv.Itoa(exifErr3FileSet.Cardinality()), "red"))
+	//tools.Logger.Info("exif parse error 3 list : ", exifErr3FileSet)
 
-	sl.Info()
-	sl.Info(tools.StrWithColor("PRINT STAT TYPE1(delete file,modify date,move file): ", "red"))
+	tools.Logger.Info()
+	tools.Logger.Info(tools.StrWithColor("PRINT STAT TYPE1(delete file,modify date,move file): ", "red"))
 	pr := "delete file total : " + tools.StrWithColor(strconv.Itoa(deleteFileList.Cardinality()), "red")
 	if deleteFileList.Cardinality() > 0 && deleteAction {
 		pr = pr + tools.StrWithColor("   actioned", "red")
 	}
-	sl.Info(pr)
+	tools.Logger.Info(pr)
 	pr = "modify date total : " + tools.StrWithColor(strconv.Itoa(modifyDateFileList.Cardinality()), "red")
 	if modifyDateFileList.Cardinality() > 0 && modifyDateAction {
 		pr = pr + tools.StrWithColor("   actioned", "red")
 	}
-	sl.Info(pr)
+	tools.Logger.Info(pr)
 	pr = "move file total : " + tools.StrWithColor(strconv.Itoa(moveFileList.Cardinality()), "red")
 	if moveFileList.Cardinality() > 0 && moveFileAction {
 		pr = pr + tools.StrWithColor("   actioned", "red")
 	}
-	sl.Info(pr)
-	sl.Info("shoot date total : ", tools.StrWithColor(strconv.Itoa(shootDateFileList.Cardinality()), "red"))
+	tools.Logger.Info(pr)
+	tools.Logger.Info("shoot date total : ", tools.StrWithColor(strconv.Itoa(shootDateFileList.Cardinality()), "red"))
 
-	sl.Info()
-	sl.Info(tools.StrWithColor("PRINT STAT TYPE2(empty dir) : ", "red"))
-	sl.Info("empty dir total : ", tools.StrWithColor(strconv.Itoa(len(deleteDirList)), "red"))
+	tools.Logger.Info()
+	tools.Logger.Info(tools.StrWithColor("PRINT STAT TYPE2(empty dir) : ", "red"))
+	tools.Logger.Info("empty dir total : ", tools.StrWithColor(strconv.Itoa(len(deleteDirList)), "red"))
 
-	sl.Info()
-	sl.Info(tools.StrWithColor("PRINT STAT TYPE3(dump file) : ", "red"))
-	sl.Info("dump file total : ", tools.StrWithColor(strconv.Itoa(len(dumpMap)), "red"))
+	tools.Logger.Info()
+	tools.Logger.Info(tools.StrWithColor("PRINT STAT TYPE3(dump file) : ", "red"))
+	tools.Logger.Info("dump file total : ", tools.StrWithColor(strconv.Itoa(len(dumpMap)), "red"))
 
-	sl.Info("shouldDeleteMd5Files length : ", tools.StrWithColor(strconv.Itoa(len(shouldDeleteMd5Files)), "red"))
+	tools.Logger.Info("shouldDeleteMd5Files length : ", tools.StrWithColor(strconv.Itoa(len(shouldDeleteMd5Files)), "red"))
 	if len(shouldDeleteMd5Files) != 0 {
 		sm3 := tools.MarshalPrint(shouldDeleteMd5Files)
-		sl.Info("shouldDeleteMd5Files print origin : ", sm3)
+		tools.Logger.Info("shouldDeleteMd5Files print origin : ", sm3)
 		fileUuid, _ := tools.WriteStringToUuidFile(sm3)
 
 		filePath := "/tmp/" + fileUuid
-		//sl.Info("file path : ", filePath)
+		//tools.Logger.Info("file path : ", filePath)
 		fileContent2, _ := tools.ReadFileString(filePath)
 
-		sl.Info("shouldDeleteMd5Files print reread : ", fileContent2)
-		sl.Info("tmp file md5 : ", tools.StrWithColor(fileUuid, "red"))
+		tools.Logger.Info("shouldDeleteMd5Files print reread : ", fileContent2)
+		tools.Logger.Info("tmp file md5 : ", tools.StrWithColor(fileUuid, "red"))
 	}
-	sl.Info("md5 get error length : ", tools.StrWithColor(strconv.Itoa(len(md5EmptyFileList)), "red"))
+	tools.Logger.Info("md5 get error length : ", tools.StrWithColor(strconv.Itoa(len(md5EmptyFileList)), "red"))
 	if len(md5EmptyFileList) != 0 {
-		sl.Info("md5EmptyFileList : ", tools.MarshalPrint(md5EmptyFileList))
+		tools.Logger.Info("md5EmptyFileList : ", tools.MarshalPrint(md5EmptyFileList))
 	}
 
-	sl.Info()
-	sl.Info(tools.StrWithColor("==========ROUND 3: PROCESS COST==========", "red"))
-	sl.Info()
+	tools.Logger.Info()
+	tools.Logger.Info(tools.StrWithColor("==========ROUND 3: PROCESS COST==========", "red"))
+	tools.Logger.Info()
 	elapsed2 := time.Since(start2)
-	sl.Info("执行扫描完成耗时 : ", elapsed)
-	sl.Info("执行数据处理完成耗时 : ", elapsed2)
-	sl.Info()
+	tools.Logger.Info("执行扫描完成耗时 : ", elapsed)
+	tools.Logger.Info("执行数据处理完成耗时 : ", elapsed2)
+	tools.Logger.Info()
 
 	imgRecord := ImgRecord{}
 	imgRecord.FileTotal = fileTotalCnt
@@ -428,18 +426,18 @@ func DoScan(scanArgs ScanArgs) (string, error) {
 
 func deleteFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool, deleteShow bool, deleteAction bool) {
 	if deleteShow || deleteAction {
-		sl.Info()
-		sl.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
+		tools.Logger.Info()
+		tools.Logger.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
 		*printFileFlag = true
-		sl.Info(tools.StrWithColor("should delete file :", "yellow"), ps.photo)
+		tools.Logger.Info(tools.StrWithColor("should delete file :", "yellow"), ps.photo)
 	}
 
 	if deleteAction {
 		err := os.Remove(ps.photo)
 		if err != nil {
-			sl.Info(tools.StrWithColor("delete file failed:", "yellow"), ps.photo, err)
+			tools.Logger.Info(tools.StrWithColor("delete file failed:", "yellow"), ps.photo, err)
 		} else {
-			sl.Info(tools.StrWithColor("delete file sucessed:", "green"), ps.photo)
+			tools.Logger.Info(tools.StrWithColor("delete file sucessed:", "green"), ps.photo)
 		}
 	}
 }
@@ -447,39 +445,39 @@ func deleteFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool,
 func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool, modifyDateShow bool, modifyDateAction bool) {
 	if modifyDateShow || modifyDateAction {
 		if !*printFileFlag {
-			sl.Info()
-			sl.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
+			tools.Logger.Info()
+			tools.Logger.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
 			*printFileFlag = true
 		}
 		if !*printDateFlag {
 			ps.psPrint()
 			*printDateFlag = true
 		}
-		sl.Info(tools.StrWithColor("should modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate)
+		tools.Logger.Info(tools.StrWithColor("should modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate)
 	}
 	if modifyDateAction {
 		tm, _ := time.Parse("2006-01-02", ps.minDate)
 		tools.ChangeModifyDate(ps.photo, tm)
-		sl.Info(tools.StrWithColor("modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate, "get realdate", tools.GetModifyDate(ps.photo))
+		tools.Logger.Info(tools.StrWithColor("modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate, "get realdate", tools.GetModifyDate(ps.photo))
 	}
 }
 
 func moveFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool, moveFileShow bool, moveFileAction bool) {
 	if moveFileShow || moveFileAction {
 		if !*printFileFlag {
-			sl.Info()
-			sl.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
+			tools.Logger.Info()
+			tools.Logger.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
 			*printFileFlag = true
 		}
 		if !*printDateFlag {
 			ps.psPrint()
 			*printDateFlag = true
 		}
-		sl.Info(tools.StrWithColor("should move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
+		tools.Logger.Info(tools.StrWithColor("should move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
 	}
 	if moveFileAction {
 		tools.MoveFile(ps.photo, ps.targetPhoto)
-		sl.Info(tools.StrWithColor("move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
+		tools.Logger.Info(tools.StrWithColor("move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
 	}
 }
 
@@ -487,20 +485,20 @@ func emptyDirProcess(deleteShow bool, deleteAction bool, deleteDirList []dirStru
 	for _, ds := range deleteDirList {
 		if ds.isEmptyDir {
 			if deleteShow || deleteAction {
-				sl.Info("dir : ", tools.StrWithColor(ds.dir, "blue"))
-				sl.Info(tools.StrWithColor("should delete empty dir :", "yellow"), ds.dir)
+				tools.Logger.Info("dir : ", tools.StrWithColor(ds.dir, "blue"))
+				tools.Logger.Info(tools.StrWithColor("should delete empty dir :", "yellow"), ds.dir)
 			}
 
 			if deleteAction {
 				err := os.Remove(ds.dir)
 				if err != nil {
-					sl.Info(tools.StrWithColor("delete empty dir failed:", "yellow"), ds.dir, err)
+					tools.Logger.Info(tools.StrWithColor("delete empty dir failed:", "yellow"), ds.dir, err)
 				} else {
-					sl.Info(tools.StrWithColor("delete empty dir sucessed:", "green"), ds.dir)
+					tools.Logger.Info(tools.StrWithColor("delete empty dir sucessed:", "green"), ds.dir)
 				}
 			}
 		}
-		sl.Info()
+		tools.Logger.Info()
 
 	}
 }
@@ -530,15 +528,15 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 					}
 				}
 
-				sl.Info("file : ", tools.StrWithColor(md5, "blue"))
+				tools.Logger.Info("file : ", tools.StrWithColor(md5, "blue"))
 				for _, photo := range files {
 					flag := ""
 					if photo != minPhoto {
 						*shouldDeleteMd5Files = append(*shouldDeleteMd5Files, photo)
-						sl.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"))
+						tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"))
 						flag = "DELETE"
 					} else {
-						sl.Info("choose : ", photo, tools.StrWithColor(" SAVE", "green"))
+						tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE", "green"))
 						flag = "SAVE"
 					}
 					targetFile := "/tmp/" + timeStr + "/" + md5 + "/" + flag + "_" + tools.GetDirDate(photo) + "_" + path.Base(photo)
@@ -546,7 +544,7 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 					os.MkdirAll(targetFileDir, os.ModePerm)
 					tools.CopyFile(photo, targetFile)
 				}
-				sl.Info()
+				tools.Logger.Info()
 
 			}
 		}
@@ -588,7 +586,7 @@ func processOneFile(
 			exifErr3FileSuffixMap,
 			exifErr3FileSet)
 		if shootDate != "" {
-			//sl.Info("shootDate : " + shootDate)
+			//tools.Logger.Info("shootDate : " + shootDate)
 		}
 	}
 
@@ -641,7 +639,7 @@ func processOneFile(
 	if md5Show { //如果需要计算md5，则把所有照片按照md5整理
 		md5, err := tools.GetFileMD5WithRetry(photo, md5Retry, md5CountLength)
 		if err != nil {
-			sl.Info("GetFileMD5 err for ", md5Retry, " times : ", err)
+			tools.Logger.Info("GetFileMD5 err for ", md5Retry, " times : ", err)
 			md5EmptyFileListMu.Lock()
 			md5EmptyFileList = append(md5EmptyFileList, photo)
 			md5EmptyFileListMu.Unlock()
@@ -693,7 +691,7 @@ func getShootDateMethod2(
 	}()
 
 	if err != nil {
-		sl.Error(err)
+		tools.Logger.Error(err)
 		return "", err
 	}
 

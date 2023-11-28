@@ -9,16 +9,15 @@ import (
 	"time"
 )
 
-var sugarLogger *zap.SugaredLogger
+var Logger *zap.SugaredLogger
 
-func InitLogger() *zap.SugaredLogger {
+func InitLogger() {
 	writeSyncer := getLogWriter()
 	encoder := getEncoder()
 	core := zapcore.NewCore(encoder, writeSyncer, zapcore.DebugLevel)
 
 	logger := zap.New(core, zap.AddCaller())
-	sugarLogger = logger.Sugar()
-	return sugarLogger
+	Logger = logger.Sugar()
 }
 
 func getEncoder() zapcore.Encoder {
