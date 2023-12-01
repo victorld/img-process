@@ -1,7 +1,6 @@
 package tools
 
 import (
-	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -17,14 +16,14 @@ type MysqlArgs struct {
 	Config   string
 }
 
-func InitMysql(viper *viper.Viper) {
+func InitMysql() {
 	mysqlArgs := MysqlArgs{
-		viper.GetString("database.username"),
-		viper.GetString("database.password"),
-		viper.GetString("database.host"),
-		viper.GetString("database.port"),
-		viper.GetString("database.dbname"),
-		viper.GetString("database.config"),
+		GetConfigString("database.username"),
+		GetConfigString("database.password"),
+		GetConfigString("database.host"),
+		GetConfigString("database.port"),
+		GetConfigString("database.dbname"),
+		GetConfigString("database.config"),
 	}
 	GormMysql(mysqlArgs)
 }

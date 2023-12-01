@@ -5,3 +5,7 @@ database:
   port: 3306
   dbname: img
   config: charset=utf8&parseTime=True&loc=Local
+server:
+  port: 8081
+  username: lidong
+  password: lidong

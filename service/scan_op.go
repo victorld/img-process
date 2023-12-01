@@ -1,11 +1,14 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	mapset "github.com/deckarep/golang-set"
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/mknote"
+	"img_process/dao"
+	"img_process/model"
 	"img_process/tools"
 	"math"
 	"os"
@@ -88,16 +91,6 @@ type ImgRecord struct {
 	Remark             string         //备注
 }
 
-type ScanArgs struct {
-	DeleteShow       bool
-	MoveFileShow     bool
-	ModifyDateShow   bool
-	Md5Show          bool
-	DeleteAction     bool
-	MoveFileAction   bool
-	ModifyDateAction bool
-}
-
 func (ps *photoStruct) psPrint() { //打印照片相关信息
 	if ps.dirDate != ps.minDate {
 		tools.Logger.Info("dirDate : ", tools.StrWithColor(ps.dirDate, "red"))
@@ -117,7 +110,38 @@ func (ps *photoStruct) psPrint() { //打印照片相关信息
 	tools.Logger.Info("minDate : ", tools.StrWithColor(ps.minDate, "green"))
 }
 
-func DoScan(scanArgs ScanArgs) (string, error) {
+func ScanAndSave(scanArgs model.DoScanImgArg) {
+	imgRecordString, err := DoScan(scanArgs)
+	if err != nil {
+		fmt.Println("scan result error : ", err)
+	}
+
+	var imgRecord ImgRecord
+	json.Unmarshal([]byte(imgRecordString), &imgRecord)
+
+	var imgRecordDB model.ImgRecordDB
+	json.Unmarshal([]byte(imgRecordString), &imgRecordDB)
+
+	imgRecordDB.SuffixMap = tools.MarshalPrint(imgRecord.SuffixMap)
+	imgRecordDB.YearMap = tools.MarshalPrint(imgRecord.YearMap)
+	imgRecordDB.DumpFileDeleteList = tools.MarshalPrint(imgRecord.DumpFileDeleteList)
+	imgRecordDB.ExifErr1Map = tools.MarshalPrint(imgRecord.ExifErr1Map)
+	imgRecordDB.ExifErr2Map = tools.MarshalPrint(imgRecord.ExifErr2Map)
+	imgRecordDB.ExifErr3Map = tools.MarshalPrint(imgRecord.ExifErr3Map)
+
+	var imgRecordService = dao.ImgRecordService{}
+	/*if err = imgRecordService.RegisterImgRecord(&imgRecordDB); err != nil {
+		fmt.Println("register error : ", err)
+		return
+	}*/
+
+	if err = imgRecordService.CreateImgRecord(&imgRecordDB); err != nil {
+		fmt.Println("create error : ", err)
+		return
+	}
+}
+
+func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	deleteShow := scanArgs.DeleteShow
 	moveFileShow := scanArgs.MoveFileShow
