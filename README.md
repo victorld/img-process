@@ -36,4 +36,6 @@
 1. 支持多协程的文件处理，提高效率
 1. 支持文件智能选择，如果在同一目录中出现不同名的相同文件，可以智能删除重复文件
 
+docker build -t img_process:v1 . -f docker/Dockerfile
+
 
