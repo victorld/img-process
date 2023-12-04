@@ -1,3 +1,3 @@
-#!/bin/bash
+#!/bin/sh
 
-cd /app/img_process && go run main/webserver.go &
+go run ./main/webserver.go

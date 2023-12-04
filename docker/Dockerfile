@@ -10,4 +10,5 @@ EXPOSE 8081
 
 RUN chmod +x ./docker/entrypoint.sh
 
-ENTRYPOINT ["go run main/webserver.go"]
+#ENTRYPOINT ["go", "run" ,"main/webserver.go"]
+ENTRYPOINT ["./docker/entrypoint.sh"]
