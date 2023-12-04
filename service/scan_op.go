@@ -22,12 +22,6 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
-const startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
-//const startPath = "/Volumes/ld_ssd/pic-new"
-
-// const startPath = "/Volumes/ld_hardone/pic-new"
-//const startPath = "/Volumes/ld_hardraid/old-pic/pic-new"
-
 const poolSize = 8                //并行处理的线程
 const md5Retry = 3                //文件md5计算重试次数
 const md5CountLength = 1024 * 128 //md5计算的长度
@@ -43,8 +37,6 @@ var exifErr3FileMu sync.Mutex
 var md5EmptyFileListMu sync.Mutex
 
 var wg sync.WaitGroup //异步照片处理等待
-
-var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
 type dirStruct struct { //目录打印需要的结构体
 	dir        string
@@ -143,6 +135,8 @@ func ScanAndSave(scanArgs model.DoScanImgArg) {
 
 func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
+	startPath := scanArgs.StartPath
+
 	deleteShow := scanArgs.DeleteShow
 	moveFileShow := scanArgs.MoveFileShow
 	modifyDateShow := scanArgs.ModifyDateShow
@@ -150,6 +144,12 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	deleteAction := scanArgs.DeleteAction
 	moveFileAction := scanArgs.MoveFileAction
 	modifyDateAction := scanArgs.MoveFileAction
+
+	if !strings.Contains(startPath, "pic-new") {
+		return "", errors.New("startPath error ")
+	}
+
+	var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
 	tools.Logger.Info("DoScan args : ", deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
 
@@ -282,6 +282,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 				_ = p.Submit(func() {
 					processOneFile(
+						basePath,
 						file,
 						md5Show,
 						&processFileList,
@@ -578,6 +579,7 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 }
 
 func processOneFile(
+	basePath string,
 	photo string,
 	md5Show bool,
 	processFileList *[]photoStruct,

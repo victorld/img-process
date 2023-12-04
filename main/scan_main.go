@@ -12,6 +12,12 @@ func main() {
 	tools.InitViper()
 	tools.InitMysql()
 
+	const startPath = "/Users/ld/Desktop/pic-new" //统计的起始目录，必须包含pic-new
+	//const startPath = "/Volumes/ld_ssd/pic-new"
+
+	// const startPath = "/Volumes/ld_hardone/pic-new"
+	//const startPath = "/Volumes/ld_hardraid/old-pic/pic-new"
+
 	const deleteShow = true     //是否统计并显示非法文件和空目录
 	const moveFileShow = true   //是否统计并显示需要移动目录的文件
 	const modifyDateShow = true //是否统计并显示需要修改日期的文件
@@ -21,7 +27,7 @@ func main() {
 	const moveFileAction = false   //是否操作需要移动目录的文件
 	const modifyDateAction = false //是否操作修改日期的文件
 
-	scanArgs := model.DoScanImgArg{DeleteShow: deleteShow, MoveFileShow: moveFileShow, ModifyDateShow: modifyDateShow, Md5Show: md5Show, DeleteAction: deleteAction, MoveFileAction: moveFileAction, ModifyDateAction: modifyDateAction}
+	scanArgs := model.DoScanImgArg{DeleteShow: deleteShow, MoveFileShow: moveFileShow, ModifyDateShow: modifyDateShow, Md5Show: md5Show, DeleteAction: deleteAction, MoveFileAction: moveFileAction, ModifyDateAction: modifyDateAction, StartPath: startPath}
 
 	service.ScanAndSave(scanArgs)
 
