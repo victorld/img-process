@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"img_process/service"
+	"img_process/model"
 	"net"
 	"net/rpc"
 	"net/rpc/jsonrpc"
@@ -10,14 +10,15 @@ import (
 
 func main() {
 
-	const deleteShow = true     //是否统计并显示非法文件和空目录
-	const moveFileShow = true   //是否统计并显示需要移动目录的文件
-	const modifyDateShow = true //是否统计并显示需要修改日期的文件
-	const md5Show = true        //是否统计并显示重复文件
+	var deleteShow = true     //是否统计并显示非法文件和空目录
+	var moveFileShow = true   //是否统计并显示需要移动目录的文件
+	var modifyDateShow = true //是否统计并显示需要修改日期的文件
+	var md5Show = true        //是否统计并显示重复文件
 
-	const deleteAction = false     //是否操作删除非法文件和空目录
-	const moveFileAction = false   //是否操作需要移动目录的文件
-	const modifyDateAction = false //是否操作修改日期的文件
+	var deleteAction = false     //是否操作删除非法文件和空目录
+	var moveFileAction = false   //是否操作需要移动目录的文件
+	var modifyDateAction = false //是否操作修改日期的文件
+	var startpath = ""
 
 	// 建立TCP连接
 	conn, err := net.Dial("tcp", "127.0.0.1:9091")
@@ -27,7 +28,7 @@ func main() {
 	// 使用JSON协议
 	client := rpc.NewClientWithCodec(jsonrpc.NewClientCodec(conn))
 	// 同步调用
-	args := &service.ScanArgs{deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction}
+	args := &model.DoScanImgArg{&deleteShow, &moveFileShow, &modifyDateShow, &md5Show, &deleteAction, &moveFileAction, &modifyDateAction, &startpath}
 	fmt.Println("img_rpc call args :", *args)
 	var reply string
 	err = client.Call("Img.DoScan", args, &reply)
