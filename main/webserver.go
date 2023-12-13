@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"img_process/cons"
+	"img_process/plugin/orm"
 	"img_process/route"
 	"img_process/tools"
 )
@@ -10,16 +12,17 @@ func main() {
 
 	tools.InitLogger()
 	tools.InitViper()
-	tools.InitMysql()
+	cons.InitConst()
+	orm.InitMysql()
 
-	if tools.ImgMysqlDB != nil {
-		db, _ := tools.ImgMysqlDB.DB()
+	if orm.ImgMysqlDB != nil {
+		db, _ := orm.ImgMysqlDB.DB()
 		defer db.Close()
 	}
 
 	r := gin.Default()
 	r = route.InitRouter(r)
-	port := tools.GetConfigString("server.port")
+	port := cons.HttpPort
 	if port != "" {
 		panic(r.Run(":" + port))
 	}

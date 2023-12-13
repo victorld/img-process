@@ -3,15 +3,15 @@ package route
 import (
 	"github.com/gin-gonic/gin"
 	"img_process/api"
+	"img_process/cons"
 	"img_process/middleware"
-	"img_process/tools"
 )
 
 func InitRouter(r *gin.Engine) *gin.Engine {
 	r.Use(middleware.CORSMiddleware(), middleware.RecoveryMiddleware())
 
 	scanGroup := r.Group("/scan", gin.BasicAuth(gin.Accounts{
-		tools.GetConfigString("server.username"): tools.GetConfigString("server.password"),
+		cons.HttpUsername: cons.HttpPassword,
 	}))
 
 	var imgRecordApi = new(api.ImgRecordOwnApi)

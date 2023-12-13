@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"img_process/cons"
 	"img_process/model"
 	"img_process/service"
 	"img_process/tools"
@@ -26,7 +27,34 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 		tools.Fail(c, "绑定参数不对", nil)
 		return
 	}
+
 	tools.Logger.Info("DoScanImg args : " + tools.MarshalPrint(doScanImgArg))
+	if doScanImgArg.StartPath == nil {
+		doScanImgArg.StartPath = &cons.StartPath
+	}
+	if doScanImgArg.DeleteShow == nil {
+		doScanImgArg.DeleteShow = &cons.DeleteShow
+	}
+	if doScanImgArg.MoveFileShow == nil {
+		doScanImgArg.MoveFileShow = &cons.MoveFileShow
+	}
+	if doScanImgArg.ModifyDateShow == nil {
+		doScanImgArg.ModifyDateShow = &cons.ModifyDateShow
+	}
+	if doScanImgArg.Md5Show == nil {
+		doScanImgArg.Md5Show = &cons.Md5Show
+	}
+	if doScanImgArg.DeleteAction == nil {
+		doScanImgArg.DeleteAction = &cons.DeleteAction
+	}
+	if doScanImgArg.MoveFileAction == nil {
+		doScanImgArg.MoveFileAction = &cons.MoveFileAction
+	}
+	if doScanImgArg.ModifyDateAction == nil {
+		doScanImgArg.ModifyDateAction = &cons.ModifyDateAction
+	}
+
+	tools.Logger.Info("DoScanImg args real: " + tools.MarshalPrint(doScanImgArg))
 
 	go func() {
 

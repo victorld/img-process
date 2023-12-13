@@ -1,11 +1,22 @@
 database:
-  username: root
-  password: root
-  host: localhost
-  port: 3306
-  dbname: img
-  config: charset=utf8&parseTime=True&loc=Local
+  Dbusername: root
+  Dbpassword: root
+  Dbhost: localhost
+  Dbport: 3366
+  Dbname: img
+  Dbconfig: charset=utf8&parseTime=True&loc=Local
 server:
-  port: 8081
-  username: root
-  password: root@123
+  HttpPort: 8081
+  HttpUsername: root
+  HttpPassword: root@123
+scan:
+  StartPath: /Users/ld/Desktop/pic-new
+  DeleteShow: true
+  MoveFileShow: true
+  ModifyDateShow: true
+  Md5Show: true
+  DeleteAction: false
+  MoveFileAction: false
+  ModifyDateAction: false
+
+

@@ -1,8 +1,10 @@
-package tools
+package orm
 
 import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"img_process/cons"
+	"img_process/tools"
 )
 
 var ImgMysqlDB *gorm.DB
@@ -18,12 +20,12 @@ type MysqlArgs struct {
 
 func InitMysql() {
 	mysqlArgs := MysqlArgs{
-		GetConfigString("database.username"),
-		GetConfigString("database.password"),
-		GetConfigString("database.host"),
-		GetConfigString("database.port"),
-		GetConfigString("database.dbname"),
-		GetConfigString("database.config"),
+		cons.Dbusername,
+		cons.Dbpassword,
+		cons.Dbhost,
+		cons.Dbport,
+		cons.Dbname,
+		cons.Dbconfig,
 	}
 	GormMysql(mysqlArgs)
 }
@@ -31,7 +33,7 @@ func InitMysql() {
 // GormMysql 初始化Mysql数据库
 func GormMysql(mysqlArgs MysqlArgs) {
 	dsn := mysqlArgs.Username + ":" + mysqlArgs.Password + "@tcp(" + mysqlArgs.Host + ":" + mysqlArgs.Port + ")/" + mysqlArgs.Dbname + "?" + mysqlArgs.Config
-	Logger.Info("dsn : ", dsn)
+	tools.Logger.Info("dsn : ", dsn)
 
 	ImgMysqlDB, _ = gorm.Open(mysql.New(mysql.Config{
 		DSN:                       dsn,   // DSN data source name

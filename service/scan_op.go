@@ -135,15 +135,15 @@ func ScanAndSave(scanArgs model.DoScanImgArg) {
 
 func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
-	startPath := scanArgs.StartPath
+	startPath := *scanArgs.StartPath
 
-	deleteShow := scanArgs.DeleteShow
-	moveFileShow := scanArgs.MoveFileShow
-	modifyDateShow := scanArgs.ModifyDateShow
-	md5Show := scanArgs.Md5Show
-	deleteAction := scanArgs.DeleteAction
-	moveFileAction := scanArgs.MoveFileAction
-	modifyDateAction := scanArgs.MoveFileAction
+	deleteShow := *scanArgs.DeleteShow
+	moveFileShow := *scanArgs.MoveFileShow
+	modifyDateShow := *scanArgs.ModifyDateShow
+	md5Show := *scanArgs.Md5Show
+	deleteAction := *scanArgs.DeleteAction
+	moveFileAction := *scanArgs.MoveFileAction
+	modifyDateAction := *scanArgs.MoveFileAction
 
 	if !strings.Contains(startPath, "pic-new") {
 		return "", errors.New("startPath error ")
