@@ -18,5 +18,7 @@ scan:
   DeleteAction: false
   MoveFileAction: false
   ModifyDateAction: false
+basic:
+  ColorOutput: false
 
 

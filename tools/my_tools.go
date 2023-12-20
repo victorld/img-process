@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -40,6 +41,11 @@ var timePatternArray = []*regexp.Regexp{date1Pattern, date2Pattern, date3Pattern
 var timeTemplateArray = []string{Data1Template, Data2Template, Data3Template, Data4Template, DatetimeTemplate}
 
 func StrWithColor(str string, color string) string {
+
+	ColorOutput, _ := strconv.ParseBool(GetConfigString("basic.ColorOutput"))
+	if !ColorOutput {
+		return str
+	}
 	if color == "red" {
 		str = "\033[31m" + str + "\033[0m"
 	} else if color == "green" {
