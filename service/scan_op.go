@@ -105,7 +105,7 @@ func (ps *photoStruct) psPrint() { //打印照片相关信息
 func ScanAndSave(scanArgs model.DoScanImgArg) {
 	imgRecordString, err := DoScan(scanArgs)
 	if err != nil {
-		fmt.Println("scan result error : ", err)
+		tools.Logger.Error("scan result error : ", err)
 	}
 
 	var imgRecord ImgRecord
@@ -128,8 +128,10 @@ func ScanAndSave(scanArgs model.DoScanImgArg) {
 	}*/
 
 	if err = imgRecordService.CreateImgRecord(&imgRecordDB); err != nil {
-		fmt.Println("create error : ", err)
+		tools.Logger.Error("create error : ", err)
 		return
+	} else {
+		tools.Logger.Info("写入数据库成功")
 	}
 }
 
@@ -444,7 +446,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	imgRecord.Remark = ""
 
 	ret := tools.MarshalPrint(imgRecord)
-	fmt.Println("scan result : ", ret)
+	tools.Logger.Info("scan result : ", ret)
 	return ret, nil
 
 }
@@ -704,7 +706,7 @@ func getShootDateMethod2(
 	defer func() {
 		f.Close()
 		if r := recover(); r != nil {
-			fmt.Println("exifErr3 Recovered. Error : ", r, " path : ", path)
+			tools.Logger.Error("exifErr3 Recovered. Error : ", r, " path : ", path)
 			exifErr3FileMu.Lock()
 			if value, ok := exifErr3FileSuffixMap[suffix]; ok {
 				exifErr3FileSuffixMap[suffix] = value + 1
