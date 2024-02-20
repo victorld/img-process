@@ -3,6 +3,7 @@ package cons
 import (
 	"fmt"
 	"img_process/tools"
+	"os"
 	"strconv"
 )
 
@@ -24,6 +25,7 @@ var (
 	DeleteAction     bool
 	MoveFileAction   bool
 	ModifyDateAction bool
+	WorkDir          string
 )
 
 func InitConst() {
@@ -66,6 +68,10 @@ func InitConst() {
 	fmt.Println("DeleteAction :", DeleteAction)
 	fmt.Println("MoveFileAction :", MoveFileAction)
 	fmt.Println("ModifyDateAction :", ModifyDateAction)
+
+	WorkDir, _ = os.Getwd() // 项目工作目录
+	fmt.Println("工作目录: " + WorkDir)
+
 	fmt.Println()
 
 }

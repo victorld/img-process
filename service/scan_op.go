@@ -7,6 +7,7 @@ import (
 	mapset "github.com/deckarep/golang-set"
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/mknote"
+	"img_process/cons"
 	"img_process/dao"
 	"img_process/model"
 	"img_process/tools"
@@ -103,6 +104,7 @@ func (ps *photoStruct) psPrint() { //打印照片相关信息
 }
 
 func ScanAndSave(scanArgs model.DoScanImgArg) {
+
 	imgRecordString, err := DoScan(scanArgs)
 	if err != nil {
 		tools.Logger.Error("scan result error : ", err)
@@ -116,7 +118,7 @@ func ScanAndSave(scanArgs model.DoScanImgArg) {
 
 	imgRecordDB.SuffixMap = tools.MarshalPrint(imgRecord.SuffixMap)
 	imgRecordDB.YearMap = tools.MarshalPrint(imgRecord.YearMap)
-	imgRecordDB.DumpFileDeleteList = tools.MarshalPrint(imgRecord.DumpFileDeleteList)
+	//imgRecordDB.DumpFileDeleteList = tools.MarshalPrint(imgRecord.DumpFileDeleteList)
 	imgRecordDB.ExifErr1Map = tools.MarshalPrint(imgRecord.ExifErr1Map)
 	imgRecordDB.ExifErr2Map = tools.MarshalPrint(imgRecord.ExifErr2Map)
 	imgRecordDB.ExifErr3Map = tools.MarshalPrint(imgRecord.ExifErr3Map)
@@ -543,12 +545,12 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 					if minPhoto == "" {
 						minPhoto = photo
 					} else {
-						if tools.GetDirDate(minPhoto) > tools.GetDirDate(photo) {
+						if tools.GetDirDate(minPhoto) > tools.GetDirDate(photo) { //留目录日期早的
 							minPhoto = photo
 						} else if tools.GetDirDate(minPhoto) < tools.GetDirDate(photo) {
 
 						} else {
-							if path.Base(minPhoto) > path.Base(photo) {
+							if len(path.Base(minPhoto)) > len(path.Base(photo)) { //留文件名短的
 								minPhoto = photo
 							}
 						}
@@ -566,7 +568,7 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 						tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE", "green"))
 						flag = "SAVE"
 					}
-					targetFile := "/tmp/" + timeStr + "/" + md5 + "/" + flag + "_" + tools.GetDirDate(photo) + "_" + path.Base(photo)
+					targetFile := cons.WorkDir + "/delete_file/" + timeStr + "/" + md5 + "/" + flag + "_" + tools.GetDirDate(photo) + "_" + path.Base(photo)
 					targetFileDir := filepath.Dir(targetFile)
 					os.MkdirAll(targetFileDir, os.ModePerm)
 					tools.CopyFile(photo, targetFile)
