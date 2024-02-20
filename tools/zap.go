@@ -18,6 +18,10 @@ func InitLogger() {
 
 	logger := zap.New(core, zap.AddCaller())
 	Logger = logger.Sugar()
+
+	Logger.Info()
+	WorkDir, _ := os.Getwd() // 项目工作目录
+	os.Chmod(WorkDir+"/log/out.log", 0777)
 }
 
 func getEncoder() zapcore.Encoder {
@@ -33,7 +37,7 @@ func getEncoder() zapcore.Encoder {
 func getLogWriter() zapcore.WriteSyncer {
 	lumberJackLogger := &lumberjack.Logger{
 		Filename:   "./log/out.log",
-		MaxSize:    1,
+		MaxSize:    100,
 		MaxBackups: 5,
 		MaxAge:     30,
 		Compress:   false,
