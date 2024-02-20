@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	mapset "github.com/deckarep/golang-set"
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/mknote"
@@ -23,9 +22,9 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
-const poolSize = 8                //并行处理的线程
-const md5Retry = 3                //文件md5计算重试次数
-const md5CountLength = 1024 * 128 //md5计算的长度
+const poolSize = 8               //并行处理的线程
+const md5Retry = 3               //文件md5计算重试次数
+const md5CountLength = 1024 * 64 //md5计算的长度
 
 const monthFilter = "xx" //月份过滤
 const dayFilter = "xx"   //日期过滤
@@ -223,7 +222,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	IsComplete := 1
 	_ = filepath.Walk(startPath, func(file string, info os.FileInfo, err error) error {
 		if err != nil {
-			fmt.Printf("WALK ERROR : %v", err)
+			tools.Logger.Error("WALK ERROR : ", err)
 			IsComplete = 0
 			return err
 		}
@@ -541,7 +540,17 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 			if len(files) > 1 {
 				dumpMap[md5] = files
 				minPhoto := ""
+				var fileSizeTemp *int64
+				sizeMatch := true
 				for _, photo := range files {
+					if fileSizeTemp == nil {
+						fileSizeTemp = tools.GetFileSize(photo)
+					} else {
+						if *fileSizeTemp != *tools.GetFileSize(photo) {
+							sizeMatch = false
+						}
+					}
+
 					if minPhoto == "" {
 						minPhoto = photo
 					} else {
@@ -557,16 +566,33 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 					}
 				}
 
+				/*if !sizeMatch { //如果存在文件大小不一样的情况，则不记录
+					continue
+				}*/
+
 				tools.Logger.Info("file : ", tools.StrWithColor(md5, "blue"))
 				for _, photo := range files {
 					flag := ""
 					if photo != minPhoto {
-						*shouldDeleteMd5Files = append(*shouldDeleteMd5Files, photo)
-						tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"))
-						flag = "DELETE"
+						if sizeMatch {
+							*shouldDeleteMd5Files = append(*shouldDeleteMd5Files, photo)
+							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"), " SIZE: ", *tools.GetFileSize(photo))
+							flag = "DELETE"
+						} else {
+							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
+							flag = "SAVE(SIZE MISMATCH) "
+						}
+
 					} else {
-						tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE", "green"))
-						flag = "SAVE"
+
+						if sizeMatch {
+							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE", "green"), " SIZE: ", *tools.GetFileSize(photo))
+							flag = "SAVE"
+						} else {
+							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
+							flag = "SAVE(SIZE MISMATCH)"
+						}
+
 					}
 					targetFile := cons.WorkDir + "/delete_file/" + timeStr + "/" + md5 + "/" + flag + "_" + tools.GetDirDate(photo) + "_" + path.Base(photo)
 					targetFileDir := filepath.Dir(targetFile)
