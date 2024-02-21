@@ -601,7 +601,7 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 					os.MkdirAll(targetFileDir, os.ModePerm)
 					tools.CopyFile(photo, targetFile)
 				}
-				tools.Logger.Info()
+				//tools.Logger.Info()
 
 			}
 		}
