@@ -35,6 +35,7 @@ func DeleteMD5DupFilesByJson(filePath string) {
 func DeleteMD5DupFilesByLine(filePath string) {
 	shouldDeleteFiles, err := tools.ReadFileLines(filePath)
 	if err != nil {
+		fmt.Println("ReadFileLines error ")
 		return
 	}
 	count := 0

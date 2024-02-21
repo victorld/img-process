@@ -28,7 +28,7 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 		return
 	}
 
-	tools.Logger.Info("DoScanImg args : " + tools.MarshalPrint(doScanImgArg))
+	tools.Logger.Info("DoScanImg args : " + tools.MarshalJsonToString(doScanImgArg))
 	if doScanImgArg.StartPath == nil {
 		doScanImgArg.StartPath = &cons.StartPath
 	}
@@ -54,7 +54,7 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 		doScanImgArg.ModifyDateAction = &cons.ModifyDateAction
 	}
 
-	tools.Logger.Info("DoScanImg args real: " + tools.MarshalPrint(doScanImgArg))
+	tools.Logger.Info("DoScanImg args real: " + tools.MarshalJsonToString(doScanImgArg))
 
 	go func() {
 

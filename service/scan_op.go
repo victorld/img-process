@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	mapset "github.com/deckarep/golang-set"
+	"github.com/google/uuid"
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/mknote"
 	"img_process/cons"
@@ -115,12 +116,12 @@ func ScanAndSave(scanArgs model.DoScanImgArg) {
 	var imgRecordDB model.ImgRecordDB
 	json.Unmarshal([]byte(imgRecordString), &imgRecordDB)
 
-	imgRecordDB.SuffixMap = tools.MarshalPrint(imgRecord.SuffixMap)
-	imgRecordDB.YearMap = tools.MarshalPrint(imgRecord.YearMap)
-	//imgRecordDB.DumpFileDeleteList = tools.MarshalPrint(imgRecord.DumpFileDeleteList)
-	imgRecordDB.ExifErr1Map = tools.MarshalPrint(imgRecord.ExifErr1Map)
-	imgRecordDB.ExifErr2Map = tools.MarshalPrint(imgRecord.ExifErr2Map)
-	imgRecordDB.ExifErr3Map = tools.MarshalPrint(imgRecord.ExifErr3Map)
+	imgRecordDB.SuffixMap = tools.MarshalJsonToString(imgRecord.SuffixMap)
+	imgRecordDB.YearMap = tools.MarshalJsonToString(imgRecord.YearMap)
+	//imgRecordDB.DumpFileDeleteList = tools.MarshalJsonToString(imgRecord.DumpFileDeleteList)
+	imgRecordDB.ExifErr1Map = tools.MarshalJsonToString(imgRecord.ExifErr1Map)
+	imgRecordDB.ExifErr2Map = tools.MarshalJsonToString(imgRecord.ExifErr2Map)
+	imgRecordDB.ExifErr3Map = tools.MarshalJsonToString(imgRecord.ExifErr3Map)
 
 	var imgRecordService = dao.ImgRecordService{}
 	/*if err = imgRecordService.RegisterImgRecord(&imgRecordDB); err != nil {
@@ -147,6 +148,14 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	deleteAction := *scanArgs.DeleteAction
 	moveFileAction := *scanArgs.MoveFileAction
 	modifyDateAction := *scanArgs.MoveFileAction
+
+	scanUuid, err := uuid.NewUUID()
+	if err != nil {
+		return "", err
+	}
+	timeStr := time.Now().Format(tools.DatetimeDirTemplate)
+	scanUuidFinal := timeStr + "_" + strings.ReplaceAll(scanUuid.String(), "-", "")
+	tools.Logger.Info("SCAN JOBID : ", tools.StrWithColor(scanUuidFinal, "red"))
 
 	if !strings.Contains(startPath, "pic-new") {
 		return "", errors.New("startPath error ")
@@ -238,7 +247,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 			fileName := path.Base(file)
 			fileSuffix := strings.ToLower(path.Ext(file))
 
-			if strings.HasPrefix(fileName, ".") || strings.HasSuffix(fileName, "nas_downloading") { //非法文件加入待处理列表
+			if strings.HasPrefix(fileName, ".") || strings.HasSuffix(fileName, "nas_downloading") || *(tools.GetFileSize(file)) == 0 { //非法文件加入待处理列表
 				ps := photoStruct{isDeleteFile: true, photo: file}
 				processFileListMu.Lock()
 				processFileList = append(processFileList, ps)
@@ -345,11 +354,11 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	tools.Logger.Info()
 
 	tools.Logger.Info(tools.StrWithColor("PRINT DETAIL TYPE3(dump file): ", "red"))
-	dumpMap := dumpFileProcess(md5Show, md5Map, &shouldDeleteMd5Files) //5、重复文件处理处理
+	dumpMap := dumpFileProcess(md5Show, md5Map, &shouldDeleteMd5Files, scanUuidFinal) //5、重复文件处理处理
 
 	tools.Logger.Info(tools.StrWithColor("PRINT STAT TYPE0(comman info): ", "red"))
-	tools.Logger.Info("suffixMap : ", tools.MarshalPrint(suffixMap))
-	tools.Logger.Info("yearMap : ", tools.MarshalPrint(yearMap))
+	tools.Logger.Info("suffixMap : ", tools.MarshalJsonToString(suffixMap))
+	tools.Logger.Info("yearMap : ", tools.MarshalJsonToString(yearMap))
 	tools.Logger.Info("month count: ")
 	tools.MapPrintWithFilter(monthMap, monthFilter)
 	tools.Logger.Info("day count: ")
@@ -357,13 +366,13 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	tools.Logger.Info("file total : ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
 	tools.Logger.Info("dir total : ", tools.StrWithColor(strconv.Itoa(dirTotalCnt), "red"))
 	tools.Logger.Info("file contain date(just for print) : ", tools.StrWithColor(strconv.Itoa(fileDateFileList.Cardinality()), "red"))
-	tools.Logger.Info("exif parse error 1 : ", tools.StrWithColor(tools.MarshalPrint(exifErr1FileSuffixMap), "red"))
+	tools.Logger.Info("exif parse error 1 : ", tools.StrWithColor(tools.MarshalJsonToString(exifErr1FileSuffixMap), "red"))
 	tools.Logger.Info("exif parse error 1 : ", tools.StrWithColor(strconv.Itoa(exifErr1FileSet.Cardinality()), "red"))
 	//tools.Logger.Info("exif parse error 1 list : ", exifErr1FileSet)
-	tools.Logger.Info("exif parse error 2 : ", tools.StrWithColor(tools.MarshalPrint(exifErr2FileSuffixMap), "red"))
+	tools.Logger.Info("exif parse error 2 : ", tools.StrWithColor(tools.MarshalJsonToString(exifErr2FileSuffixMap), "red"))
 	tools.Logger.Info("exif parse error 2 : ", tools.StrWithColor(strconv.Itoa(exifErr2FileSet.Cardinality()), "red"))
 	//tools.Logger.Info("exif parse error 2 list : ", exifErr2FileSet)
-	tools.Logger.Info("exif parse error 3 : ", tools.StrWithColor(tools.MarshalPrint(exifErr3FileSuffixMap), "red"))
+	tools.Logger.Info("exif parse error 3 : ", tools.StrWithColor(tools.MarshalJsonToString(exifErr3FileSuffixMap), "red"))
 	tools.Logger.Info("exif parse error 3 : ", tools.StrWithColor(strconv.Itoa(exifErr3FileSet.Cardinality()), "red"))
 	//tools.Logger.Info("exif parse error 3 list : ", exifErr3FileSet)
 
@@ -396,20 +405,14 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	tools.Logger.Info("shouldDeleteMd5Files length : ", tools.StrWithColor(strconv.Itoa(len(shouldDeleteMd5Files)), "red"))
 	if len(shouldDeleteMd5Files) != 0 {
-		sm3 := tools.MarshalPrint(shouldDeleteMd5Files)
-		tools.Logger.Info("shouldDeleteMd5Files print origin : ", sm3)
-		fileUuid, _ := tools.WriteStringToUuidFile(sm3)
-
-		filePath := "/tmp/" + fileUuid
-		//tools.Logger.Info("file path : ", filePath)
-		fileContent2, _ := tools.ReadFileString(filePath)
-
-		tools.Logger.Info("shouldDeleteMd5Files print reread : ", fileContent2)
-		tools.Logger.Info("tmp file md5 : ", tools.StrWithColor(fileUuid, "red"))
+		//sm3 := tools.MarshalJsonToString(shouldDeleteMd5Files)
+		sm3 := strings.Join(shouldDeleteMd5Files, "\n")
+		filePath := cons.WorkDir + "/delete_file/" + scanUuidFinal + "/dump_delete_list"
+		tools.WriteStringToFile(sm3, filePath)
 	}
 	tools.Logger.Info("md5 get error length : ", tools.StrWithColor(strconv.Itoa(len(md5EmptyFileList)), "red"))
 	if len(md5EmptyFileList) != 0 {
-		tools.Logger.Info("md5EmptyFileList : ", tools.MarshalPrint(md5EmptyFileList))
+		tools.Logger.Info("md5EmptyFileList : ", tools.MarshalJsonToString(md5EmptyFileList))
 	}
 
 	tools.Logger.Info()
@@ -442,11 +445,11 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	imgRecord.ExifErr1Map = exifErr1FileSuffixMap
 	imgRecord.ExifErr2Map = exifErr2FileSuffixMap
 	imgRecord.ExifErr3Map = exifErr3FileSuffixMap
-	imgRecord.ScanArgs = tools.MarshalPrint(scanArgs)
+	imgRecord.ScanArgs = tools.MarshalJsonToString(scanArgs)
 	imgRecord.IsComplete = IsComplete
 	imgRecord.Remark = ""
 
-	ret := tools.MarshalPrint(imgRecord)
+	ret := tools.MarshalJsonToString(imgRecord)
 	tools.Logger.Info("scan result : ", ret)
 	return ret, nil
 
@@ -457,7 +460,7 @@ func deleteFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool,
 		tools.Logger.Info()
 		tools.Logger.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
 		*printFileFlag = true
-		tools.Logger.Info(tools.StrWithColor("should delete file :", "yellow"), ps.photo)
+		tools.Logger.Info(tools.StrWithColor("should delete file :", "yellow"), ps.photo, " SIZE: ", *tools.GetFileSize(ps.photo))
 	}
 
 	if deleteAction {
@@ -481,7 +484,7 @@ func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool,
 			ps.psPrint()
 			*printDateFlag = true
 		}
-		tools.Logger.Info(tools.StrWithColor("should modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate)
+		tools.Logger.Info(tools.StrWithColor("should modify file ", "yellow"), ps.photo, " modifyDate to ", ps.minDate)
 	}
 	if modifyDateAction {
 		tm, _ := time.Parse("2006-01-02", ps.minDate)
@@ -531,10 +534,9 @@ func emptyDirProcess(deleteShow bool, deleteAction bool, deleteDirList []dirStru
 	}
 }
 
-func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Files *[]string) map[string][]string {
+func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Files *[]string, scanUuidFinal string) map[string][]string {
 	var dumpMap = make(map[string][]string) //md5Map里筛选出有重复文件的Map
 
-	timeStr := time.Now().Format(tools.DatetimeDirTemplate)
 	if md5Show {
 		for md5, files := range md5Map {
 			if len(files) > 1 {
@@ -594,7 +596,7 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 						}
 
 					}
-					targetFile := cons.WorkDir + "/delete_file/" + timeStr + "/" + md5 + "/" + flag + "_" + tools.GetDirDate(photo) + "_" + path.Base(photo)
+					targetFile := cons.WorkDir + "/delete_file/" + scanUuidFinal + "/dump_compare/" + md5 + "/" + flag + "_" + tools.GetDirDate(photo) + "_" + path.Base(photo)
 					targetFileDir := filepath.Dir(targetFile)
 					os.MkdirAll(targetFileDir, os.ModePerm)
 					tools.CopyFile(photo, targetFile)

@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"io"
 	"os"
 	"path"
@@ -189,17 +188,6 @@ func WriteStringToFile(content string, filepath string) {
 	os.WriteFile(filepath, contentBytes, 0666)
 }
 
-func WriteStringToUuidFile(content string) (string, error) {
-	var uuid1, err = uuid.NewUUID()
-	if err != nil {
-		return "", err
-	}
-	fileUuid := strings.ReplaceAll(uuid1.String(), "-", "")
-	filepath := "/tmp/" + fileUuid
-	WriteStringToFile(content, filepath)
-	return fileUuid, nil
-}
-
 func ReadFileString(fileName string) (string, error) {
 	f, err := os.ReadFile(fileName)
 	if err != nil {
@@ -276,7 +264,7 @@ func ChangeModifyDate(photo string, time time.Time) {
 	}
 }
 
-func MarshalPrint(v any) string {
+func MarshalJsonToString(v any) string {
 	sm, _ := json.Marshal(v)
 	return string(sm)
 }
