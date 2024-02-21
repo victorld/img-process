@@ -572,26 +572,26 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 					continue
 				}*/
 
-				tools.Logger.Info("file : ", tools.StrWithColor(md5, "blue"))
+				//tools.Logger.Info("file : ", tools.StrWithColor(md5, "blue"))
 				for _, photo := range files {
 					flag := ""
 					if photo != minPhoto {
 						if sizeMatch {
 							*shouldDeleteMd5Files = append(*shouldDeleteMd5Files, photo)
-							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"), " SIZE: ", *tools.GetFileSize(photo))
+							//tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"), " SIZE: ", *tools.GetFileSize(photo))
 							flag = "DELETE"
 						} else {
-							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
+							//tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
 							flag = "SAVE(SIZE MISMATCH) "
 						}
 
 					} else {
 
 						if sizeMatch {
-							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE", "green"), " SIZE: ", *tools.GetFileSize(photo))
+							//tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE", "green"), " SIZE: ", *tools.GetFileSize(photo))
 							flag = "SAVE"
 						} else {
-							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
+							//tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
 							flag = "SAVE(SIZE MISMATCH)"
 						}
 
