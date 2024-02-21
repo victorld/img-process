@@ -147,7 +147,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	md5Show := *scanArgs.Md5Show
 	deleteAction := *scanArgs.DeleteAction
 	moveFileAction := *scanArgs.MoveFileAction
-	modifyDateAction := *scanArgs.MoveFileAction
+	modifyDateAction := *scanArgs.ModifyDateAction
 
 	scanUuid, err := uuid.NewUUID()
 	if err != nil {
