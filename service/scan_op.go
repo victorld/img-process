@@ -58,30 +58,30 @@ type photoStruct struct { //照片打印需要的结构体
 }
 
 type ImgRecord struct {
-	ScanArgs           string         //扫描参数
-	FileTotal          int            //文件总数
-	DirTotal           int            //目录总数
-	StartDate          time.Time      //记录时间
-	UseTime            int            //用时
-	BasePath           string         //基础目录
-	SuffixMap          map[string]int //后缀统计
-	YearMap            map[string]int //年份统计
-	FileDateCnt        int            //有时间文件统计
-	DeleteFileCnt      int            //需要删除文件数
-	ModifyDateFileCnt  int            //需要修改修改日期文件数
-	MoveFileCnt        int            //需要移动文件数
-	ShootDateFileCnt   int            //需要修改拍摄日期文件数
-	EmptyDirCnt        int            //空文件数
-	DumpFileCnt        int            //重复md5数
-	DumpFileDeleteList []string       //需要删除文件数
-	ExifErr1Cnt        int            //exif错误1数
-	ExifErr2Cnt        int            //exif错误2数
-	ExifErr3Cnt        int            //exif错误3数
-	ExifErr1Map        map[string]int //exif错误1统计
-	ExifErr2Map        map[string]int //exif错误2统计
-	ExifErr3Map        map[string]int //exif错误3统计
-	IsComplete         int            //是否完整
-	Remark             string         //备注
+	ScanArgs          string         //扫描参数
+	FileTotal         int            //文件总数
+	DirTotal          int            //目录总数
+	StartDate         time.Time      //记录时间
+	UseTime           int            //用时
+	BasePath          string         //基础目录
+	SuffixMap         map[string]int //后缀统计
+	YearMap           map[string]int //年份统计
+	FileDateCnt       int            //有时间文件统计
+	DeleteFileCnt     int            //需要删除文件数
+	ModifyDateFileCnt int            //需要修改修改日期文件数
+	MoveFileCnt       int            //需要移动文件数
+	ShootDateFileCnt  int            //需要修改拍摄日期文件数
+	EmptyDirCnt       int            //空文件数
+	DumpFileCnt       int            //重复md5数
+	//DumpFileDeleteList []string       //需要删除文件数
+	ExifErr1Cnt int            //exif错误1数
+	ExifErr2Cnt int            //exif错误2数
+	ExifErr3Cnt int            //exif错误3数
+	ExifErr1Map map[string]int //exif错误1统计
+	ExifErr2Map map[string]int //exif错误2统计
+	ExifErr3Map map[string]int //exif错误3统计
+	IsComplete  int            //是否完整
+	Remark      string         //备注
 }
 
 func (ps *photoStruct) psPrint() { //打印照片相关信息
@@ -438,7 +438,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	imgRecord.ShootDateFileCnt = shootDateFileList.Cardinality()
 	imgRecord.EmptyDirCnt = len(deleteDirList)
 	imgRecord.DumpFileCnt = len(dumpMap)
-	imgRecord.DumpFileDeleteList = shouldDeleteMd5Files
+	//imgRecord.DumpFileDeleteList = shouldDeleteMd5Files
 	imgRecord.ExifErr1Cnt = exifErr1FileSet.Cardinality()
 	imgRecord.ExifErr2Cnt = exifErr2FileSet.Cardinality()
 	imgRecord.ExifErr3Cnt = exifErr3FileSet.Cardinality()
@@ -572,26 +572,26 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 					continue
 				}*/
 
-				//tools.Logger.Info("file : ", tools.StrWithColor(md5, "blue"))
+				tools.Logger.Info("file : ", tools.StrWithColor(md5, "blue"))
 				for _, photo := range files {
 					flag := ""
 					if photo != minPhoto {
 						if sizeMatch {
 							*shouldDeleteMd5Files = append(*shouldDeleteMd5Files, photo)
-							//tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"), " SIZE: ", *tools.GetFileSize(photo))
+							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"), " SIZE: ", *tools.GetFileSize(photo))
 							flag = "DELETE"
 						} else {
-							//tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
+							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
 							flag = "SAVE(SIZE MISMATCH) "
 						}
 
 					} else {
 
 						if sizeMatch {
-							//tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE", "green"), " SIZE: ", *tools.GetFileSize(photo))
+							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE", "green"), " SIZE: ", *tools.GetFileSize(photo))
 							flag = "SAVE"
 						} else {
-							//tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
+							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
 							flag = "SAVE(SIZE MISMATCH)"
 						}
 
@@ -601,7 +601,7 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 					os.MkdirAll(targetFileDir, os.ModePerm)
 					tools.CopyFile(photo, targetFile)
 				}
-				//tools.Logger.Info()
+				tools.Logger.Info()
 
 			}
 		}
