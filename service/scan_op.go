@@ -504,11 +504,11 @@ func moveFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool, m
 			ps.psPrint()
 			*printDateFlag = true
 		}
-		tools.Logger.Info(tools.StrWithColor("should move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
+		tools.Logger.Info(tools.StrWithColor("should move file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
 	}
 	if moveFileAction {
 		tools.MoveFile(ps.photo, ps.targetPhoto)
-		tools.Logger.Info(tools.StrWithColor("move file ", "yellow"), ps.photo, "to", ps.targetPhoto)
+		tools.Logger.Info(tools.StrWithColor("move file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
 	}
 }
 
@@ -677,7 +677,9 @@ func processOneFile(
 
 	if dirDate != minDate {
 		moveFileList.Add(photo)
-		targetPhoto := basePath + string(os.PathSeparator) + minDate[0:4] + string(os.PathSeparator) + minDate[0:7] + string(os.PathSeparator) + minDate + string(os.PathSeparator) + path.Base(photo)
+		targetPath := basePath + string(os.PathSeparator) + minDate[0:4] + string(os.PathSeparator) + minDate[0:7] + string(os.PathSeparator) + minDate
+		targetPath = tools.GetRealPath(targetPath)
+		targetPhoto := targetPath + string(os.PathSeparator) + path.Base(photo)
 		ps.isMoveFile = true
 		ps.targetPhoto = targetPhoto
 		flag = true

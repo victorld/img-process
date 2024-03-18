@@ -88,6 +88,31 @@ func Exists(path string) bool {
 	return true
 }
 
+func GetRealPath(file string) string {
+	realpath := file
+	flag := Exists(file)
+	if flag {
+
+	} else {
+		parentDir := filepath.Dir(file)
+		fileName := path.Base(file)
+		files, err := os.ReadDir(parentDir)
+		if err != nil {
+			fmt.Println("read file path error", err)
+			return ""
+		}
+		// 忽略以 . 开头的文件
+		for i := 0; i < len(files); i++ {
+			fileItem := files[i].Name()
+			if strings.HasPrefix(fileItem, fileName) {
+				fileName = fileItem
+			}
+		}
+		realpath = parentDir + string(os.PathSeparator) + fileName
+	}
+	return realpath
+}
+
 func MoveFile(src string, dst string) {
 
 	parentDir := filepath.Dir(dst)
@@ -229,6 +254,7 @@ func GetFileMD5WithRetry(photo string, retry int, length int64) (string, error) 
 func GetDirDate(photo string) string {
 	parentDir := filepath.Dir(photo)
 	dirDate := path.Base(parentDir)
+	dirDate = dirDate[0:10]
 	return dirDate
 }
 

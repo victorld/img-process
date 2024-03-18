@@ -69,11 +69,12 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 
 func (imgRecordOwnApi *ImgRecordOwnApi) DeleteMD5DupFiles(c *gin.Context) {
 
-	md5, ok := c.GetQuery("md5")
+	scanUuid, ok := c.GetQuery("scanUuid")
 	if ok {
-		filePath := "/tmp/" + md5
+
+		filePath := cons.WorkDir + "/delete_file/" + scanUuid + "/dump_delete_list"
 		tools.Logger.Info("file path : ", filePath)
 
-		service.DeleteMD5DupFilesByJson(filePath)
+		service.DeleteMD5DupFilesByLine(filePath)
 	}
 }
