@@ -72,7 +72,7 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DeleteMD5DupFiles(c *gin.Context) {
 	scanUuid, ok := c.GetQuery("scanUuid")
 	if ok {
 
-		filePath := cons.WorkDir + "/delete_file/" + scanUuid + "/dump_delete_list"
+		filePath := cons.WorkDir + "/log/dump_delete_file/" + scanUuid + "/dump_delete_list"
 		tools.Logger.Info("file path : ", filePath)
 
 		service.DeleteMD5DupFilesByLine(filePath)

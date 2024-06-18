@@ -165,10 +165,11 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	tools.Logger.Info("DoScan args : ", deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
 
-	var suffixMap = map[string]int{} //后缀统计
-	var yearMap = map[string]int{}   //年份统计
-	var monthMap = map[string]int{}  //月份统计
-	var dayMap = map[string]int{}    //日期统计
+	var suffixMap = map[string]int{}        //后缀统计
+	var yearMap = map[string]int{}          //年份统计
+	var monthMap = map[string]int{}         //月份统计
+	var dayMap = map[string]int{}           //日期统计
+	var imageNumMap = map[string][]string{} //照片数字统计
 
 	var fileTotalCnt = 0 //文件总量
 	var dirTotalCnt = 0  //目录总量
@@ -282,6 +283,14 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 					dayMap[day] = value + 1
 				} else {
 					dayMap[day] = 1
+				}
+
+				if strings.HasPrefix(fileName, "IMG_") {
+					if value, ok := imageNumMap[fileName]; ok { //返回值ok表示是否存在这个值
+						imageNumMap[fileName] = append(value, day)
+					} else {
+						imageNumMap[fileName] = []string{day}
+					}
 				}
 
 				fileTotalCnt = fileTotalCnt + 1
@@ -407,12 +416,18 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	if len(shouldDeleteMd5Files) != 0 {
 		//sm3 := tools.MarshalJsonToString(shouldDeleteMd5Files)
 		sm3 := strings.Join(shouldDeleteMd5Files, "\n")
-		filePath := cons.WorkDir + "/delete_file/" + scanUuidFinal + "/dump_delete_list"
+		filePath := cons.WorkDir + "/log/dump_delete_file/" + scanUuidFinal + "/dump_delete_list"
 		tools.WriteStringToFile(sm3, filePath)
 	}
 	tools.Logger.Info("md5 get error length : ", tools.StrWithColor(strconv.Itoa(len(md5EmptyFileList)), "red"))
 	if len(md5EmptyFileList) != 0 {
 		tools.Logger.Info("md5EmptyFileList : ", tools.MarshalJsonToString(md5EmptyFileList))
+	}
+
+	tools.Logger.Info("imageNumMap length : ", tools.StrWithColor(strconv.Itoa(len(imageNumMap)), "red"))
+	if len(imageNumMap) != 0 {
+		filePath := cons.WorkDir + "/log/img_num_list"
+		tools.WriteMapToFile(imageNumMap, filePath)
 	}
 
 	tools.Logger.Info()
@@ -596,7 +611,7 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 						}
 
 					}
-					targetFile := cons.WorkDir + "/delete_file/" + scanUuidFinal + "/dump_compare/" + md5 + "/" + flag + "_" + tools.GetDirDate(photo) + "_" + path.Base(photo)
+					targetFile := cons.WorkDir + "/log/dump_delete_file/" + scanUuidFinal + "/dump_compare/" + md5 + "/" + flag + "_" + tools.GetDirDate(photo) + "_" + path.Base(photo)
 					targetFileDir := filepath.Dir(targetFile)
 					os.MkdirAll(targetFileDir, os.ModePerm)
 					tools.CopyFile(photo, targetFile)

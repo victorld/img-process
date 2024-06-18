@@ -2,6 +2,7 @@ package tools
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
@@ -310,5 +311,24 @@ func MapPrintWithFilter[T any](m map[string]T, filter string) {
 			fmt.Printf("%v --- %v\n", key, m[key])
 		}
 	}
+
+}
+
+func WriteMapToFile(m map[string][]string, filepath string) {
+	keys := []string{}
+
+	for key := range m {
+		keys = append(keys, key)
+	}
+	// 给key排序，从小到大
+	sort.Strings(keys)
+
+	var buffer bytes.Buffer
+
+	for _, key := range keys {
+		buffer.WriteString(key + "---" + strings.Join(m[key], ",") + "\n")
+	}
+
+	os.WriteFile(filepath, buffer.Bytes(), 0666)
 
 }
