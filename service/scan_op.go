@@ -165,11 +165,12 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	tools.Logger.Info("DoScan args : ", deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
 
-	var suffixMap = map[string]int{}        //后缀统计
-	var yearMap = map[string]int{}          //年份统计
-	var monthMap = map[string]int{}         //月份统计
-	var dayMap = map[string]int{}           //日期统计
-	var imageNumMap = map[string][]string{} //照片数字统计
+	var suffixMap = map[string]int{}           //后缀统计
+	var yearMap = map[string]int{}             //年份统计
+	var monthMap = map[string]int{}            //月份统计
+	var dayMap = map[string]int{}              //日期统计
+	var imageNumMap = map[string][]string{}    //照片数字统计-照片key
+	var imageNumRevMap = map[string][]string{} //照片数字统计-日期key
 
 	var fileTotalCnt = 0 //文件总量
 	var dirTotalCnt = 0  //目录总量
@@ -248,7 +249,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 			fileName := path.Base(file)
 			fileSuffix := strings.ToLower(path.Ext(file))
 
-			if strings.HasPrefix(fileName, ".") || strings.HasSuffix(fileName, "nas_downloading") || *(tools.GetFileSize(file)) == 0 { //非法文件加入待处理列表
+			if strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || *(tools.GetFileSize(file)) == 0 { //非法文件加入待处理列表
 				ps := photoStruct{isDeleteFile: true, photo: file}
 				processFileListMu.Lock()
 				processFileList = append(processFileList, ps)
@@ -286,10 +287,17 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 				}
 
 				if strings.HasPrefix(fileName, "IMG_") {
+					head := fileName[4:6]
 					if value, ok := imageNumMap[fileName]; ok { //返回值ok表示是否存在这个值
 						imageNumMap[fileName] = append(value, day)
 					} else {
 						imageNumMap[fileName] = []string{day}
+					}
+
+					if value, ok := imageNumRevMap[year+"-"+head]; ok { //返回值ok表示是否存在这个值
+						imageNumRevMap[year+"-"+head] = append(value, fileName)
+					} else {
+						imageNumRevMap[year+"-"+head] = []string{fileName}
 					}
 				}
 
@@ -428,6 +436,11 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	if len(imageNumMap) != 0 {
 		filePath := cons.WorkDir + "/log/img_num_list"
 		tools.WriteMapToFile(imageNumMap, filePath)
+	}
+	tools.Logger.Info("imageNumRevMap length : ", tools.StrWithColor(strconv.Itoa(len(imageNumRevMap)), "red"))
+	if len(imageNumRevMap) != 0 {
+		filePath := cons.WorkDir + "/log/img_num_rev_list"
+		tools.WriteMapToFile(imageNumRevMap, filePath)
 	}
 
 	tools.Logger.Info()

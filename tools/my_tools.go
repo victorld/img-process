@@ -326,7 +326,18 @@ func WriteMapToFile(m map[string][]string, filepath string) {
 	var buffer bytes.Buffer
 
 	for _, key := range keys {
-		buffer.WriteString(key + "---" + strings.Join(m[key], ",") + "\n")
+		buffer.WriteString(key + "---")
+		oldKey := ""
+		for _, key2 := range m[key] {
+			if key2 > oldKey {
+				buffer.WriteString(key2 + ",")
+			} else {
+				buffer.WriteString("##" + key2 + ",")
+			}
+			oldKey = key2
+
+		}
+		buffer.WriteString("\n")
 	}
 
 	os.WriteFile(filepath, buffer.Bytes(), 0666)
