@@ -314,7 +314,30 @@ func MapPrintWithFilter[T any](m map[string]T, filter string) {
 
 }
 
-func WriteMapToFile(m map[string][]string, filepath string) {
+func ImageNumMapWriteToFile(m map[string][]string, filepath string) {
+	keys := []string{}
+
+	for key := range m {
+		keys = append(keys, key)
+	}
+	// 给key排序，从小到大
+	sort.Strings(keys)
+
+	var buffer bytes.Buffer
+
+	for _, key := range keys {
+		buffer.WriteString(key + "---")
+		for _, key2 := range m[key] {
+			buffer.WriteString(key2 + ",")
+		}
+		buffer.WriteString("\n")
+	}
+
+	os.WriteFile(filepath, buffer.Bytes(), 0666)
+
+}
+
+func ImageNumRevMapWriteToFile(m map[string][]string, filepath string) {
 	keys := []string{}
 
 	for key := range m {

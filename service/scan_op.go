@@ -295,9 +295,9 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 					}
 
 					if value, ok := imageNumRevMap[year+"-"+head]; ok { //返回值ok表示是否存在这个值
-						imageNumRevMap[year+"-"+head] = append(value, fileName)
+						imageNumRevMap[year+"-"+head] = append(value, fileName+"["+day+"]")
 					} else {
-						imageNumRevMap[year+"-"+head] = []string{fileName}
+						imageNumRevMap[year+"-"+head] = []string{fileName + "[" + day + "]"}
 					}
 				}
 
@@ -435,12 +435,12 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	tools.Logger.Info("imageNumMap length : ", tools.StrWithColor(strconv.Itoa(len(imageNumMap)), "red"))
 	if len(imageNumMap) != 0 {
 		filePath := cons.WorkDir + "/log/img_num_list"
-		tools.WriteMapToFile(imageNumMap, filePath)
+		tools.ImageNumMapWriteToFile(imageNumMap, filePath)
 	}
 	tools.Logger.Info("imageNumRevMap length : ", tools.StrWithColor(strconv.Itoa(len(imageNumRevMap)), "red"))
 	if len(imageNumRevMap) != 0 {
 		filePath := cons.WorkDir + "/log/img_num_rev_list"
-		tools.WriteMapToFile(imageNumRevMap, filePath)
+		tools.ImageNumRevMapWriteToFile(imageNumRevMap, filePath)
 	}
 
 	tools.Logger.Info()
