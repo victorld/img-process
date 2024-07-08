@@ -54,9 +54,23 @@ func testChan() {
 	fmt.Println(msg)
 }
 
+func testShootDate() {
+	file := "/Users/ld/Desktop/IMG_7862.PNG"
+	dateTime, err := tools.GetExifDateTime(file)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(dateTime)
+	}
+
+	//tools.TestGetShootDate(file)
+
+}
+
 func main() {
 	fmt.Println()
 
+	testShootDate()
 	//testDate()
 	//testGetMD5()
 	//testMd5Delete()

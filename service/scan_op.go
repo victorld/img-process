@@ -5,8 +5,7 @@ import (
 	"errors"
 	mapset "github.com/deckarep/golang-set"
 	"github.com/google/uuid"
-	"github.com/rwcarlsen/goexif/exif"
-	"github.com/rwcarlsen/goexif/mknote"
+	"github.com/panjf2000/ants/v2"
 	"img_process/cons"
 	"img_process/dao"
 	"img_process/model"
@@ -19,8 +18,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	//exif "github.com/dsoprea/go-exif/v3"
-	"github.com/panjf2000/ants/v2"
 )
 
 const poolSize = 8               //并行处理的线程
@@ -228,12 +225,13 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	}()
 
 	// Optionally register camera makenote data parsing - currently Nikon and Canon are supported.
-	exif.RegisterParsers(mknote.All...)
+	//exif.RegisterParsers(mknote.All...)
 
 	IsComplete := 1
 	_ = filepath.Walk(startPath, func(file string, info os.FileInfo, err error) error {
 		if err != nil {
 			tools.Logger.Error("WALK ERROR : ", err)
+			panic("WALK ERROR ! ")
 			IsComplete = 0
 			return err
 		}
@@ -287,7 +285,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 				}
 
 				if strings.HasPrefix(fileName, "IMG_") {
-					head := fileName[4:6]
+					head := fileName[4:5]
 					if value, ok := imageNumMap[fileName]; ok { //返回值ok表示是否存在这个值
 						imageNumMap[fileName] = append(value, day)
 					} else {
@@ -333,6 +331,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		}
 		return nil
 	})
+
 	tools.Logger.Info("processed(end) ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
 
 	wg.Wait()
@@ -627,7 +626,7 @@ func dumpFileProcess(md5Show bool, md5Map map[string][]string, shouldDeleteMd5Fi
 					targetFile := cons.WorkDir + "/log/dump_delete_file/" + scanUuidFinal + "/dump_compare/" + md5 + "/" + flag + "_" + tools.GetDirDate(photo) + "_" + path.Base(photo)
 					targetFileDir := filepath.Dir(targetFile)
 					os.MkdirAll(targetFileDir, os.ModePerm)
-					tools.CopyFile(photo, targetFile)
+					//tools.CopyFile(photo, targetFile)
 				}
 				tools.Logger.Info()
 
@@ -661,7 +660,7 @@ func processOneFile(
 	suffix := strings.ToLower(path.Ext(photo))
 
 	shootDate := ""
-	if suffix != ".heic" && suffix != ".mov" && suffix != ".mp4" && suffix != ".png" { //exif拍摄时间获取
+	if suffix != ".mov" && suffix != ".mp4" { //exif拍摄时间获取
 		shootDate, _ = getShootDateMethod2(
 			photo,
 			suffix,
@@ -761,7 +760,23 @@ func getShootDateMethod2(
 	exifErr3FileSet mapset.Set,
 ) (string, error) {
 
-	f, err := os.Open(path)
+	shootTime, err := tools.GetExifDateTime(path)
+	if err != nil {
+		exifErr1FileMu.Lock()
+		if value, ok := exifErr1FileSuffixMap[suffix]; ok {
+			exifErr1FileSuffixMap[suffix] = value + 1
+		} else {
+			exifErr1FileSuffixMap[suffix] = 1
+		}
+		exifErr1FileSet.Add(path)
+		exifErr1FileMu.Unlock()
+		return "", err
+	}
+	shootTimeStr := shootTime.Format("2006-01-02")
+	//shootTimeStr := shootTime.Format("2006-01-02 15:04:05")
+	return shootTimeStr, nil
+
+	/*f, err := os.Open(path)
 
 	defer func() {
 		f.Close()
@@ -815,6 +830,6 @@ func getShootDateMethod2(
 		shootTimeStr := shootTime.Format("2006-01-02")
 		//shootTimeStr := shootTime.Format("2006-01-02 15:04:05")
 		return shootTimeStr, nil
-	}
+	}*/
 
 }

@@ -12,7 +12,7 @@ func main() {
 	tools.InitViper()
 	cons.InitConst()
 
-	const scanUuidFinal = "2024-02-21-11-20-19_23ceef18d06811ee96e7acde48001122"
+	const scanUuidFinal = "2024-07-02-21-37-34_3cf10ae4387811ef8e5a265653c10cb8"
 
 	fmt.Println()
 	filePath := cons.WorkDir + "/log/dump_delete_file/" + scanUuidFinal + "/dump_delete_list"

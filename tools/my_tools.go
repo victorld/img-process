@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	goexif "github.com/dsoprea/go-exif/v3"
+	exifcommon "github.com/dsoprea/go-exif/v3/common"
 	"io"
 	"os"
 	"path"
@@ -338,7 +340,7 @@ func ImageNumMapWriteToFile(m map[string][]string, filepath string) {
 }
 
 func ImageNumRevMapWriteToFile(m map[string][]string, filepath string) {
-	whiteList := []string{"IMG_3509.JPG[2012-11-13]", "test2"}
+	whiteList := []string{}
 
 	keys := []string{}
 
@@ -357,7 +359,7 @@ func ImageNumRevMapWriteToFile(m map[string][]string, filepath string) {
 			if key2 > oldKey {
 				buffer.WriteString(key2 + ",")
 			} else if Find(whiteList, key2) {
-				buffer.WriteString(key2 + ",")
+				buffer.WriteString("**" + key2 + ",")
 			} else {
 				buffer.WriteString("##" + key2 + ",")
 			}
@@ -379,4 +381,140 @@ func Find(slice []string, val string) bool {
 		}
 	}
 	return false
+}
+
+//func TestGetShootDate(path string) (string, error) {
+//
+//	f, err := os.Open(path)
+//
+//	defer func() {
+//		f.Close()
+//		if r := recover(); r != nil {
+//			fmt.Println("exifErr3 Recovered. Error : ", r, " path : ", path)
+//		}
+//	}()
+//
+//	if err != nil {
+//		fmt.Println(err)
+//		return "", err
+//	}
+//
+//	x, err := exif.Decode(f)
+//	if err != nil {
+//		fmt.Println("exifErr1 exif decode error :  path : ", path)
+//		return "", errors.New("exif decode error")
+//	}
+//
+//	shootTime, err := x.DateTime()
+//
+//	if err != nil {
+//		fmt.Println("exifErr2 exif DateTime error :  path : ", path)
+//		return "", errors.New("no shoot time")
+//	} else {
+//		shootTimeStr := shootTime.Format("2006-01-02")
+//		//shootTimeStr := shootTime.Format("2006-01-02 15:04:05")
+//		return shootTimeStr, nil
+//	}
+//
+//}
+
+// DateTime    DateTimeOriginal    DateTimeDigitized
+func GetExifValue(updatedExifIfd *goexif.Ifd, key string) (string, error) {
+
+	results, err := updatedExifIfd.FindTagWithName(key)
+	if err != nil {
+		//fmt.Println(err)
+		return "", err
+	}
+
+	ite := results[0]
+
+	phrase, err := ite.FormatFirst()
+	if err != nil {
+		//fmt.Println(err)
+		return "", err
+	}
+
+	return phrase, nil
+}
+
+func GetExifDateTime(path string) (time.Time, error) {
+
+	//opt := goexif.ScanOptions{}
+	//dt, err := goexif.SearchFileAndExtractExif(path)
+	//if err != nil {
+	//	fmt.Println(err)
+	//	return
+	//}
+	//ets, _, err := goexif.GetFlatExifData(dt, &opt)
+	//if err != nil {
+	//	fmt.Println(err)
+	//	return
+	//}
+	//for _, et := range ets {
+	//	fmt.Println(et.TagId, et.TagName, et.TagTypeName, et.Value)
+	//}
+
+	rawExif, err := goexif.SearchFileAndExtractExif(path)
+	if err != nil {
+		//fmt.Println(err)
+		return time.Time{}, err
+	}
+
+	im, err := exifcommon.NewIfdMappingWithStandard()
+	if err != nil {
+		//fmt.Println(err)
+		return time.Time{}, err
+	}
+
+	ti := goexif.NewTagIndex()
+
+	_, index, err := goexif.Collect(im, ti, rawExif)
+	if err != nil {
+		//fmt.Println(err)
+		return time.Time{}, err
+	}
+
+	updatedRootIfd := index.RootIfd
+
+	updatedExifIfd, err := updatedRootIfd.ChildWithIfdPath(exifcommon.IfdExifStandardIfdIdentity)
+	if err != nil {
+		//fmt.Println(err)
+		return time.Time{}, err
+	}
+
+	value, err := GetExifValue(updatedExifIfd, "DateTimeOriginal")
+	if err != nil {
+		value, err = GetExifValue(updatedExifIfd, "DateTime")
+		if err != nil {
+			return time.Time{}, err
+		}
+	}
+
+	exifTimeLayout := "2006:01:02 15:04:05"
+
+	t, err := time.Parse(exifTimeLayout, value)
+	if err != nil {
+		//fmt.Println(err)
+		return time.Time{}, err
+	}
+	return t, nil
+}
+
+func PrintExifData(path string) {
+
+	opt := goexif.ScanOptions{}
+	dt, err := goexif.SearchFileAndExtractExif(path)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	ets, _, err := goexif.GetFlatExifData(dt, &opt)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	for _, et := range ets {
+		fmt.Println(et.TagId, et.TagName, et.TagTypeName, et.Value)
+	}
 }
