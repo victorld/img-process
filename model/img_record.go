@@ -4,9 +4,9 @@ import (
 	"time"
 )
 
-// imgRecord表 结构体  ImgRecord
+// ImgRecordDB imgRecord表 结构体  ImgRecord
 type ImgRecordDB struct {
-	COMMON_MODEL
+	CommonModel
 	ScanArgs          string     `json:"scanArgs" form:"scanArgs" gorm:"column:scan_args;comment:扫描参数;size:255;"`
 	FileTotal         *int       `json:"fileTotal" form:"fileTotal" gorm:"type:int(10);column:file_total;comment:文件总数;size:10;"`                                  //文件总数
 	DirTotal          *int       `json:"dirTotal" form:"dirTotal" gorm:"type:int(10);column:dir_total;comment:目录总数;size:10;"`                                     //目录总数

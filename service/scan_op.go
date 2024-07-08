@@ -34,6 +34,9 @@ var exifErr2FileMu sync.Mutex
 var exifErr3FileMu sync.Mutex
 var md5EmptyFileListMu sync.Mutex
 
+var imgShootDateService = dao.ImgShootDateService{}
+var imgRecordService = dao.ImgRecordService{}
+
 var wg sync.WaitGroup //异步照片处理等待
 
 type dirStruct struct { //目录打印需要的结构体
@@ -120,11 +123,16 @@ func ScanAndSave(scanArgs model.DoScanImgArg) {
 	imgRecordDB.ExifErr2Map = tools.MarshalJsonToString(imgRecord.ExifErr2Map)
 	imgRecordDB.ExifErr3Map = tools.MarshalJsonToString(imgRecord.ExifErr3Map)
 
-	var imgRecordService = dao.ImgRecordService{}
-	/*if err = imgRecordService.RegisterImgRecord(&imgRecordDB); err != nil {
-		fmt.Println("register error : ", err)
+	if err = imgRecordService.RegisterImgRecord(&imgRecordDB); err != nil {
+		tools.Logger.Error("register error : ", err)
 		return
-	}*/
+	}
+
+	var imgShootDateDB model.ImgShootDateDB
+	if err = imgShootDateService.RegisterImgShootDate(&imgShootDateDB); err != nil {
+		tools.Logger.Error("register error : ", err)
+		return
+	}
 
 	if err = imgRecordService.CreateImgRecord(&imgRecordDB); err != nil {
 		tools.Logger.Error("create error : ", err)
@@ -135,6 +143,14 @@ func ScanAndSave(scanArgs model.DoScanImgArg) {
 }
 
 func DoScan(scanArgs model.DoScanImgArg) (string, error) {
+
+	start1 := time.Now() // 获取当前时间
+	var shootDateCacheMap = map[string]string{}
+	if cons.ImgCache {
+		createShootDateCache(&shootDateCacheMap)
+	}
+	elapsed1 := time.Since(start1)
+	start2 := time.Now() // 获取当前时间
 
 	startPath := *scanArgs.StartPath
 
@@ -197,11 +213,9 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	defer tools.Logger.Sync()
 
-	start := time.Now() // 获取当前时间
-
 	tools.Logger.Info()
 	tools.Logger.Info("————————————————————————————————————————————————————————")
-	tools.Logger.Info("time : ", start.Format(tools.DatetimeTemplate))
+	tools.Logger.Info("time : ", start1.Format(tools.DatetimeTemplate))
 	tools.Logger.Info("startPath : ", startPath)
 	tools.Logger.Info("basePath : ", basePath)
 
@@ -324,7 +338,8 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 						exifErr2FileSuffixMap,
 						exifErr2FileSet,
 						exifErr3FileSuffixMap,
-						exifErr3FileSet) //单个文件协程处理
+						exifErr3FileSet,
+						shootDateCacheMap) //单个文件协程处理
 				})
 
 			}
@@ -340,9 +355,8 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	ticker.Stop() //计时终止
 
-	elapsed := time.Since(start)
-
-	start2 := time.Now() // 获取当前时间
+	elapsed2 := time.Since(start2)
+	start3 := time.Now() // 获取当前时间
 
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("==========ROUND 2: PROCESS FILE==========", "red"))
@@ -445,16 +459,17 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("==========ROUND 3: PROCESS COST==========", "red"))
 	tools.Logger.Info()
-	elapsed2 := time.Since(start2)
-	tools.Logger.Info("执行扫描完成耗时 : ", elapsed)
-	tools.Logger.Info("执行数据处理完成耗时 : ", elapsed2)
+	elapsed3 := time.Since(start3)
+	tools.Logger.Info("加载缓存完成耗时 : ", elapsed1)
+	tools.Logger.Info("执行扫描完成耗时 : ", elapsed2)
+	tools.Logger.Info("执行数据处理完成耗时 : ", elapsed3)
 	tools.Logger.Info()
 
 	imgRecord := ImgRecord{}
 	imgRecord.FileTotal = fileTotalCnt
 	imgRecord.DirTotal = dirTotalCnt
-	imgRecord.StartDate = start
-	imgRecord.UseTime = int(math.Ceil(elapsed.Seconds()))
+	imgRecord.StartDate = start1
+	imgRecord.UseTime = int(math.Ceil(elapsed1.Seconds() + elapsed2.Seconds() + elapsed3.Seconds()))
 	imgRecord.BasePath = basePath
 	imgRecord.SuffixMap = suffixMap
 	imgRecord.YearMap = yearMap
@@ -653,7 +668,8 @@ func processOneFile(
 	exifErr2FileSuffixMap map[string]int,
 	exifErr2FileSet mapset.Set,
 	exifErr3FileSuffixMap map[string]int,
-	exifErr3FileSet mapset.Set) {
+	exifErr3FileSet mapset.Set,
+	shootDateCacheMap map[string]string) {
 
 	defer wg.Done()
 
@@ -666,10 +682,7 @@ func processOneFile(
 			suffix,
 			exifErr1FileSuffixMap,
 			exifErr1FileSet,
-			exifErr2FileSuffixMap,
-			exifErr2FileSet,
-			exifErr3FileSuffixMap,
-			exifErr3FileSet)
+			shootDateCacheMap)
 		if shootDate != "" {
 			//tools.Logger.Info("shootDate : " + shootDate)
 		}
@@ -749,32 +762,67 @@ func processOneFile(
 
 }
 
+func createShootDateCache(shootDateCacheMap *map[string]string) {
+
+	var imgShootDateSearch model.ImgShootDateSearch
+	list, _, err := imgShootDateService.GetImgShootDateInfoList(imgShootDateSearch)
+	if err != nil {
+
+	}
+	for _, isd := range list {
+		(*shootDateCacheMap)[isd.ImgKey] = isd.ShootDate
+	}
+	tools.Logger.Info("")
+
+}
+
 func getShootDateMethod2(
-	path string,
+	filepath string,
 	suffix string,
 	exifErr1FileSuffixMap map[string]int,
 	exifErr1FileSet mapset.Set,
-	exifErr2FileSuffixMap map[string]int,
-	exifErr2FileSet mapset.Set,
-	exifErr3FileSuffixMap map[string]int,
-	exifErr3FileSet mapset.Set,
+	shootDateCacheMap map[string]string,
 ) (string, error) {
 
-	shootTime, err := tools.GetExifDateTime(path)
-	if err != nil {
-		exifErr1FileMu.Lock()
-		if value, ok := exifErr1FileSuffixMap[suffix]; ok {
-			exifErr1FileSuffixMap[suffix] = value + 1
+	fileName := path.Base(filepath)
+	dirDate := tools.GetDirDate(filepath)
+	imgKey := dirDate + "|" + fileName
+	shootDateRet := ""
+
+	if value, ok := shootDateCacheMap[imgKey]; ok {
+		shootDateRet = value
+	} else {
+		shootTime, err := tools.GetExifDateTime(filepath)
+		var imgShootDateDB model.ImgShootDateDB
+		imgShootDateDB.ImgKey = imgKey
+
+		state := 1
+		imgShootDateDB.State = &state
+		if err != nil {
+			exifErr1FileMu.Lock()
+			if value, ok := exifErr1FileSuffixMap[suffix]; ok {
+				exifErr1FileSuffixMap[suffix] = value + 1
+			} else {
+				exifErr1FileSuffixMap[suffix] = 1
+			}
+			exifErr1FileSet.Add(filepath)
+			exifErr1FileMu.Unlock()
+			shootDateRet = ""
+			imgShootDateDB.ShootDate = shootDateRet
 		} else {
-			exifErr1FileSuffixMap[suffix] = 1
+			shootDateRet = shootTime.Format("2006-01-02")
+			//shootTimeStr := shootTime.Format("2006-01-02 15:04:05")
+			imgShootDateDB.ShootDate = shootDateRet
 		}
-		exifErr1FileSet.Add(path)
-		exifErr1FileMu.Unlock()
-		return "", err
+		if cons.ImgCache {
+			if err = imgShootDateService.CreateImgShootDate(&imgShootDateDB); err != nil {
+				tools.Logger.Error("CreateImgShootDate error : ", err)
+			}
+		}
+
 	}
-	shootTimeStr := shootTime.Format("2006-01-02")
-	//shootTimeStr := shootTime.Format("2006-01-02 15:04:05")
-	return shootTimeStr, nil
+
+	return shootDateRet, nil
 
 	/*f, err := os.Open(path)
 

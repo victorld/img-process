@@ -20,5 +20,6 @@ scan:
   ModifyDateAction: false
 basic:
   ColorOutput: false
+  ImgCache: true
 
 

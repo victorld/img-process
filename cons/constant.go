@@ -25,6 +25,7 @@ var (
 	DeleteAction     bool
 	MoveFileAction   bool
 	ModifyDateAction bool
+	ImgCache         bool
 	WorkDir          string
 )
 
@@ -49,6 +50,7 @@ func InitConst() {
 	DeleteAction, _ = strconv.ParseBool(tools.GetConfigString("scan.DeleteAction"))
 	MoveFileAction, _ = strconv.ParseBool(tools.GetConfigString("scan.MoveFileAction"))
 	ModifyDateAction, _ = strconv.ParseBool(tools.GetConfigString("scan.ModifyDateAction"))
+	ImgCache, _ = strconv.ParseBool(tools.GetConfigString("basic.ImgCache"))
 
 	fmt.Println("Dbusername :", Dbusername)
 	fmt.Println("Dbpassword :", Dbpassword)
@@ -68,6 +70,8 @@ func InitConst() {
 	fmt.Println("DeleteAction :", DeleteAction)
 	fmt.Println("MoveFileAction :", MoveFileAction)
 	fmt.Println("ModifyDateAction :", ModifyDateAction)
+
+	fmt.Println("ImgCache :", ImgCache)
 
 	WorkDir, _ = os.Getwd() // 项目工作目录
 	fmt.Println("工作目录: " + WorkDir)
