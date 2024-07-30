@@ -55,22 +55,28 @@ func testChan() {
 }
 
 func testShootDate() {
-	file := "/Users/ld/Desktop/IMG_7862.PNG"
-	dateTime, err := tools.GetExifDateTime(file)
+	file := "/Users/ld/Desktop/IMG_0112.JPG"
+	shootTime, err := tools.GetExifDateTime(file)
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		fmt.Println(dateTime)
+		fmt.Println(shootTime.Format("2006-01-02"))
 	}
 
 	//tools.TestGetShootDate(file)
 
 }
 
+func testPrintExifData() {
+	file := "/Users/ld/Desktop/IMG_0112.JPG"
+	tools.PrintExifData(file)
+}
+
 func main() {
 	fmt.Println()
 
-	testShootDate()
+	//testShootDate()
+	testPrintExifData()
 	//testDate()
 	//testGetMD5()
 	//testMd5Delete()

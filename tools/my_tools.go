@@ -340,7 +340,13 @@ func ImageNumMapWriteToFile(m map[string][]string, filepath string) {
 }
 
 func ImageNumRevMapWriteToFile(m map[string][]string, filepath string) {
-	whiteList := []string{}
+	whiteList, _ := ReadFileLines("orderWrongAccept.txt")
+	var whiteListKey []string
+	for _, key := range whiteList {
+		whiteListKey = append(whiteListKey, strings.TrimSpace(strings.Split(key, ",")[0]))
+	}
+
+	var orderWrongImage []string
 
 	keys := []string{}
 
@@ -362,6 +368,8 @@ func ImageNumRevMapWriteToFile(m map[string][]string, filepath string) {
 				buffer.WriteString("**" + key2 + ",")
 			} else {
 				buffer.WriteString("##" + key2 + ",")
+				orderWrongImage = append(orderWrongImage, key2)
+
 			}
 			oldKey = key2
 
@@ -370,6 +378,8 @@ func ImageNumRevMapWriteToFile(m map[string][]string, filepath string) {
 	}
 
 	os.WriteFile(filepath, buffer.Bytes(), 0666)
+
+	fmt.Println("orderWrongImage : ", orderWrongImage)
 
 }
 
