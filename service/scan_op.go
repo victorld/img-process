@@ -148,7 +148,15 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	var shootDateCacheMap = map[string]string{}
 	if cons.ImgCache {
 		createShootDateCache(&shootDateCacheMap)
+	} else {
+		err := imgShootDateService.TruncateImgShootDate()
+		if err != nil {
+			panic("TruncateImgShootDate ERROR ! ")
+		} else {
+			tools.Logger.Info("TruncateImgShootDate success!")
+		}
 	}
+
 	elapsed1 := time.Since(start1)
 	start2 := time.Now() // 获取当前时间
 
@@ -675,6 +683,10 @@ func processOneFile(
 
 	suffix := strings.ToLower(path.Ext(photo))
 
+	if strings.HasSuffix(photo, "IMG_5081.HEIC") {
+		tools.Logger.Info()
+	}
+
 	shootDate := ""
 	if suffix != ".mov" && suffix != ".mp4" { //exif拍摄时间获取
 		shootDate, _ = getShootDateMethod2(
@@ -814,11 +826,11 @@ func getShootDateMethod2(
 			//shootTimeStr := shootTime.Format("2006-01-02 15:04:05")
 			imgShootDateDB.ShootDate = shootDateRet
 		}
-		if cons.ImgCache {
-			if err = imgShootDateService.CreateImgShootDate(&imgShootDateDB); err != nil {
-				tools.Logger.Error("CreateImgShootDate error : ", err)
-			}
+		//if cons.ImgCache {
+		if err = imgShootDateService.CreateImgShootDate(&imgShootDateDB); err != nil {
+			tools.Logger.Error("CreateImgShootDate error : ", err)
 		}
+		//}
 
 	}
 

@@ -21,6 +21,11 @@ func (imgShootDateService *ImgShootDateService) CreateImgShootDate(imgShootDate 
 	return err
 }
 
+func (imgShootDateService *ImgShootDateService) TruncateImgShootDate() (err error) {
+	err = orm.ImgMysqlDB.Exec("truncate table img_shoot_date").Error
+	return err
+}
+
 // DeleteImgShootDate 删除imgShootDate表记录
 // Author [piexlmax](https://github.com/piexlmax)
 func (imgShootDateService *ImgShootDateService) DeleteImgShootDate(imgShootDate model.ImgShootDateDB) (err error) {
