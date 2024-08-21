@@ -382,6 +382,22 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		return nil
 	})
 
+	tools.Logger.Info("processed(end) ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
+
+	wg.Wait()
+
+	tools.Logger.Info(tools.StrWithColor("Tick at "+time.Now().Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCnt-tickerSize), "red"))
+
+	ticker.Stop() //计时终止
+
+	tickerSize = 0
+	go func() {
+		for t := range ticker.C {
+			tools.Logger.Info(tools.StrWithColor("Tick at "+t.Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCntBak-tickerSize), "red"))
+			tickerSize = fileTotalCntBak
+		}
+	}()
+
 	_ = filepath.Walk(startPathBak, func(file string, info os.FileInfo, err error) error {
 		if err != nil {
 			tools.Logger.Error("startPathBak WALK ERROR : ", err)
@@ -428,17 +444,18 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 				}
 
 				fileTotalCntBak = fileTotalCntBak + 1
+				if fileTotalCnt%1000 == 0 { //每隔1000行打印一次
+					tools.Logger.Info("bak0-dir processed ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
+					tools.Logger.Info("pool running size : ", p.Running())
+				}
 			}
 
 		}
 		return nil
 	})
+	tools.Logger.Info("bak0-dir processed(end) ", tools.StrWithColor(strconv.Itoa(fileTotalCntBak), "red"))
 
-	tools.Logger.Info("processed(end) ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
-
-	wg.Wait()
-
-	tools.Logger.Info(tools.StrWithColor("Tick at "+time.Now().Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCnt-tickerSize), "red"))
+	tools.Logger.Info(tools.StrWithColor("Tick at "+time.Now().Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCntBak-tickerSize), "red"))
 
 	ticker.Stop() //计时终止
 
