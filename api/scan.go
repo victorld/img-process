@@ -32,6 +32,9 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 	if doScanImgArg.StartPath == nil {
 		doScanImgArg.StartPath = &cons.StartPath
 	}
+	if doScanImgArg.StartPathBak == nil {
+		doScanImgArg.StartPathBak = &cons.StartPathBak
+	}
 	if doScanImgArg.DeleteShow == nil {
 		doScanImgArg.DeleteShow = &cons.DeleteShow
 	}

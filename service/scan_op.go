@@ -60,12 +60,17 @@ type photoStruct struct { //照片打印需要的结构体
 type ImgRecord struct {
 	ScanArgs          string         //扫描参数
 	FileTotal         int            //文件总数
+	FileTotalBak      int            //文件总数
 	DirTotal          int            //目录总数
+	DirTotalBak       int            //目录总数
 	StartDate         time.Time      //记录时间
 	UseTime           int            //用时
 	BasePath          string         //基础目录
+	BasePathBak       string         //基础目录
 	SuffixMap         map[string]int //后缀统计
+	SuffixMapBak      map[string]int //后缀统计
 	YearMap           map[string]int //年份统计
+	YearMapBak        map[string]int //年份统计
 	FileDateCnt       int            //有时间文件统计
 	DeleteFileCnt     int            //需要删除文件数
 	ModifyDateFileCnt int            //需要修改修改日期文件数
@@ -117,7 +122,9 @@ func ScanAndSave(scanArgs model.DoScanImgArg) {
 	json.Unmarshal([]byte(imgRecordString), &imgRecordDB)
 
 	imgRecordDB.SuffixMap = tools.MarshalJsonToString(imgRecord.SuffixMap)
+	imgRecordDB.SuffixMapBak = tools.MarshalJsonToString(imgRecord.SuffixMapBak)
 	imgRecordDB.YearMap = tools.MarshalJsonToString(imgRecord.YearMap)
+	imgRecordDB.YearMapBak = tools.MarshalJsonToString(imgRecord.YearMapBak)
 	//imgRecordDB.DumpFileDeleteList = tools.MarshalJsonToString(imgRecord.DumpFileDeleteList)
 	imgRecordDB.ExifErr1Map = tools.MarshalJsonToString(imgRecord.ExifErr1Map)
 	imgRecordDB.ExifErr2Map = tools.MarshalJsonToString(imgRecord.ExifErr2Map)
@@ -146,14 +153,17 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	start1 := time.Now() // 获取当前时间
 	var shootDateCacheMap = map[string]string{}
-	if cons.ImgCache {
-		createShootDateCache(&shootDateCacheMap)
-	} else {
+
+	if cons.TruncateTable { //清理img cache表，如果清理表则不用构建cache了
 		err := imgShootDateService.TruncateImgShootDate()
 		if err != nil {
 			panic("TruncateImgShootDate ERROR ! ")
 		} else {
 			tools.Logger.Info("TruncateImgShootDate success!")
+		}
+	} else {
+		if cons.ImgCache { //不清理表且指定需要cache时才构建
+			createShootDateCache(&shootDateCacheMap)
 		}
 	}
 
@@ -161,6 +171,11 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	start2 := time.Now() // 获取当前时间
 
 	startPath := *scanArgs.StartPath
+	startPathBak := *scanArgs.StartPathBak
+
+	if startPathBak == "" {
+		startPathBak = startPath
+	}
 
 	deleteShow := *scanArgs.DeleteShow
 	moveFileShow := *scanArgs.MoveFileShow
@@ -181,20 +196,30 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	if !strings.Contains(startPath, "pic-new") {
 		return "", errors.New("startPath error ")
 	}
+	if !strings.Contains(startPathBak, "pic-new") {
+		return "", errors.New("StartPathBak error ")
+	}
 
-	var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
+	var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7]          //指向pic-new的目录
+	var basePathBak = startPathBak[0 : strings.Index(startPathBak, "pic-new")+7] //指向pic-new的目录
 
 	tools.Logger.Info("DoScan args : ", deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
 
 	var suffixMap = map[string]int{}           //后缀统计
+	var suffixMapBak = map[string]int{}        //后缀统计
 	var yearMap = map[string]int{}             //年份统计
+	var yearMapBak = map[string]int{}          //年份统计
 	var monthMap = map[string]int{}            //月份统计
+	var monthMapBak = map[string]int{}         //月份统计
 	var dayMap = map[string]int{}              //日期统计
+	var dayMapBak = map[string]int{}           //日期统计
 	var imageNumMap = map[string][]string{}    //照片数字统计-照片key
 	var imageNumRevMap = map[string][]string{} //照片数字统计-日期key
 
-	var fileTotalCnt = 0 //文件总量
-	var dirTotalCnt = 0  //目录总量
+	var fileTotalCnt = 0    //文件总量
+	var dirTotalCnt = 0     //目录总量
+	var fileTotalCntBak = 0 //文件总量
+	var dirTotalCntBak = 0  //目录总量
 
 	var fileDateFileList = mapset.NewSet() //文件名带日期的照片
 
@@ -226,6 +251,8 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	tools.Logger.Info("time : ", start1.Format(tools.DatetimeTemplate))
 	tools.Logger.Info("startPath : ", startPath)
 	tools.Logger.Info("basePath : ", basePath)
+	tools.Logger.Info("startPathBak : ", startPathBak)
+	tools.Logger.Info("basePathBak : ", basePathBak)
 
 	tools.Logger.Info()
 
@@ -355,6 +382,58 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		return nil
 	})
 
+	_ = filepath.Walk(startPathBak, func(file string, info os.FileInfo, err error) error {
+		if err != nil {
+			tools.Logger.Error("startPathBak WALK ERROR : ", err)
+			panic("startPathBak WALK ERROR ! ")
+			return err
+		}
+		if info.IsDir() { //遍历目录
+			dirTotalCntBak = dirTotalCntBak + 1
+
+		} else { //遍历文件
+			fileName := path.Base(file)
+			fileSuffix := strings.ToLower(path.Ext(file))
+
+			if strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || *(tools.GetFileSize(file)) == 0 { //非法文件加入待处理列表
+
+			} else {
+
+				if value, ok := suffixMapBak[fileSuffix]; ok { //统计文件的后缀
+					suffixMapBak[fileSuffix] = value + 1
+				} else {
+					suffixMapBak[fileSuffix] = 1
+				}
+
+				day := tools.GetDirDate(file)
+				year := day[0:4]
+				month := day[0:7]
+
+				if value, ok := yearMapBak[year]; ok { //统计照片年份
+					yearMapBak[year] = value + 1
+				} else {
+					yearMapBak[year] = 1
+				}
+
+				if value, ok := monthMapBak[month]; ok { //统计照片年份
+					monthMapBak[month] = value + 1
+				} else {
+					monthMapBak[month] = 1
+				}
+
+				if value, ok := dayMapBak[day]; ok { //统计照片年份
+					dayMapBak[day] = value + 1
+				} else {
+					dayMapBak[day] = 1
+				}
+
+				fileTotalCntBak = fileTotalCntBak + 1
+			}
+
+		}
+		return nil
+	})
+
 	tools.Logger.Info("processed(end) ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
 
 	wg.Wait()
@@ -475,12 +554,17 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	imgRecord := ImgRecord{}
 	imgRecord.FileTotal = fileTotalCnt
+	imgRecord.FileTotalBak = fileTotalCntBak
 	imgRecord.DirTotal = dirTotalCnt
+	imgRecord.DirTotalBak = dirTotalCntBak
 	imgRecord.StartDate = start1
 	imgRecord.UseTime = int(math.Ceil(elapsed1.Seconds() + elapsed2.Seconds() + elapsed3.Seconds()))
 	imgRecord.BasePath = basePath
+	imgRecord.BasePathBak = basePathBak
 	imgRecord.SuffixMap = suffixMap
+	imgRecord.SuffixMapBak = suffixMapBak
 	imgRecord.YearMap = yearMap
+	imgRecord.YearMapBak = yearMapBak
 	imgRecord.FileDateCnt = fileDateFileList.Cardinality()
 	imgRecord.DeleteFileCnt = deleteFileList.Cardinality()
 	imgRecord.ModifyDateFileCnt = modifyDateFileList.Cardinality()
@@ -826,11 +910,11 @@ func getShootDateMethod2(
 			//shootTimeStr := shootTime.Format("2006-01-02 15:04:05")
 			imgShootDateDB.ShootDate = shootDateRet
 		}
-		//if cons.ImgCache {
-		if err = imgShootDateService.CreateImgShootDate(&imgShootDateDB); err != nil {
-			tools.Logger.Error("CreateImgShootDate error : ", err)
+		if cons.ImgCache { //指定使用cache时，才更新库
+			if err = imgShootDateService.CreateImgShootDate(&imgShootDateDB); err != nil {
+				tools.Logger.Error("CreateImgShootDate error : ", err)
+			}
 		}
-		//}
 
 	}
 

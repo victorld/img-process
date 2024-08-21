@@ -9,4 +9,5 @@ type DoScanImgArg struct {
 	MoveFileAction   *bool   `json:"moveFileAction" form:"moveFileAction"`
 	ModifyDateAction *bool   `json:"modifyDateAction" form:"modifyDateAction"`
 	StartPath        *string `json:"startPath" form:"startPath"`
+	StartPathBak     *string `json:"StartPathBak" form:"StartPathBak"`
 }

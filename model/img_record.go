@@ -9,12 +9,17 @@ type ImgRecordDB struct {
 	CommonModel
 	ScanArgs          string     `json:"scanArgs" form:"scanArgs" gorm:"column:scan_args;comment:扫描参数;size:255;"`
 	FileTotal         *int       `json:"fileTotal" form:"fileTotal" gorm:"type:int(10);column:file_total;comment:文件总数;size:10;"`                                  //文件总数
+	FileTotalBak      *int       `json:"fileTotalBak" form:"fileTotalBak" gorm:"type:int(10);column:file_total_bak;comment:文件总数;size:10;"`                        //文件总数
 	DirTotal          *int       `json:"dirTotal" form:"dirTotal" gorm:"type:int(10);column:dir_total;comment:目录总数;size:10;"`                                     //目录总数
+	DirTotalBak       *int       `json:"dirTotalBak" form:"dirTotalBak" gorm:"type:int(10);column:dir_total_bak;comment:目录总数;size:10;"`                           //目录总数
 	StartDate         *time.Time `json:"startDate" form:"startDate" gorm:"column:start_date;comment:开始时间;"`                                                       //记录时间
 	UseTime           *int       `json:"useTime" form:"useTime" gorm:"type:int(10);column:use_time;comment:用时;size:10;"`                                          //用时
 	BasePath          string     `json:"basePath" form:"basePath" gorm:"column:base_path;comment:基础目录;size:255;"`                                                 //基础目录
+	BasePathBak       string     `json:"basePathBak" form:"basePathBak" gorm:"column:base_path_bak;comment:基础目录;size:255;"`                                       //基础目录
 	SuffixMap         string     `json:"suffixMap" form:"suffixMap" gorm:"column:suffix_map;comment:后缀统计;size:255;"`                                              //后缀统计
+	SuffixMapBak      string     `json:"suffixMapBak" form:"suffixMapBak" gorm:"column:suffix_map_bak;comment:后缀统计;size:255;"`                                    //后缀统计
 	YearMap           string     `json:"yearMap" form:"yearMap" gorm:"column:year_map;comment:年份统计;size:255;"`                                                    //年份统计
+	YearMapBak        string     `json:"yearMapBak" form:"yearMapBak" gorm:"column:year_map_bak;comment:年份统计;size:255;"`                                          //年份统计
 	FileDateCnt       *int       `json:"fileDateCnt" form:"fileDateCnt" gorm:"type:int(10);column:file_date_cnt;comment:有时间文件统计;size:10;"`                        //有时间文件统计
 	DeleteFileCnt     *int       `json:"deleteFileCnt" form:"deleteFileCnt" gorm:"type:int(10);column:delete_file_cnt;comment:需要删除文件数;size:10;"`                  //需要删除文件数
 	ModifyDateFileCnt *int       `json:"modifyDateFileCnt" form:"modifyDateFileCnt" gorm:"type:int(10);column:modify_date_file_cnt;comment:需要修改修改日期文件数;size:10;"` //需要修改修改日期文件数

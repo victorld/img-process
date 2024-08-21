@@ -19,6 +19,7 @@ func main() {
 	var moveFileAction = false   //是否操作需要移动目录的文件
 	var modifyDateAction = false //是否操作修改日期的文件
 	var startpath = ""
+	var startpathBak = ""
 
 	// 建立TCP连接
 	conn, err := net.Dial("tcp", "127.0.0.1:9091")
@@ -28,7 +29,7 @@ func main() {
 	// 使用JSON协议
 	client := rpc.NewClientWithCodec(jsonrpc.NewClientCodec(conn))
 	// 同步调用
-	args := &model.DoScanImgArg{&deleteShow, &moveFileShow, &modifyDateShow, &md5Show, &deleteAction, &moveFileAction, &modifyDateAction, &startpath}
+	args := &model.DoScanImgArg{&deleteShow, &moveFileShow, &modifyDateShow, &md5Show, &deleteAction, &moveFileAction, &modifyDateAction, &startpath, &startpathBak}
 	fmt.Println("img_rpc call args :", *args)
 	var reply string
 	err = client.Call("Img.DoScan", args, &reply)

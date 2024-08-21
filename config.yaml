@@ -11,15 +11,17 @@ server:
   HttpPassword: root@123
 scan:
   StartPath: /Users/ld/Desktop/pic-new
+  StartPathBak:
   DeleteShow: true
   MoveFileShow: true
-  ModifyDateShow: true
+  ModifyDateShow: false
   Md5Show: true
   DeleteAction: false
   MoveFileAction: false
   ModifyDateAction: false
 basic:
-  ColorOutput: false
-  ImgCache: true
+  ColorOutput: true
+  ImgCache: false
+  TruncateTable: false
 
 

@@ -18,6 +18,7 @@ var (
 	HttpUsername     string
 	HttpPassword     string
 	StartPath        string
+	StartPathBak     string
 	DeleteShow       bool
 	MoveFileShow     bool
 	ModifyDateShow   bool
@@ -26,6 +27,7 @@ var (
 	MoveFileAction   bool
 	ModifyDateAction bool
 	ImgCache         bool
+	TruncateTable    bool
 	WorkDir          string
 )
 
@@ -43,6 +45,7 @@ func InitConst() {
 	HttpPassword = tools.GetConfigString("server.HttpPassword")
 
 	StartPath = tools.GetConfigString("scan.StartPath")
+	StartPathBak = tools.GetConfigString("scan.StartPathBak")
 	DeleteShow, _ = strconv.ParseBool(tools.GetConfigString("scan.DeleteShow"))
 	MoveFileShow, _ = strconv.ParseBool(tools.GetConfigString("scan.MoveFileShow"))
 	ModifyDateShow, _ = strconv.ParseBool(tools.GetConfigString("scan.ModifyDateShow"))
@@ -51,6 +54,7 @@ func InitConst() {
 	MoveFileAction, _ = strconv.ParseBool(tools.GetConfigString("scan.MoveFileAction"))
 	ModifyDateAction, _ = strconv.ParseBool(tools.GetConfigString("scan.ModifyDateAction"))
 	ImgCache, _ = strconv.ParseBool(tools.GetConfigString("basic.ImgCache"))
+	TruncateTable, _ = strconv.ParseBool(tools.GetConfigString("basic.TruncateTable"))
 
 	fmt.Println("Dbusername :", Dbusername)
 	fmt.Println("Dbpassword :", Dbpassword)
@@ -64,6 +68,7 @@ func InitConst() {
 	fmt.Println("HttpPassword :", HttpPassword)
 
 	fmt.Println("StartPath :", StartPath)
+	fmt.Println("StartPathBak :", StartPathBak)
 	fmt.Println("DeleteShow :", DeleteShow)
 	fmt.Println("MoveFileShow :", MoveFileShow)
 	fmt.Println("ModifyDateShow :", ModifyDateShow)
@@ -72,6 +77,7 @@ func InitConst() {
 	fmt.Println("ModifyDateAction :", ModifyDateAction)
 
 	fmt.Println("ImgCache :", ImgCache)
+	fmt.Println("TruncateTable :", TruncateTable)
 
 	WorkDir, _ = os.Getwd() // 项目工作目录
 	fmt.Println("工作目录: " + WorkDir)
