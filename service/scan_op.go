@@ -390,6 +390,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	ticker.Stop() //计时终止
 
+	ticker.Reset(time.Minute * 1)
 	tickerSize = 0
 	go func() {
 		for t := range ticker.C {
@@ -444,8 +445,8 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 				}
 
 				fileTotalCntBak = fileTotalCntBak + 1
-				if fileTotalCnt%1000 == 0 { //每隔1000行打印一次
-					tools.Logger.Info("bak0-dir processed ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
+				if fileTotalCntBak%1000 == 0 { //每隔1000行打印一次
+					tools.Logger.Info("bak0-dir processed ", tools.StrWithColor(strconv.Itoa(fileTotalCntBak), "red"))
 					tools.Logger.Info("pool running size : ", p.Running())
 				}
 			}
