@@ -7,7 +7,7 @@ import (
 // ImgRecordDB imgRecord表 结构体  ImgRecord
 type ImgRecordDB struct {
 	CommonModel
-	ScanArgs          string     `json:"scanArgs" form:"scanArgs" gorm:"column:scan_args;comment:扫描参数;size:255;"`
+	ScanArgs          string     `json:"scanArgs" form:"scanArgs" gorm:"column:scan_args;comment:扫描参数;size:1000;"`
 	FileTotal         *int       `json:"fileTotal" form:"fileTotal" gorm:"type:int(10);column:file_total;comment:文件总数;size:10;"`                                  //文件总数
 	FileTotalBak      *int       `json:"fileTotalBak" form:"fileTotalBak" gorm:"type:int(10);column:file_total_bak;comment:文件总数;size:10;"`                        //文件总数
 	DirTotal          *int       `json:"dirTotal" form:"dirTotal" gorm:"type:int(10);column:dir_total;comment:目录总数;size:10;"`                                     //目录总数
@@ -20,6 +20,10 @@ type ImgRecordDB struct {
 	SuffixMapBak      string     `json:"suffixMapBak" form:"suffixMapBak" gorm:"column:suffix_map_bak;comment:后缀统计;size:255;"`                                    //后缀统计
 	YearMap           string     `json:"yearMap" form:"yearMap" gorm:"column:year_map;comment:年份统计;size:255;"`                                                    //年份统计
 	YearMapBak        string     `json:"yearMapBak" form:"yearMapBak" gorm:"column:year_map_bak;comment:年份统计;size:255;"`                                          //年份统计
+	BakNewFileCnt     *int       `json:"bakNewFileCnt" form:"bakNewFileCnt" gorm:"type:int(10);column:bak_new_file_cnt;comment:用时;size:10;"`                      //
+	BakDeleteFileCnt  *int       `json:"bakDeleteFileCnt" form:"bakDeleteFileCnt" gorm:"type:int(10);column:bak_delete_file_cnt;comment:用时;size:10;"`             //
+	BakNewFile        string     `json:"bakNewFile" form:"bakNewFile" gorm:"column:bak_new_file;comment:年份统计;type:text;"`                                         //
+	BakDeleteFile     string     `json:"bakDeleteFile" form:"bakDeleteFile" gorm:"column:bak_delete_file;comment:年份统计;type:text;"`                                //
 	FileDateCnt       *int       `json:"fileDateCnt" form:"fileDateCnt" gorm:"type:int(10);column:file_date_cnt;comment:有时间文件统计;size:10;"`                        //有时间文件统计
 	DeleteFileCnt     *int       `json:"deleteFileCnt" form:"deleteFileCnt" gorm:"type:int(10);column:delete_file_cnt;comment:需要删除文件数;size:10;"`                  //需要删除文件数
 	ModifyDateFileCnt *int       `json:"modifyDateFileCnt" form:"modifyDateFileCnt" gorm:"type:int(10);column:modify_date_file_cnt;comment:需要修改修改日期文件数;size:10;"` //需要修改修改日期文件数
@@ -35,7 +39,7 @@ type ImgRecordDB struct {
 	ExifErr2Map string `json:"exifErr2Map" form:"exifErr2Map" gorm:"column:exif_err2_map;comment:exif错误2统计;size:255;"`            //exif错误2统计
 	ExifErr3Map string `json:"exifErr3Map" form:"exifErr3Map" gorm:"column:exif_err3_map;comment:exif错误3统计;size:255;"`            //exif错误3统计
 	IsComplete  *int   `json:"isComplete" form:"isComplete" gorm:"type:int(10);column:is_complete;comment:是否完整;size:10;"`
-	Remark      string `json:"remark" form:"remark" gorm:"column:remark;comment:备注;size:255;"`
+	Remark      string `json:"remark" form:"remark" gorm:"column:remark;comment:备注;type:text;"`
 }
 
 // TableName imgRecord表 ImgRecord自定义表名 img_record

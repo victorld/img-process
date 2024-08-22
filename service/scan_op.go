@@ -65,8 +65,12 @@ type ImgRecord struct {
 	DirTotalBak       int            //目录总数
 	StartDate         time.Time      //记录时间
 	UseTime           int            //用时
+	BakNewFileCnt     int            //用时
+	BakDeleteFileCnt  int            //用时
 	BasePath          string         //基础目录
 	BasePathBak       string         //基础目录
+	BakNewFile        string         //基础目录
+	BakDeleteFile     string         //基础目录
 	SuffixMap         map[string]int //后缀统计
 	SuffixMapBak      map[string]int //后缀统计
 	YearMap           map[string]int //年份统计
@@ -173,9 +177,9 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	startPath := *scanArgs.StartPath
 	startPathBak := *scanArgs.StartPathBak
 
-	if startPathBak == "" {
+	/*	if startPathBak == "" {
 		startPathBak = startPath
-	}
+	}*/
 
 	deleteShow := *scanArgs.DeleteShow
 	moveFileShow := *scanArgs.MoveFileShow
@@ -196,12 +200,8 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	if !strings.Contains(startPath, "pic-new") {
 		return "", errors.New("startPath error ")
 	}
-	if !strings.Contains(startPathBak, "pic-new") {
-		return "", errors.New("StartPathBak error ")
-	}
 
-	var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7]          //指向pic-new的目录
-	var basePathBak = startPathBak[0 : strings.Index(startPathBak, "pic-new")+7] //指向pic-new的目录
+	var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
 	tools.Logger.Info("DoScan args : ", deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
 
@@ -215,6 +215,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	var dayMapBak = map[string]int{}           //日期统计
 	var imageNumMap = map[string][]string{}    //照片数字统计-照片key
 	var imageNumRevMap = map[string][]string{} //照片数字统计-日期key
+	var diffMap = map[string]int{}             //日期统计
 
 	var fileTotalCnt = 0    //文件总量
 	var dirTotalCnt = 0     //目录总量
@@ -252,7 +253,6 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	tools.Logger.Info("startPath : ", startPath)
 	tools.Logger.Info("basePath : ", basePath)
 	tools.Logger.Info("startPathBak : ", startPathBak)
-	tools.Logger.Info("basePathBak : ", basePathBak)
 
 	tools.Logger.Info()
 
@@ -305,6 +305,9 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 			} else {
 
+				dirDate := tools.GetDirDate(file)
+				imgKey := dirDate + "|" + fileName
+
 				if value, ok := suffixMap[fileSuffix]; ok { //统计文件的后缀
 					suffixMap[fileSuffix] = value + 1
 				} else {
@@ -349,6 +352,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 				}
 
 				fileTotalCnt = fileTotalCnt + 1
+				diffMap[imgKey] = 0
 				if fileTotalCnt%1000 == 0 { //每隔1000行打印一次
 					tools.Logger.Info("processed ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
 					tools.Logger.Info("pool running size : ", p.Running())
@@ -390,75 +394,94 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	ticker.Stop() //计时终止
 
-	ticker.Reset(time.Minute * 1)
-	tickerSize = 0
-	go func() {
-		for t := range ticker.C {
-			tools.Logger.Info(tools.StrWithColor("Tick at "+t.Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCntBak-tickerSize), "red"))
-			tickerSize = fileTotalCntBak
+	var basePathBak = ""
+
+	if cons.BakStatEnable {
+		if startPathBak == "" || !strings.Contains(startPathBak, "pic-new") {
+			return "", errors.New("StartPathBak error ")
 		}
-	}()
+		basePathBak = startPathBak[0 : strings.Index(startPathBak, "pic-new")+7] //指向pic-new的目录
+		tools.Logger.Info("basePathBak : ", basePathBak)
 
-	_ = filepath.Walk(startPathBak, func(file string, info os.FileInfo, err error) error {
-		if err != nil {
-			tools.Logger.Error("startPathBak WALK ERROR : ", err)
-			panic("startPathBak WALK ERROR ! ")
-			return err
-		}
-		if info.IsDir() { //遍历目录
-			dirTotalCntBak = dirTotalCntBak + 1
-
-		} else { //遍历文件
-			fileName := path.Base(file)
-			fileSuffix := strings.ToLower(path.Ext(file))
-
-			if strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || *(tools.GetFileSize(file)) == 0 { //非法文件加入待处理列表
-
-			} else {
-
-				if value, ok := suffixMapBak[fileSuffix]; ok { //统计文件的后缀
-					suffixMapBak[fileSuffix] = value + 1
-				} else {
-					suffixMapBak[fileSuffix] = 1
-				}
-
-				day := tools.GetDirDate(file)
-				year := day[0:4]
-				month := day[0:7]
-
-				if value, ok := yearMapBak[year]; ok { //统计照片年份
-					yearMapBak[year] = value + 1
-				} else {
-					yearMapBak[year] = 1
-				}
-
-				if value, ok := monthMapBak[month]; ok { //统计照片年份
-					monthMapBak[month] = value + 1
-				} else {
-					monthMapBak[month] = 1
-				}
-
-				if value, ok := dayMapBak[day]; ok { //统计照片年份
-					dayMapBak[day] = value + 1
-				} else {
-					dayMapBak[day] = 1
-				}
-
-				fileTotalCntBak = fileTotalCntBak + 1
-				if fileTotalCntBak%1000 == 0 { //每隔1000行打印一次
-					tools.Logger.Info("bak0-dir processed ", tools.StrWithColor(strconv.Itoa(fileTotalCntBak), "red"))
-					tools.Logger.Info("pool running size : ", p.Running())
-				}
+		ticker.Reset(time.Minute * 1)
+		tickerSize = 0
+		go func() {
+			for t := range ticker.C {
+				tools.Logger.Info(tools.StrWithColor("Tick at "+t.Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCntBak-tickerSize), "red"))
+				tickerSize = fileTotalCntBak
 			}
+		}()
 
-		}
-		return nil
-	})
-	tools.Logger.Info("bak0-dir processed(end) ", tools.StrWithColor(strconv.Itoa(fileTotalCntBak), "red"))
+		_ = filepath.Walk(startPathBak, func(file string, info os.FileInfo, err error) error {
+			if err != nil {
+				tools.Logger.Error("startPathBak WALK ERROR : ", err)
+				panic("startPathBak WALK ERROR ! ")
+				return err
+			}
+			if info.IsDir() { //遍历目录
+				dirTotalCntBak = dirTotalCntBak + 1
 
-	tools.Logger.Info(tools.StrWithColor("Tick at "+time.Now().Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCntBak-tickerSize), "red"))
+			} else { //遍历文件
+				fileName := path.Base(file)
+				fileSuffix := strings.ToLower(path.Ext(file))
 
-	ticker.Stop() //计时终止
+				if strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || *(tools.GetFileSize(file)) == 0 { //非法文件加入待处理列表
+
+				} else {
+
+					dirDate := tools.GetDirDate(file)
+					imgKey := dirDate + "|" + fileName
+
+					if value, ok := suffixMapBak[fileSuffix]; ok { //统计文件的后缀
+						suffixMapBak[fileSuffix] = value + 1
+					} else {
+						suffixMapBak[fileSuffix] = 1
+					}
+
+					day := tools.GetDirDate(file)
+					year := day[0:4]
+					month := day[0:7]
+
+					if value, ok := yearMapBak[year]; ok { //统计照片年份
+						yearMapBak[year] = value + 1
+					} else {
+						yearMapBak[year] = 1
+					}
+
+					if value, ok := monthMapBak[month]; ok { //统计照片年份
+						monthMapBak[month] = value + 1
+					} else {
+						monthMapBak[month] = 1
+					}
+
+					if value, ok := dayMapBak[day]; ok { //统计照片年份
+						dayMapBak[day] = value + 1
+					} else {
+						dayMapBak[day] = 1
+					}
+
+					fileTotalCntBak = fileTotalCntBak + 1
+					if _, ok := diffMap[imgKey]; ok {
+						diffMap[imgKey] = 1
+					} else {
+						diffMap[imgKey] = 2
+					}
+
+					if fileTotalCntBak%1000 == 0 { //每隔1000行打印一次
+						tools.Logger.Info("bak0-dir processed ", tools.StrWithColor(strconv.Itoa(fileTotalCntBak), "red"))
+						tools.Logger.Info("pool running size : ", p.Running())
+					}
+				}
+
+			}
+			return nil
+		})
+		tools.Logger.Info("bak0-dir processed(end) ", tools.StrWithColor(strconv.Itoa(fileTotalCntBak), "red"))
+
+		tools.Logger.Info(tools.StrWithColor("Tick at "+time.Now().Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCntBak-tickerSize), "red"))
+
+		ticker.Stop() //计时终止
+	}
 
 	elapsed2 := time.Since(start2)
 	start3 := time.Now() // 获取当前时间
@@ -561,6 +584,22 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		tools.ImageNumRevMapWriteToFile(imageNumRevMap, filePath)
 	}
 
+	var bakNewFile []string
+	var bakDeleteFile []string
+	if cons.BakStatEnable { //对比主目录和备份目录
+		for imgKey, flag := range diffMap {
+			if flag == 0 { //为0表示备库里没有这个文件
+				bakNewFile = append(bakNewFile, imgKey)
+			}
+			if flag == 2 { //为2表示主库里没有这个文件
+				bakDeleteFile = append(bakDeleteFile, imgKey)
+			}
+
+		}
+		tools.Logger.Info("bakNewFile(新增文件待备份) : ", tools.MarshalJsonToString(bakNewFile))
+		tools.Logger.Info("bakDeleteFile(备份里删除文件) : ", tools.MarshalJsonToString(bakDeleteFile))
+	}
+
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("==========ROUND 3: PROCESS COST==========", "red"))
 	tools.Logger.Info()
@@ -579,6 +618,10 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	imgRecord.UseTime = int(math.Ceil(elapsed1.Seconds() + elapsed2.Seconds() + elapsed3.Seconds()))
 	imgRecord.BasePath = basePath
 	imgRecord.BasePathBak = basePathBak
+	imgRecord.BakNewFileCnt = len(bakNewFile)
+	imgRecord.BakDeleteFileCnt = len(bakDeleteFile)
+	imgRecord.BakNewFile = tools.MarshalJsonToString(bakNewFile)
+	imgRecord.BakDeleteFile = tools.MarshalJsonToString(bakDeleteFile)
 	imgRecord.SuffixMap = suffixMap
 	imgRecord.SuffixMapBak = suffixMapBak
 	imgRecord.YearMap = yearMap

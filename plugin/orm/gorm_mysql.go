@@ -20,12 +20,12 @@ type MysqlArgs struct {
 
 func InitMysql() {
 	mysqlArgs := MysqlArgs{
-		cons.Dbusername,
-		cons.Dbpassword,
-		cons.Dbhost,
-		cons.Dbport,
-		cons.Dbname,
-		cons.Dbconfig,
+		cons.DbUsername,
+		cons.DbPassword,
+		cons.DbHost,
+		cons.DbPort,
+		cons.DbName,
+		cons.DbConfig,
 	}
 	GormMysql(mysqlArgs)
 }

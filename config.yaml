@@ -1,17 +1,16 @@
 database:
-  Dbusername: root
-  Dbpassword: root
-  Dbhost: localhost
-  Dbport: 3366
-  Dbname: img
-  Dbconfig: charset=utf8&parseTime=True&loc=Local
+  DbUsername: root
+  DbPassword: root
+  DbHost: localhost
+  DbPort: 3366
+  DbName: img
+  DbConfig: charset=utf8&parseTime=True&loc=Local
 server:
   HttpPort: 8081
   HttpUsername: root
   HttpPassword: root@123
 scan:
-  StartPath: /Users/ld/Desktop/pic-new
-  StartPathBak:
+  StartPath: /Users/ld/Downloads/save/pic-lib/pic-new
   DeleteShow: true
   MoveFileShow: true
   ModifyDateShow: false
@@ -23,5 +22,11 @@ basic:
   ColorOutput: true
   ImgCache: false
   TruncateTable: false
+bak:
+  BakStatEnable: true
+  StartPathBak: /Users/ld/Downloads/save/pic-lib-bak/pic-new
+
+
+
 
 
