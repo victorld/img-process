@@ -9,7 +9,7 @@ server:
   HttpPort: 8081
   HttpUsername: root
   HttpPassword: root@123
-scan:
+scanArgs:
   StartPath: /Users/ld/Downloads/save/pic-lib/pic-new
   DeleteShow: true
   MoveFileShow: true
@@ -20,8 +20,13 @@ scan:
   ModifyDateAction: false
 basic:
   ColorOutput: true
+cache:
   ImgCache: false
   TruncateTable: false
+dump:
+  PoolSize: 8
+  Md5Retry: 3
+  Md5CountLength: 65536    # 1024 * 64
 bak:
   BakStatEnable: true
   StartPathBak: /Users/ld/Downloads/save/pic-lib-bak/pic-new

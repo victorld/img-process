@@ -30,6 +30,9 @@ var (
 	TruncateTable    bool
 	BakStatEnable    bool
 	WorkDir          string
+	PoolSize         int
+	Md5Retry         int
+	Md5CountLength   int64
 )
 
 func InitConst() {
@@ -45,17 +48,21 @@ func InitConst() {
 	HttpUsername = tools.GetConfigString("server.HttpUsername")
 	HttpPassword = tools.GetConfigString("server.HttpPassword")
 
-	StartPath = tools.GetConfigString("scan.StartPath")
-	DeleteShow, _ = strconv.ParseBool(tools.GetConfigString("scan.DeleteShow"))
-	MoveFileShow, _ = strconv.ParseBool(tools.GetConfigString("scan.MoveFileShow"))
-	ModifyDateShow, _ = strconv.ParseBool(tools.GetConfigString("scan.ModifyDateShow"))
-	Md5Show, _ = strconv.ParseBool(tools.GetConfigString("scan.Md5Show"))
-	DeleteAction, _ = strconv.ParseBool(tools.GetConfigString("scan.DeleteAction"))
-	MoveFileAction, _ = strconv.ParseBool(tools.GetConfigString("scan.MoveFileAction"))
-	ModifyDateAction, _ = strconv.ParseBool(tools.GetConfigString("scan.ModifyDateAction"))
+	StartPath = tools.GetConfigString("scanArgs.StartPath")
+	DeleteShow, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.DeleteShow"))
+	MoveFileShow, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.MoveFileShow"))
+	ModifyDateShow, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.ModifyDateShow"))
+	Md5Show, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.Md5Show"))
+	DeleteAction, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.DeleteAction"))
+	MoveFileAction, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.MoveFileAction"))
+	ModifyDateAction, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.ModifyDateAction"))
 
-	ImgCache, _ = strconv.ParseBool(tools.GetConfigString("basic.ImgCache"))
-	TruncateTable, _ = strconv.ParseBool(tools.GetConfigString("basic.TruncateTable"))
+	ImgCache, _ = strconv.ParseBool(tools.GetConfigString("cache.ImgCache"))
+	TruncateTable, _ = strconv.ParseBool(tools.GetConfigString("cache.TruncateTable"))
+
+	PoolSize, _ = strconv.Atoi(tools.GetConfigString("dump.PoolSize"))
+	Md5Retry, _ = strconv.Atoi(tools.GetConfigString("dump.Md5Retry"))
+	Md5CountLength, _ = strconv.ParseInt(tools.GetConfigString("dump.Md5CountLength"), 10, 64)
 
 	StartPathBak = tools.GetConfigString("bak.StartPathBak")
 	BakStatEnable, _ = strconv.ParseBool(tools.GetConfigString("bak.BakStatEnable"))
@@ -84,6 +91,10 @@ func InitConst() {
 
 	fmt.Println("StartPathBak :", StartPathBak)
 	fmt.Println("BakStatEnable :", BakStatEnable)
+
+	fmt.Println("PoolSize :", PoolSize)
+	fmt.Println("Md5Retry :", Md5Retry)
+	fmt.Println("Md5CountLength :", Md5CountLength)
 
 	WorkDir, _ = os.Getwd() // 项目工作目录
 	fmt.Println("工作目录: " + WorkDir)

@@ -20,10 +20,6 @@ import (
 	"time"
 )
 
-const poolSize = 8               //并行处理的线程
-const md5Retry = 3               //文件md5计算重试次数
-const md5CountLength = 1024 * 64 //md5计算的长度
-
 const monthFilter = "xx" //月份过滤
 const dayFilter = "xx"   //日期过滤
 
@@ -259,7 +255,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	tools.Logger.Info(tools.StrWithColor("==========ROUND 1: SCAN FILE==========", "red"))
 	tools.Logger.Info()
 
-	p, _ := ants.NewPool(poolSize) //新建一个pool对象
+	p, _ := ants.NewPool(cons.PoolSize) //新建一个pool对象
 	defer p.Release()
 
 	// 计时器
@@ -894,9 +890,9 @@ func processOneFile(
 	}
 
 	if md5Show { //如果需要计算md5，则把所有照片按照md5整理
-		md5, err := tools.GetFileMD5WithRetry(photo, md5Retry, md5CountLength)
+		md5, err := tools.GetFileMD5WithRetry(photo, cons.Md5Retry, cons.Md5CountLength)
 		if err != nil {
-			tools.Logger.Info("GetFileMD5 err for ", md5Retry, " times : ", err)
+			tools.Logger.Info("GetFileMD5 err for ", cons.Md5Retry, " times : ", err)
 			md5EmptyFileListMu.Lock()
 			md5EmptyFileList = append(md5EmptyFileList, photo)
 			md5EmptyFileListMu.Unlock()
