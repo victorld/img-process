@@ -260,12 +260,12 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	// 计时器
 	//ticker := time.NewTicker(time.Second * 2)
-	ticker := time.NewTicker(time.Minute * 1)
-	tickerSize := 0
+	ticker2 := time.NewTicker(time.Minute * 1)
+	tickerSize2 := 0
 	go func() {
-		for t := range ticker.C {
-			tools.Logger.Info(tools.StrWithColor("Tick at "+t.Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCnt-tickerSize), "red"))
-			tickerSize = fileTotalCnt
+		for t := range ticker2.C {
+			tools.Logger.Info(tools.StrWithColor("Tick at "+t.Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCnt-tickerSize2), "red"))
+			tickerSize2 = fileTotalCnt
 		}
 	}()
 
@@ -386,9 +386,9 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	wg.Wait()
 
-	tools.Logger.Info(tools.StrWithColor("Tick at "+time.Now().Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCnt-tickerSize), "red"))
+	tools.Logger.Info(tools.StrWithColor("Tick at "+time.Now().Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCnt-tickerSize2), "red"))
 
-	ticker.Stop() //计时终止
+	ticker2.Stop() //计时终止
 
 	var basePathBak = ""
 
@@ -399,8 +399,8 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		basePathBak = startPathBak[0 : strings.Index(startPathBak, "pic-new")+7] //指向pic-new的目录
 		tools.Logger.Info("basePathBak : ", basePathBak)
 
-		ticker.Reset(time.Minute * 1)
-		tickerSize = 0
+		ticker := time.NewTicker(time.Minute * 1)
+		tickerSize := 0
 		go func() {
 			for t := range ticker.C {
 				tools.Logger.Info(tools.StrWithColor("Tick at "+t.Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.Itoa(fileTotalCntBak-tickerSize), "red"))
