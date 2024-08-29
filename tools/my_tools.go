@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -122,7 +123,7 @@ func MoveFile(src string, dst string) {
 	if !Exists(parentDir) {
 		err := os.MkdirAll(parentDir, os.ModePerm)
 		if err != nil {
-			fmt.Println(err)
+			FancyHandleError(err)
 			return
 		} else {
 			fmt.Println("创建父目录：", parentDir)
@@ -278,7 +279,7 @@ func GetFileDate(photo string) string {
 func GetModifyDate(photo string) string {
 	fileInfo, err := os.Stat(photo)
 	if err != nil {
-		fmt.Println(err)
+		FancyHandleError(err)
 		return ""
 	}
 	modify := fileInfo.ModTime()
@@ -405,7 +406,7 @@ func Find(slice []string, val string) bool {
 //	}()
 //
 //	if err != nil {
-//		fmt.Println(err)
+//		FancyHandleError(err)
 //		return "", err
 //	}
 //
@@ -433,7 +434,7 @@ func GetExifValue(updatedExifIfd *goexif.Ifd, key string) (string, error) {
 
 	results, err := updatedExifIfd.FindTagWithName(key)
 	if err != nil {
-		//fmt.Println(err)
+		//FancyHandleError(err)
 		return "", err
 	}
 
@@ -441,24 +442,24 @@ func GetExifValue(updatedExifIfd *goexif.Ifd, key string) (string, error) {
 
 	phrase, err := ite.FormatFirst()
 	if err != nil {
-		//fmt.Println(err)
+		//FancyHandleError(err)
 		return "", err
 	}
 
 	return phrase, nil
 }
 
-func GetExifDateTime(path string) (time.Time, error) {
+func GetExifInfo(path string) (string, string, error) {
 
 	//opt := goexif.ScanOptions{}
 	//dt, err := goexif.SearchFileAndExtractExif(path)
 	//if err != nil {
-	//	fmt.Println(err)
+	//	FancyHandleError(err)
 	//	return
 	//}
 	//ets, _, err := goexif.GetFlatExifData(dt, &opt)
 	//if err != nil {
-	//	fmt.Println(err)
+	//	FancyHandleError(err)
 	//	return
 	//}
 	//for _, et := range ets {
@@ -467,48 +468,89 @@ func GetExifDateTime(path string) (time.Time, error) {
 
 	rawExif, err := goexif.SearchFileAndExtractExif(path)
 	if err != nil {
-		//fmt.Println(err)
-		return time.Time{}, err
+		//FancyHandleError(err)
+		return "", "", err
 	}
 
 	im, err := exifcommon.NewIfdMappingWithStandard()
 	if err != nil {
-		//fmt.Println(err)
-		return time.Time{}, err
+		//FancyHandleError(err)
+		return "", "", err
 	}
 
 	ti := goexif.NewTagIndex()
 
 	_, index, err := goexif.Collect(im, ti, rawExif)
 	if err != nil {
-		//fmt.Println(err)
-		return time.Time{}, err
+		//FancyHandleError(err)
+		return "", "", err
 	}
 
+	var shootTime string
 	updatedRootIfd := index.RootIfd
-
 	updatedExifIfd, err := updatedRootIfd.ChildWithIfdPath(exifcommon.IfdExifStandardIfdIdentity)
-	if err != nil {
-		//fmt.Println(err)
-		return time.Time{}, err
+	if err == nil {
+		value, err := GetExifValue(updatedExifIfd, "DateTimeOriginal")
+		if err != nil {
+			value, err = GetExifValue(updatedExifIfd, "DateTime")
+		}
+
+		exifTimeLayout := "2006:01:02 15:04:05"
+
+		t, err := time.Parse(exifTimeLayout, value)
+
+		shootTime = t.Format("2006-01-02")
+
 	}
 
-	value, err := GetExifValue(updatedExifIfd, "DateTimeOriginal")
-	if err != nil {
-		value, err = GetExifValue(updatedExifIfd, "DateTime")
-		if err != nil {
-			return time.Time{}, err
+	var locNum string
+	updatedRootIfd2 := index.RootIfd
+	updatedRootIfd2, err = updatedRootIfd2.ChildWithIfdPath(exifcommon.IfdGpsInfoStandardIfdIdentity)
+	if err == nil {
+		gi, err := updatedRootIfd2.GpsInfo()
+		if err == nil {
+			locNum = fmt.Sprintf("%.6f", gi.Longitude.Decimal()) + "," + fmt.Sprintf("%.6f", gi.Latitude.Decimal())
 		}
 	}
 
-	exifTimeLayout := "2006:01:02 15:04:05"
+	return shootTime, locNum, nil
+}
 
-	t, err := time.Parse(exifTimeLayout, value)
+func GetGpsData(path string) {
+
+	rawExif, err := goexif.SearchFileAndExtractExif(path)
 	if err != nil {
-		//fmt.Println(err)
-		return time.Time{}, err
+		FancyHandleError(err)
+		return
 	}
-	return t, nil
+
+	im, err := exifcommon.NewIfdMappingWithStandard()
+	if err != nil {
+		FancyHandleError(err)
+		return
+	}
+
+	ti := goexif.NewTagIndex()
+
+	_, index, err := goexif.Collect(im, ti, rawExif)
+	if err != nil {
+		FancyHandleError(err)
+		return
+	}
+
+	ifd, err := index.RootIfd.ChildWithIfdPath(exifcommon.IfdGpsInfoStandardIfdIdentity)
+	if err != nil {
+		FancyHandleError(err)
+		return
+	}
+
+	gi, err := ifd.GpsInfo()
+	if err != nil {
+		FancyHandleError(err)
+		return
+	}
+
+	fmt.Printf("%s\n", gi)
 }
 
 func PrintExifData(path string) {
@@ -516,15 +558,28 @@ func PrintExifData(path string) {
 	opt := goexif.ScanOptions{}
 	dt, err := goexif.SearchFileAndExtractExif(path)
 	if err != nil {
-		fmt.Println(err)
+		FancyHandleError(err)
 		return
 	}
 	ets, _, err := goexif.GetFlatExifData(dt, &opt)
 	if err != nil {
-		fmt.Println(err)
+		FancyHandleError(err)
 		return
 	}
 	for _, et := range ets {
 		fmt.Println(et.TagId, et.TagName, et.TagTypeName, et.Value)
 	}
+}
+
+func FancyHandleError(err error) (b bool) {
+	if err != nil {
+		// notice that we're using 1, so it will actually log the where
+		// the error happened, 0 = this function, we don't want that.
+		pc, fn, line, _ := runtime.Caller(1)
+
+		//log.Printf("[error] in %s[%s:%d] %v", runtime.FuncForPC(pc).Name(), fn, line, err)
+		fmt.Printf("[error] in %s[%s:%d] %v", runtime.FuncForPC(pc).Name(), fn, line, err)
+		b = true
+	}
+	return
 }

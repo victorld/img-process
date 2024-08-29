@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"img_process/cons"
+	"img_process/middleware"
+	"img_process/plugin/orm"
 	"img_process/tools"
 	"time"
 )
@@ -54,17 +57,30 @@ func testChan() {
 	fmt.Println(msg)
 }
 
-func testShootDate() {
+func testGetExifInfo() {
 	file := "/Users/ld/Desktop/IMG_0112.JPG"
-	shootTime, err := tools.GetExifDateTime(file)
+	shootTime, locNum, err := tools.GetExifInfo(file)
 	if err != nil {
-		fmt.Println(err)
+		tools.FancyHandleError(err)
 	} else {
-		fmt.Println(shootTime.Format("2006-01-02"))
+		fmt.Println("shootTime", shootTime)
+		fmt.Println("locNum", locNum)
 	}
 
 	//tools.TestGetShootDate(file)
 
+}
+
+func getLocationAddress() {
+	middleware.CreateGisDatabaseCache()
+	//address, err := middleware.GetLocationAddressByCache("116.310454,39.992734")
+	address, err := middleware.GetLocationAddressByCache("30.559343,114.279656")
+	//address, err := middleware.GetLocationAddressByCache("114.279656,30.559343")
+	if err != nil {
+		tools.FancyHandleError(err)
+	} else {
+		fmt.Println("address : ", address)
+	}
 }
 
 func testPrintExifData() {
@@ -72,11 +88,24 @@ func testPrintExifData() {
 	tools.PrintExifData(file)
 }
 
+func testGps() {
+	file := "/Users/ld/Desktop/IMG_0112.JPG"
+	tools.GetGpsData(file)
+}
+
 func main() {
 	fmt.Println()
 
+	tools.InitLogger()
+	tools.InitViper()
+	cons.InitConst()
+	orm.InitMysql()
+
+	//testGetExifInfo()
 	//testShootDate()
-	testPrintExifData()
+	//testPrintExifData()
+	getLocationAddress()
+	//testGps()
 	//testDate()
 	//testGetMD5()
 	//testMd5Delete()

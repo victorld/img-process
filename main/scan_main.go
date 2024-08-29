@@ -2,6 +2,7 @@ package main
 
 import (
 	"img_process/cons"
+	"img_process/middleware"
 	"img_process/model"
 	"img_process/plugin/orm"
 	"img_process/service"
@@ -28,6 +29,8 @@ func main() {
 	modifyDateAction := &cons.ModifyDateAction //是否操作修改日期的文件
 
 	scanArgs := model.DoScanImgArg{DeleteShow: deleteShow, MoveFileShow: moveFileShow, ModifyDateShow: modifyDateShow, Md5Show: md5Show, DeleteAction: deleteAction, MoveFileAction: moveFileAction, ModifyDateAction: modifyDateAction, StartPath: startPath, StartPathBak: StartPathBak}
+
+	middleware.RegisterTable()
 
 	service.ScanAndSave(scanArgs)
 

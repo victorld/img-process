@@ -8,6 +8,7 @@ import (
 	"github.com/panjf2000/ants/v2"
 	"img_process/cons"
 	"img_process/dao"
+	"img_process/middleware"
 	"img_process/model"
 	"img_process/tools"
 	"math"
@@ -30,8 +31,9 @@ var exifErr2FileMu sync.Mutex
 var exifErr3FileMu sync.Mutex
 var md5EmptyFileListMu sync.Mutex
 
-var imgShootDateService = dao.ImgShootDateService{}
+var imgDatabaseService = dao.ImgDatabaseService{}
 var imgRecordService = dao.ImgRecordService{}
+var gisDatabaseService = dao.GisDatabaseService{}
 
 var wg sync.WaitGroup //异步照片处理等待
 
@@ -117,7 +119,6 @@ func ScanAndSave(scanArgs model.DoScanImgArg) {
 
 	var imgRecord ImgRecord
 	json.Unmarshal([]byte(imgRecordString), &imgRecord)
-
 	var imgRecordDB model.ImgRecordDB
 	json.Unmarshal([]byte(imgRecordString), &imgRecordDB)
 
@@ -130,17 +131,6 @@ func ScanAndSave(scanArgs model.DoScanImgArg) {
 	imgRecordDB.ExifErr2Map = tools.MarshalJsonToString(imgRecord.ExifErr2Map)
 	imgRecordDB.ExifErr3Map = tools.MarshalJsonToString(imgRecord.ExifErr3Map)
 
-	if err = imgRecordService.RegisterImgRecord(&imgRecordDB); err != nil {
-		tools.Logger.Error("register error : ", err)
-		return
-	}
-
-	var imgShootDateDB model.ImgShootDateDB
-	if err = imgShootDateService.RegisterImgShootDate(&imgShootDateDB); err != nil {
-		tools.Logger.Error("register error : ", err)
-		return
-	}
-
 	if err = imgRecordService.CreateImgRecord(&imgRecordDB); err != nil {
 		tools.Logger.Error("create error : ", err)
 		return
@@ -152,20 +142,20 @@ func ScanAndSave(scanArgs model.DoScanImgArg) {
 func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	start1 := time.Now() // 获取当前时间
-	var shootDateCacheMap = map[string]string{}
 
 	if cons.TruncateTable { //清理img cache表，如果清理表则不用构建cache了
-		err := imgShootDateService.TruncateImgShootDate()
+		err := imgDatabaseService.TruncateImgDatabase()
 		if err != nil {
-			panic("TruncateImgShootDate ERROR ! ")
+			panic("TruncateImgDatabase ERROR ! ")
 		} else {
-			tools.Logger.Info("TruncateImgShootDate success!")
+			tools.Logger.Info("TruncateImgDatabase success!")
 		}
 	} else {
 		if cons.ImgCache { //不清理表且指定需要cache时才构建
-			createShootDateCache(&shootDateCacheMap)
+			middleware.CreateImgCache()
 		}
 	}
+	middleware.CreateGisDatabaseCache()
 
 	elapsed1 := time.Since(start1)
 	start2 := time.Now() // 获取当前时间
@@ -373,8 +363,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 						exifErr2FileSuffixMap,
 						exifErr2FileSet,
 						exifErr3FileSuffixMap,
-						exifErr3FileSet,
-						shootDateCacheMap) //单个文件协程处理
+						exifErr3FileSet) //单个文件协程处理
 				})
 
 			}
@@ -817,8 +806,7 @@ func processOneFile(
 	exifErr2FileSuffixMap map[string]int,
 	exifErr2FileSet mapset.Set,
 	exifErr3FileSuffixMap map[string]int,
-	exifErr3FileSet mapset.Set,
-	shootDateCacheMap map[string]string) {
+	exifErr3FileSet mapset.Set) {
 
 	defer wg.Done()
 
@@ -830,12 +818,11 @@ func processOneFile(
 
 	shootDate := ""
 	if suffix != ".mov" && suffix != ".mp4" { //exif拍摄时间获取
-		shootDate, _ = getShootDateMethod2(
+		shootDate, _ = getImgShootDate(
 			photo,
 			suffix,
 			exifErr1FileSuffixMap,
-			exifErr1FileSet,
-			shootDateCacheMap)
+			exifErr1FileSet)
 		if shootDate != "" {
 			//tools.Logger.Info("shootDate : " + shootDate)
 		}
@@ -915,26 +902,11 @@ func processOneFile(
 
 }
 
-func createShootDateCache(shootDateCacheMap *map[string]string) {
-
-	var imgShootDateSearch model.ImgShootDateSearch
-	list, _, err := imgShootDateService.GetImgShootDateInfoList(imgShootDateSearch)
-	if err != nil {
-
-	}
-	for _, isd := range list {
-		(*shootDateCacheMap)[isd.ImgKey] = isd.ShootDate
-	}
-	tools.Logger.Info("")
-
-}
-
-func getShootDateMethod2(
+func getImgShootDate(
 	filepath string,
 	suffix string,
 	exifErr1FileSuffixMap map[string]int,
 	exifErr1FileSet mapset.Set,
-	shootDateCacheMap map[string]string,
 ) (string, error) {
 
 	fileName := path.Base(filepath)
@@ -942,15 +914,16 @@ func getShootDateMethod2(
 	imgKey := dirDate + "|" + fileName
 	shootDateRet := ""
 
-	if value, ok := shootDateCacheMap[imgKey]; ok {
+	if value, ok := middleware.ShootDateCacheMap[imgKey]; ok {
 		shootDateRet = value
 	} else {
-		shootTime, err := tools.GetExifDateTime(filepath)
-		var imgShootDateDB model.ImgShootDateDB
-		imgShootDateDB.ImgKey = imgKey
+		shootTime, locNum, err := tools.GetExifInfo(filepath)
+		var imgDatabaseDB model.ImgDatabaseDB
+		imgDatabaseDB.ImgKey = imgKey
+		imgDatabaseDB.ImgDir = dirDate
 
 		state := 1
-		imgShootDateDB.State = &state
+		imgDatabaseDB.State = &state
 		if err != nil {
 			exifErr1FileMu.Lock()
 			if value, ok := exifErr1FileSuffixMap[suffix]; ok {
@@ -960,16 +933,19 @@ func getShootDateMethod2(
 			}
 			exifErr1FileSet.Add(filepath)
 			exifErr1FileMu.Unlock()
-			shootDateRet = ""
-			imgShootDateDB.ShootDate = shootDateRet
-		} else {
-			shootDateRet = shootTime.Format("2006-01-02")
-			//shootTimeStr := shootTime.Format("2006-01-02 15:04:05")
-			imgShootDateDB.ShootDate = shootDateRet
 		}
+		imgDatabaseDB.ShootDate = shootTime
+		imgDatabaseDB.LocNum = locNum
+		if locNum != "" {
+			locAddr, err := middleware.GetLocationAddressByCache(locNum)
+			if err == nil {
+				imgDatabaseDB.LocAddr = locAddr
+			}
+		}
+
 		if cons.ImgCache { //指定使用cache时，才更新库
-			if err = imgShootDateService.CreateImgShootDate(&imgShootDateDB); err != nil {
-				tools.Logger.Error("CreateImgShootDate error : ", err)
+			if err = imgDatabaseService.CreateImgDatabase(&imgDatabaseDB); err != nil {
+				tools.Logger.Error("CreateImgDatabase error : ", err)
 			}
 		}
 
