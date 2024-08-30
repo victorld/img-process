@@ -493,6 +493,9 @@ func GetExifInfo(path string) (string, string, error) {
 		value, err := GetExifValue(updatedExifIfd, "DateTimeOriginal")
 		if err != nil {
 			value, err = GetExifValue(updatedExifIfd, "DateTime")
+			if err != nil {
+				value, err = GetExifValue(updatedExifIfd, "DateTimeDigitized")
+			}
 		}
 
 		if value != "" {
