@@ -917,7 +917,9 @@ func getImgShootDate(
 	if value, ok := middleware.ShootDateCacheMap[imgKey]; ok {
 		shootDateRet = value
 	} else {
-		shootTime, locNum, err := tools.GetExifInfo(filepath)
+		var locNum string
+		var err error
+		shootDateRet, locNum, err = tools.GetExifInfo(filepath)
 		var imgDatabaseDB model.ImgDatabaseDB
 		imgDatabaseDB.ImgKey = imgKey
 		imgDatabaseDB.ImgDir = dirDate
@@ -934,7 +936,7 @@ func getImgShootDate(
 			exifErr1FileSet.Add(filepath)
 			exifErr1FileMu.Unlock()
 		}
-		imgDatabaseDB.ShootDate = shootTime
+		imgDatabaseDB.ShootDate = shootDateRet
 		imgDatabaseDB.LocNum = locNum
 		if locNum != "" {
 			locAddr, err := middleware.GetLocationAddressByCache(locNum)
