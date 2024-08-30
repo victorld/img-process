@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"img_process/model"
+	"img_process/tools"
 	"io"
 	"net/http"
 	"net/url"
@@ -22,6 +23,7 @@ func CreateGisDatabaseCache() {
 	for _, isd := range list {
 		gisDatabaseCacheMap[isd.LocNum] = isd.LocAddr
 	}
+	tools.Logger.Info("use gisCache , cache size : ", len(gisDatabaseCacheMap))
 
 }
 

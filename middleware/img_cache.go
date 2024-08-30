@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"img_process/model"
+	"img_process/tools"
 )
 
 var ShootDateCacheMap map[string]string
@@ -22,5 +23,7 @@ func CreateImgCache() {
 			GpsCacheMap[isd.ImgKey] = isd.LocAddr
 		}*/
 	}
+
+	tools.Logger.Info("use imageCache , cache size : ", len(ShootDateCacheMap))
 
 }
