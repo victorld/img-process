@@ -150,10 +150,9 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		} else {
 			tools.Logger.Info("TruncateImgDatabase success!")
 		}
-	} else {
-		if cons.ImgCache { //不清理表且指定需要cache时才构建
-			middleware.CreateImgCache()
-		}
+	}
+	if cons.ImgCache { //不清理表且指定需要cache时才构建
+		middleware.CreateImgCache()
 	}
 	middleware.CreateGisDatabaseCache()
 
