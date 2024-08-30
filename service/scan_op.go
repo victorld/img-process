@@ -865,8 +865,10 @@ func processOneFile(
 
 	}
 
-	if shootDate != minDate {
-		shootDateFileList.Add(photo)
+	if suffix != ".mov" && suffix != ".mp4" { //exif拍摄时间获取
+		if shootDate != minDate {
+			shootDateFileList.Add(photo)
+		}
 	}
 
 	if modifyDate != minDate {
