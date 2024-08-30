@@ -495,12 +495,13 @@ func GetExifInfo(path string) (string, string, error) {
 			value, err = GetExifValue(updatedExifIfd, "DateTime")
 		}
 
-		exifTimeLayout := "2006:01:02 15:04:05"
-
-		t, err := time.Parse(exifTimeLayout, value)
-
-		shootTime = t.Format("2006-01-02")
-
+		if value != "" {
+			exifTimeLayout := "2006:01:02 15:04:05"
+			t, err := time.Parse(exifTimeLayout, value)
+			if err == nil {
+				shootTime = t.Format("2006-01-02")
+			}
+		}
 	}
 
 	var locNum string
