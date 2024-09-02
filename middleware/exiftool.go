@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	mapset "github.com/deckarep/golang-set"
 	"img_process/tools"
 	"regexp"
 	"strconv"
@@ -9,7 +10,9 @@ import (
 	"time"
 )
 
-func GetExifInfoCommand(path string) (string, string, error) {
+var ExifNameSet = mapset.NewSet()
+
+func GetExifInfoCommand(path string) (string, string, string, error) {
 
 	var shootTime string
 	var locNum string
@@ -28,7 +31,7 @@ func GetExifInfoCommand(path string) (string, string, error) {
 	}
 	if err != nil {
 		//tools.FancyHandleError(err)
-		return "", "", err
+		return "", "", "", err
 	}
 
 	//tools.Logger.Info("cmd output : ", gpsLine)
@@ -63,6 +66,9 @@ func GetExifInfoCommand(path string) (string, string, error) {
 					minDate = dateVal[1]
 				}
 			}
+			t := strings.Split(strings.Split(line, ":")[0], "]")
+			t2 := strings.TrimSpace(t[0]) + "]" + strings.TrimSpace(t[1])
+			ExifNameSet.Add(t2)
 		} else {
 			tools.Logger.Error("date解析失败 ", dateList)
 		}
@@ -74,6 +80,6 @@ func GetExifInfoCommand(path string) (string, string, error) {
 		}
 	}
 
-	return shootTime, locNum, nil
+	return shootTime, locNum, output, nil
 
 }

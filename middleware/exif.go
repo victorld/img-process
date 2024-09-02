@@ -2,12 +2,13 @@ package middleware
 
 import "img_process/tools"
 
-func GetExifInfo(path string) (string, string, int, error) {
+func GetExifInfo(path string) (string, string, int, string, error) {
 
 	flag := -1
-	shootTime, locNum, err := GetExifInfoGo(path)
+	var output string
+	shootTime, locNum, output, err := GetExifInfoCommand(path)
 	if err != nil {
-		shootTime, locNum, err = GetExifInfoCommand(path)
+		shootTime, locNum, err = GetExifInfoGo(path)
 		if err != nil {
 			tools.Logger.Info("no exif : ", path)
 		} else {
@@ -18,5 +19,5 @@ func GetExifInfo(path string) (string, string, int, error) {
 		flag = 1
 	}
 
-	return shootTime, locNum, flag, err
+	return shootTime, locNum, flag, output, err
 }

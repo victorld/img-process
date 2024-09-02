@@ -13,7 +13,7 @@ type ImgDatabaseDB struct {
 	LocNum    string `json:"locNum" form:"locNum" gorm:"column:loc_num;comment:经纬度;size:255;"`
 	LocAddr   string `json:"locAddr" form:"locAddr" gorm:"column:loc_addr;comment:位置信息;type:text;"`
 	State     *int   `json:"state" form:"state" gorm:"type:int(10);column:state;comment:状态(1：启用，当前都为1);size:10;"`
-	Remark    string `json:"remark" form:"remark" gorm:"column:remark;comment:备注;size:255;"`
+	Remark    string `json:"remark" form:"remark" gorm:"column:remark;comment:备注;type:text;"`
 }
 
 // TableName imgDatabase表 ImgDatabase自定义表名 img_database

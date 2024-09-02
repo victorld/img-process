@@ -59,13 +59,14 @@ func testChan() {
 
 func testGetExifInfo() {
 	file := "/Users/ld/Desktop/IMG_0112.JPG"
-	shootTime, locNum, state, err := middleware.GetExifInfo(file)
+	shootTime, locNum, state, output, err := middleware.GetExifInfo(file)
 	if err != nil {
 		tools.FancyHandleError(err)
 	} else {
 		fmt.Println("shootTime", shootTime)
 		fmt.Println("locNum", locNum)
 		fmt.Println("state", state)
+		fmt.Println("output", output)
 	}
 
 	//tools.TestGetShootDate(file)
@@ -97,12 +98,13 @@ func testGps() {
 
 func getExifInfoCommand() {
 	file := "/Users/ld/Downloads/save/pic-lib/pic-new/2023/2023-08/2023-08-23/IMG_8197.MOV"
-	shootTime, locNum, err := middleware.GetExifInfoCommand(file)
+	shootTime, locNum, output, err := middleware.GetExifInfoCommand(file)
 	if err != nil {
 		tools.FancyHandleError(err)
 	} else {
 		fmt.Println("shootTime", shootTime)
 		fmt.Println("locNum", locNum)
+		fmt.Println("output", output)
 	}
 }
 
@@ -113,7 +115,7 @@ func main() {
 	tools.InitViper()
 	cons.InitConst()
 	orm.InitMysql()
-	getExifInfoCommand()
+	testGetExifInfo()
 
 	//testGetExifInfo()
 	//testShootDate()

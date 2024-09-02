@@ -517,6 +517,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	tools.Logger.Info("exif parse error 3 : ", tools.StrWithColor(tools.MarshalJsonToString(exifErr3FileSuffixMap), "red"))
 	tools.Logger.Info("exif parse error 3 : ", tools.StrWithColor(strconv.Itoa(exifErr3FileSet.Cardinality()), "red"))
 	//tools.Logger.Info("exif parse error 3 list : ", exifErr3FileSet)
+	tools.Logger.Info("ExifNameSet list : ", middleware.ExifNameSet)
 
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("PRINT STAT TYPE1(delete file,modify date,move file): ", "red"))
@@ -919,9 +920,10 @@ func getImgShootDate(
 		shootDateRet = value
 	} else {
 		var locNum string
+		var output string
 		var err error
 		var state int
-		shootDateRet, locNum, state, err = middleware.GetExifInfo(filepath)
+		shootDateRet, locNum, state, output, err = middleware.GetExifInfo(filepath)
 
 		var imgDatabaseDB model.ImgDatabaseDB
 		imgDatabaseDB.ImgKey = imgKey
@@ -940,6 +942,7 @@ func getImgShootDate(
 		}
 		imgDatabaseDB.ShootDate = shootDateRet
 		imgDatabaseDB.LocNum = locNum
+		imgDatabaseDB.Remark = output
 		if locNum != "" {
 			locAddr, err := middleware.GetLocationAddressByCache(locNum)
 			if err == nil {
