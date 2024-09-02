@@ -54,7 +54,7 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 		//tools.Logger.Error("gps解析失败 ", gpsLine)
 	}
 
-	dateRegexp := regexp.MustCompile(`^.*(\d{4}:\d{2}:\d{2}).*$`)
+	dateRegexp := regexp.MustCompile(`^.*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}).*$`)
 	var minDate string
 	for _, line := range dateList {
 		dateVal := dateRegexp.FindStringSubmatch(line)
@@ -74,7 +74,7 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 		}
 	}
 	if minDate != "" {
-		t, err := time.Parse("2006:01:02", minDate)
+		t, err := time.Parse("2006:01:02 15:04:05", minDate)
 		if err == nil {
 			shootTime = t.Format("2006-01-02")
 		}
