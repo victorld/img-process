@@ -59,12 +59,13 @@ func testChan() {
 
 func testGetExifInfo() {
 	file := "/Users/ld/Desktop/IMG_0112.JPG"
-	shootTime, locNum, err := tools.GetExifInfo(file)
+	shootTime, locNum, state, err := middleware.GetExifInfo(file)
 	if err != nil {
 		tools.FancyHandleError(err)
 	} else {
 		fmt.Println("shootTime", shootTime)
 		fmt.Println("locNum", locNum)
+		fmt.Println("state", state)
 	}
 
 	//tools.TestGetShootDate(file)
@@ -84,13 +85,25 @@ func getLocationAddress() {
 }
 
 func testPrintExifData() {
-	file := "/Users/ld/Desktop/IMG_0112.JPG"
-	tools.PrintExifData(file)
+	//file := "/Users/ld/Desktop/IMG_0112.JPG"
+	file := "/Users/ld/Desktop/338_1725013247.mp4"
+	middleware.PrintExifData(file)
 }
 
 func testGps() {
 	file := "/Users/ld/Desktop/IMG_0112.JPG"
-	tools.GetGpsData(file)
+	middleware.GetGpsData(file)
+}
+
+func getExifInfoCommand() {
+	file := "/Users/ld/Downloads/save/pic-lib/pic-new/2023/2023-08/2023-08-23/IMG_8197.MOV"
+	shootTime, locNum, err := middleware.GetExifInfoCommand(file)
+	if err != nil {
+		tools.FancyHandleError(err)
+	} else {
+		fmt.Println("shootTime", shootTime)
+		fmt.Println("locNum", locNum)
+	}
 }
 
 func main() {
@@ -100,11 +113,12 @@ func main() {
 	tools.InitViper()
 	cons.InitConst()
 	orm.InitMysql()
+	getExifInfoCommand()
 
 	//testGetExifInfo()
 	//testShootDate()
 	//testPrintExifData()
-	getLocationAddress()
+	//getLocationAddress()
 	//testGps()
 	//testDate()
 	//testGetMD5()

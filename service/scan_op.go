@@ -816,16 +816,16 @@ func processOneFile(
 	}
 
 	shootDate := ""
-	if suffix != ".mov" && suffix != ".mp4" { //exif拍摄时间获取
-		shootDate, _ = getImgShootDate(
-			photo,
-			suffix,
-			exifErr1FileSuffixMap,
-			exifErr1FileSet)
-		if shootDate != "" {
-			//tools.Logger.Info("shootDate : " + shootDate)
-		}
+	//if suffix != ".mov" && suffix != ".mp4" { //exif拍摄时间获取
+	shootDate, _ = getImgShootDate(
+		photo,
+		suffix,
+		exifErr1FileSuffixMap,
+		exifErr1FileSet)
+	if shootDate != "" {
+		//tools.Logger.Info("shootDate : " + shootDate)
 	}
+	//}
 
 	dirDate := tools.GetDirDate(photo)
 
@@ -865,11 +865,11 @@ func processOneFile(
 
 	}
 
-	if suffix != ".mov" && suffix != ".mp4" { //exif拍摄时间获取
-		if shootDate != minDate {
-			shootDateFileList.Add(photo)
-		}
+	//if suffix != ".mov" && suffix != ".mp4" { //exif拍摄时间获取
+	if shootDate != minDate {
+		shootDateFileList.Add(photo)
 	}
+	//}
 
 	if modifyDate != minDate {
 		modifyDateFileList.Add(photo)
@@ -920,12 +920,13 @@ func getImgShootDate(
 	} else {
 		var locNum string
 		var err error
-		shootDateRet, locNum, err = tools.GetExifInfo(filepath)
+		var state int
+		shootDateRet, locNum, state, err = middleware.GetExifInfo(filepath)
+
 		var imgDatabaseDB model.ImgDatabaseDB
 		imgDatabaseDB.ImgKey = imgKey
 		imgDatabaseDB.ImgDir = dirDate
 
-		state := 1
 		imgDatabaseDB.State = &state
 		if err != nil {
 			exifErr1FileMu.Lock()
