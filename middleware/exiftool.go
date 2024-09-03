@@ -16,7 +16,7 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 
 	var shootTime string
 	var locNum string
-	cmd := "exiftool -G '" + path + "' | grep -v '\\[File\\]'| grep -v '0000' | grep -v 'Profile' | grep -v 'Create Date' | grep -v 'Metadata'| grep -v 'Media Modify Date'| grep -v 'Track Modify Date'| grep -v 'GPS Date'| grep -v 'Sony' | grep -E 'GPS Position|Date'"
+	cmd := "exiftool -G '" + path + "' | grep -E 'GPS Position|Date'"
 	output, err := tools.GetOutputCommand(cmd)
 	var dateList []string
 	var gpsLine string
@@ -29,6 +29,17 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 	}
 
 	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, "[File]") ||
+			strings.Contains(line, "0000") ||
+			strings.Contains(line, "Profile") ||
+			strings.Contains(line, "Create Date") ||
+			strings.Contains(line, "Metadata") ||
+			strings.Contains(line, "Media") ||
+			strings.Contains(line, "Track") ||
+			strings.Contains(line, "GPS Date") ||
+			strings.Contains(line, "Sony") {
+			continue
+		}
 		if strings.Contains(line, "GPS Position") {
 			gpsLine = line
 		}
