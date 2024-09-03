@@ -21,6 +21,13 @@ func (imgDatabaseService *ImgDatabaseService) CreateImgDatabase(imgDatabase *mod
 	return err
 }
 
+// CreateImgDatabaseBatch 批量创建imgDatabase表记录
+func (imgDatabaseService *ImgDatabaseService) CreateImgDatabaseBatch(imgDatabaseList []*model.ImgDatabaseDB) (err error) {
+	//
+	err = orm.ImgMysqlDB.CreateInBatches(imgDatabaseList, 5000).Error
+	return err
+}
+
 func (imgDatabaseService *ImgDatabaseService) TruncateImgDatabase() (err error) {
 	err = orm.ImgMysqlDB.Exec("truncate table img_database").Error
 	return err

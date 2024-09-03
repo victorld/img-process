@@ -35,6 +35,8 @@ var imgDatabaseService = dao.ImgDatabaseService{}
 var imgRecordService = dao.ImgRecordService{}
 var gisDatabaseService = dao.GisDatabaseService{}
 
+var imgDatabaseDBList []*model.ImgDatabaseDB //img_database 待插入list
+
 var wg sync.WaitGroup //异步照片处理等待
 
 type dirStruct struct { //目录打印需要的结构体
@@ -378,6 +380,17 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	ticker2.Stop() //计时终止
 
+	elapsed2 := time.Since(start2)
+	start3 := time.Now() // 获取当前时间
+
+	if cons.ImgCache { //指定使用cache时，才更新库
+		if err = imgDatabaseService.CreateImgDatabaseBatch(imgDatabaseDBList); err != nil {
+			tools.Logger.Error("CreateImgDatabase error : ", err)
+		}
+	}
+
+	elapsed3 := time.Since(start3)
+	start4 := time.Now() // 获取当前时间
 	var basePathBak = ""
 
 	if cons.BakStatEnable {
@@ -467,8 +480,8 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		ticker.Stop() //计时终止
 	}
 
-	elapsed2 := time.Since(start2)
-	start3 := time.Now() // 获取当前时间
+	elapsed4 := time.Since(start4)
+	start5 := time.Now() // 获取当前时间
 
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("==========ROUND 2: PROCESS FILE==========", "red"))
@@ -584,14 +597,16 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		tools.Logger.Info("bakNewFile(新增文件待备份) : ", tools.MarshalJsonToString(bakNewFile))
 		tools.Logger.Info("bakDeleteFile(备份里删除文件) : ", tools.MarshalJsonToString(bakDeleteFile))
 	}
-
+	tools.Logger.Info("imgDatabaseDBList size: ", len(imgDatabaseDBList))
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("==========ROUND 3: PROCESS COST==========", "red"))
 	tools.Logger.Info()
-	elapsed3 := time.Since(start3)
+	elapsed5 := time.Since(start5)
 	tools.Logger.Info("加载缓存完成耗时 : ", elapsed1)
-	tools.Logger.Info("执行扫描完成耗时 : ", elapsed2)
-	tools.Logger.Info("执行数据处理完成耗时 : ", elapsed3)
+	tools.Logger.Info("执行主目录扫描完成耗时 : ", elapsed2)
+	tools.Logger.Info("执行img_database批量写入完成耗时 : ", elapsed3)
+	tools.Logger.Info("执行备目录扫描完成耗时 : ", elapsed4)
+	tools.Logger.Info("执行数据处理完成耗时 : ", elapsed5)
 	tools.Logger.Info()
 
 	imgRecord := ImgRecord{}
@@ -600,7 +615,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	imgRecord.DirTotal = dirTotalCnt
 	imgRecord.DirTotalBak = dirTotalCntBak
 	imgRecord.StartDate = start1
-	imgRecord.UseTime = int(math.Ceil(elapsed1.Seconds() + elapsed2.Seconds() + elapsed3.Seconds()))
+	imgRecord.UseTime = int(math.Ceil(elapsed1.Seconds() + elapsed2.Seconds() + elapsed3.Seconds() + elapsed4.Seconds() + elapsed5.Seconds()))
 	imgRecord.BasePath = basePath
 	imgRecord.BasePathBak = basePathBak
 	imgRecord.BakNewFileCnt = len(bakNewFile)
@@ -949,11 +964,8 @@ func getImgShootDate(
 				imgDatabaseDB.LocAddr = locAddr
 			}
 		}
-
-		if cons.ImgCache { //指定使用cache时，才更新库
-			if err = imgDatabaseService.CreateImgDatabase(&imgDatabaseDB); err != nil {
-				tools.Logger.Error("CreateImgDatabase error : ", err)
-			}
+		if cons.ImgCache {
+			imgDatabaseDBList = append(imgDatabaseDBList, &imgDatabaseDB)
 		}
 
 	}
