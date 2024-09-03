@@ -32,6 +32,9 @@ func GetLocationAddressByCache(locNum string) (gitAddress string, err error) {
 	if value, ok := gisDatabaseCacheMap[locNum]; ok {
 		return value, nil
 	} else {
+		if locNum == "0.000000,0.000000" {
+			return "", errors.New("not right locNum")
+		}
 		locJson, err := GetLocationAddress(locNum)
 		if err == nil {
 			var ret map[string]any

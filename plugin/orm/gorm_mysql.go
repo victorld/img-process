@@ -3,6 +3,7 @@ package orm
 import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 	"img_process/cons"
 	"img_process/tools"
 )
@@ -43,5 +44,6 @@ func GormMysql(mysqlArgs MysqlArgs) {
 		DontSupportRenameColumn:   true,  // 用 `change` 重命名列，MySQL 8 之前的数据库和 MariaDB 不支持重命名列
 		SkipInitializeWithVersion: false, // 根据当前 MySQL 版本自动配置
 	}), &gorm.Config{})
+	ImgMysqlDB.Logger = logger.Default.LogMode(logger.Silent)
 
 }

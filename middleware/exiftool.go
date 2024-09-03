@@ -16,10 +16,17 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 
 	var shootTime string
 	var locNum string
-
-	output, err := tools.GetOutputCommand("exiftool -G '" + path + "' | grep -v 'File'| grep -v '0000' | grep -E 'GPS Position|Date'")
+	cmd := "exiftool -G '" + path + "' | grep -v 'File'| grep -v '0000' | grep -v 'Profile' | grep -v 'Create Date' | grep -E 'GPS Position|Date'"
+	output, err := tools.GetOutputCommand(cmd)
 	var dateList []string
 	var gpsLine string
+
+	if err != nil {
+		//tools.FancyHandleError(err)
+		return "", "", "", err
+	} else {
+		//fmt.Println()
+	}
 
 	for _, line := range strings.Split(output, "\n") {
 		if strings.Contains(line, "GPS Position") {
@@ -28,10 +35,6 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 		if strings.Contains(line, "Date") {
 			dateList = append(dateList, line)
 		}
-	}
-	if err != nil {
-		//tools.FancyHandleError(err)
-		return "", "", "", err
 	}
 
 	//tools.Logger.Info("cmd output : ", gpsLine)
@@ -70,7 +73,7 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 			t2 := strings.TrimSpace(t[0]) + "]" + strings.TrimSpace(t[1])
 			ExifNameSet.Add(t2)
 		} else {
-			tools.Logger.Error("date解析失败 ", dateList)
+			//tools.Logger.Error("date解析失败 ", dateList)
 		}
 	}
 	if minDate != "" {

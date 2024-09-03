@@ -101,7 +101,7 @@ func GetRealPath(file string) string {
 		fileName := path.Base(file)
 		files, err := os.ReadDir(parentDir)
 		if err != nil {
-			fmt.Println("read file path error", err)
+			fmt.Println("read file path error", err, file)
 			return ""
 		}
 		// 忽略以 . 开头的文件
