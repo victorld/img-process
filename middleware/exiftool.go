@@ -16,7 +16,7 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 
 	var shootTime string
 	var locNum string
-	cmd := "exiftool -G '" + path + "' | grep -v 'File'| grep -v '0000' | grep -v 'Profile' | grep -v 'Create Date' | grep -E 'GPS Position|Date'"
+	cmd := "exiftool -G '" + path + "' | grep -v '\\[File\\]'| grep -v '0000' | grep -v 'Profile' | grep -v 'Create Date' | grep -v 'Metadata'| grep -v 'Media Modify Date'| grep -v 'Track Modify Date'| grep -v 'GPS Date'| grep -v 'Sony' | grep -E 'GPS Position|Date'"
 	output, err := tools.GetOutputCommand(cmd)
 	var dateList []string
 	var gpsLine string
@@ -60,13 +60,19 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 	dateRegexp := regexp.MustCompile(`^.*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}).*$`)
 	var minDate string
 	for _, line := range dateList {
-		dateVal := dateRegexp.FindStringSubmatch(line)
-		if len(dateVal) == 2 {
+		dateValList := dateRegexp.FindStringSubmatch(line)
+		if len(dateValList) == 2 {
+			dateVal := dateValList[1]
+			if strings.Contains(line, "QuickTime") && strings.Contains(line, "Modify Date") {
+				loc, _ := time.LoadLocation("UTC")
+				t, _ := time.ParseInLocation("2006:01:02 15:04:05", dateVal, loc)
+				dateVal = t.Local().Format("2006:01:02 15:04:05")
+			}
 			if minDate == "" {
-				minDate = dateVal[1]
+				minDate = dateVal
 			} else {
-				if dateVal[1] < minDate {
-					minDate = dateVal[1]
+				if dateVal < minDate {
+					minDate = dateVal
 				}
 			}
 			t := strings.Split(strings.Split(line, ":")[0], "]")
