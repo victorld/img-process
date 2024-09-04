@@ -560,6 +560,19 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	}
 	tools.Logger.Info("img_database需要新插入的数量: ", len(imgDatabaseDBList))
 	tools.Logger.Info("img_database没有匹配上key，应该删除的数量: ", len(middleware.ShootDateCacheMapBak))
+
+	if cons.SyncTable { //批量删除多余的img_database
+		tools.Logger.Info("正在批量删除多余的img_database。。。 ")
+		var imgKeyToDelete []string
+		for key, _ := range middleware.ShootDateCacheMapBak {
+			imgKeyToDelete = append(imgKeyToDelete, key)
+			if len(imgKeyToDelete) >= 100 {
+				imgDatabaseService.DeleteImgDatabaseByImgKey(imgKeyToDelete)
+				imgKeyToDelete = []string{}
+			}
+		}
+		imgDatabaseService.DeleteImgDatabaseByImgKey(imgKeyToDelete)
+	}
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("==========ROUND 3: PROCESS COST==========", "red"))
 	tools.Logger.Info()

@@ -27,6 +27,7 @@ var (
 	MoveFileAction   bool
 	ModifyDateAction bool
 	ImgCache         bool
+	SyncTable        bool
 	TruncateTable    bool
 	BakStatEnable    bool
 	WorkDir          string
@@ -58,6 +59,7 @@ func InitConst() {
 	ModifyDateAction, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.ModifyDateAction"))
 
 	ImgCache, _ = strconv.ParseBool(tools.GetConfigString("cache.ImgCache"))
+	SyncTable, _ = strconv.ParseBool(tools.GetConfigString("cache.SyncTable"))
 	TruncateTable, _ = strconv.ParseBool(tools.GetConfigString("cache.TruncateTable"))
 
 	PoolSize, _ = strconv.Atoi(tools.GetConfigString("dump.PoolSize"))
@@ -88,6 +90,7 @@ func InitConst() {
 
 	fmt.Println("ImgCache :", ImgCache)
 	fmt.Println("TruncateTable :", TruncateTable)
+	fmt.Println("SyncTable :", SyncTable)
 
 	fmt.Println("StartPathBak :", StartPathBak)
 	fmt.Println("BakStatEnable :", BakStatEnable)

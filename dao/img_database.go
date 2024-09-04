@@ -47,6 +47,12 @@ func (imgDatabaseService *ImgDatabaseService) DeleteImgDatabaseByIds(ids model.I
 	return err
 }
 
+// DeleteImgDatabaseByImgKey 批量删除imgDatabase表记录
+func (imgDatabaseService *ImgDatabaseService) DeleteImgDatabaseByImgKey(imgKeys []string) (err error) {
+	err = orm.ImgMysqlDB.Delete(&[]model.ImgDatabaseDB{}, "img_key in ?", imgKeys).Error
+	return err
+}
+
 // UpdateImgDatabase 更新imgDatabase表记录
 // Author [piexlmax](https://github.com/piexlmax)
 func (imgDatabaseService *ImgDatabaseService) UpdateImgDatabase(imgDatabase model.ImgDatabaseDB) (err error) {

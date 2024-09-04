@@ -21,7 +21,8 @@ scanArgs:
 basic:
   ColorOutput: true
 cache:
-  ImgCache: false
+  ImgCache: false   #会根据当前环境删除匹配不上的
+  SyncTable: false
   TruncateTable: false
 dump:
   PoolSize: 8
