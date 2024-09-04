@@ -30,6 +30,7 @@ var exifErr1FileMu sync.Mutex
 var exifErr2FileMu sync.Mutex
 var exifErr3FileMu sync.Mutex
 var md5EmptyFileListMu sync.Mutex
+var shootDateCacheMapBakMu sync.Mutex
 
 var imgDatabaseService = dao.ImgDatabaseService{}
 var imgRecordService = dao.ImgRecordService{}
@@ -512,15 +513,15 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	dumpMap := dumpFileProcess(md5Show, md5Map, &shouldDeleteMd5Files, scanUuidFinal) //5、重复文件处理处理
 
 	tools.Logger.Info(tools.StrWithColor("PRINT STAT TYPE0(comman info): ", "red"))
-	tools.Logger.Info("suffixMap : ", tools.MarshalJsonToString(suffixMap))
-	tools.Logger.Info("yearMap : ", tools.MarshalJsonToString(yearMap))
-	tools.Logger.Info("month count: ")
+	tools.Logger.Info("suffixMap（后缀统计） : ", tools.MarshalJsonToString(suffixMap))
+	tools.Logger.Info("yearMap（年份统计） : ", tools.MarshalJsonToString(yearMap))
+	tools.Logger.Info("month count（月份统计） : ")
 	tools.MapPrintWithFilter(monthMap, monthFilter)
-	tools.Logger.Info("day count: ")
+	tools.Logger.Info("day count（日期统计） : ")
 	tools.MapPrintWithFilter(dayMap, dayFilter)
-	tools.Logger.Info("file total : ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
-	tools.Logger.Info("dir total : ", tools.StrWithColor(strconv.Itoa(dirTotalCnt), "red"))
-	tools.Logger.Info("file contain date(just for print) : ", tools.StrWithColor(strconv.Itoa(fileDateFileList.Cardinality()), "red"))
+	tools.Logger.Info("file total（总文件数） : ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
+	tools.Logger.Info("dir total（总目录数） : ", tools.StrWithColor(strconv.Itoa(dirTotalCnt), "red"))
+	tools.Logger.Info("file contain date(just for print)（照片名称带日志的数量） : ", tools.StrWithColor(strconv.Itoa(fileDateFileList.Cardinality()), "red"))
 	tools.Logger.Info("exif parse error 1 : ", tools.StrWithColor(tools.MarshalJsonToString(exifErr1FileSuffixMap), "red"))
 	tools.Logger.Info("exif parse error 1 : ", tools.StrWithColor(strconv.Itoa(exifErr1FileSet.Cardinality()), "red"))
 	//tools.Logger.Info("exif parse error 1 list : ", exifErr1FileSet)
@@ -597,7 +598,8 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		tools.Logger.Info("bakNewFile(新增文件待备份) : ", tools.MarshalJsonToString(bakNewFile))
 		tools.Logger.Info("bakDeleteFile(备份里删除文件) : ", tools.MarshalJsonToString(bakDeleteFile))
 	}
-	tools.Logger.Info("imgDatabaseDBList size: ", len(imgDatabaseDBList))
+	tools.Logger.Info("img_database需要新插入的数量: ", len(imgDatabaseDBList))
+	tools.Logger.Info("img_database没有匹配上key，应该删除的数量: ", len(middleware.ShootDateCacheMapBak))
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("==========ROUND 3: PROCESS COST==========", "red"))
 	tools.Logger.Info()
@@ -933,6 +935,9 @@ func getImgShootDate(
 
 	if value, ok := middleware.ShootDateCacheMap[imgKey]; ok {
 		shootDateRet = value
+		shootDateCacheMapBakMu.Lock()
+		delete(middleware.ShootDateCacheMapBak, imgKey) //查完后删除，方便最后统计没用到的key删除
+		shootDateCacheMapBakMu.Unlock()
 	} else {
 		var locNum string
 		var output string
@@ -942,7 +947,6 @@ func getImgShootDate(
 
 		var imgDatabaseDB model.ImgDatabaseDB
 		imgDatabaseDB.ImgKey = imgKey
-		imgDatabaseDB.ImgDir = dirDate
 
 		imgDatabaseDB.State = &state
 		if err != nil {

@@ -70,6 +70,7 @@ func (imgDatabaseService *ImgDatabaseService) GetImgDatabaseInfoList(info model.
 	db := orm.ImgMysqlDB.Model(&model.ImgDatabaseDB{})
 	var imgDatabases []model.ImgDatabaseDB
 	// 如果有条件搜索 下方会自动创建搜索语句
+	db = db.Select("img_key", "shoot_date", "loc_num", "loc_addr", "state")
 	if info.StartCreatedAt != nil && info.EndCreatedAt != nil {
 		db = db.Where("created_at BETWEEN ? AND ?", info.StartCreatedAt, info.EndCreatedAt)
 	}
