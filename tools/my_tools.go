@@ -379,7 +379,7 @@ func ImageNumRevMapWriteToFile(m map[string][]string, filepath string) {
 
 	os.WriteFile(filepath, buffer.Bytes(), 0666)
 
-	fmt.Println("orderWrongImage : ", orderWrongImage)
+	Logger.Info("orderWrongImage : ", orderWrongImage)
 
 }
 

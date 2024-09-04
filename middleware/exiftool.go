@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var ExifNameSet = mapset.NewSet()
+var ExifDateNameSet = mapset.NewSet()
 
 func GetExifInfoCommand(path string) (string, string, string, error) {
 
@@ -88,7 +88,7 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 			}
 			t := strings.Split(strings.Split(line, ":")[0], "]")
 			t2 := strings.TrimSpace(t[0]) + "]" + strings.TrimSpace(t[1])
-			ExifNameSet.Add(t2)
+			ExifDateNameSet.Add(t2)
 		} else {
 			//tools.Logger.Error("date解析失败 ", dateList)
 		}

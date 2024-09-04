@@ -32,14 +32,10 @@ type ImgRecordDB struct {
 	EmptyDirCnt       *int       `json:"emptyDirCnt" form:"emptyDirCnt" gorm:"type:int(10);column:empty_dir_cnt;comment:空文件数;size:10;"`                           //空文件数
 	DumpFileCnt       *int       `json:"dumpFileCnt" form:"dumpFileCnt" gorm:"type:int(10);column:dump_file_cnt;comment:重复md5数;size:10;"`                         //重复md5数
 	//DumpFileDeleteList string     `json:"dumpFileDeleteList" form:"dumpFileDeleteList" gorm:"column:dump_file_delete_list;comment:需要删除文件数;"`                       //需要删除文件数
-	ExifErr1Cnt *int   `json:"exifErr1Cnt" form:"exifErr1Cnt" gorm:"type:int(10);column:exif_err1_cnt;comment:exif错误1数;size:10;"` //exif错误1数
-	ExifErr2Cnt *int   `json:"exifErr2Cnt" form:"exifErr2Cnt" gorm:"type:int(10);column:exif_err2_cnt;comment:exif错误2数;size:10;"` //exif错误2数
-	ExifErr3Cnt *int   `json:"exifErr3Cnt" form:"exifErr3Cnt" gorm:"type:int(10);column:exif_err3_cnt;comment:exif错误3数;size:10;"` //exif错误3数
-	ExifErr1Map string `json:"exifErr1Map" form:"exifErr1Map" gorm:"column:exif_err1_map;comment:exif错误1统计;size:255;"`            //exif错误1统计
-	ExifErr2Map string `json:"exifErr2Map" form:"exifErr2Map" gorm:"column:exif_err2_map;comment:exif错误2统计;size:255;"`            //exif错误2统计
-	ExifErr3Map string `json:"exifErr3Map" form:"exifErr3Map" gorm:"column:exif_err3_map;comment:exif错误3统计;size:255;"`            //exif错误3统计
-	IsComplete  *int   `json:"isComplete" form:"isComplete" gorm:"type:int(10);column:is_complete;comment:是否完整;size:10;"`
-	Remark      string `json:"remark" form:"remark" gorm:"column:remark;comment:备注;type:text;"`
+	ExifErrCnt      *int   `json:"exifErrCnt" form:"exifErrCnt" gorm:"type:int(10);column:exif_err_cnt;comment:exif错误数;size:10;"`        //exif错误数
+	ExifDateNameSet string `json:"exifDateNameSet" form:"exifDateNameSet" gorm:"column:exif_date_name_set;comment:exif错误3统计;type:text;"` //exif错误3统计
+	IsComplete      *int   `json:"isComplete" form:"isComplete" gorm:"type:int(10);column:is_complete;comment:是否完整;size:10;"`
+	Remark          string `json:"remark" form:"remark" gorm:"column:remark;comment:备注;type:text;"`
 }
 
 // TableName imgRecord表 ImgRecord自定义表名 img_record
