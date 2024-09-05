@@ -73,7 +73,7 @@ func (imgDatabaseService *ImgDatabaseService) GetImgDatabaseInfoList(info model.
 	limit := info.PageSize
 	offset := info.PageSize * (info.Page - 1)
 	// 创建db
-	db := orm.ImgMysqlDB.Model(&model.ImgDatabaseDB{})
+	db := orm.ImgMysqlDB.Debug().Model(&model.ImgDatabaseDB{})
 	var imgDatabases []model.ImgDatabaseDB
 	// 如果有条件搜索 下方会自动创建搜索语句
 	db = db.Select("img_key", "shoot_date", "loc_num", "loc_addr", "state")
