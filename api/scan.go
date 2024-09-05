@@ -28,36 +28,7 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 		return
 	}
 
-	tools.Logger.Info("DoScanImg args : " + tools.MarshalJsonToString(doScanImgArg))
-	if doScanImgArg.StartPath == nil {
-		doScanImgArg.StartPath = &cons.StartPath
-	}
-	if doScanImgArg.StartPathBak == nil {
-		doScanImgArg.StartPathBak = &cons.StartPathBak
-	}
-	if doScanImgArg.DeleteShow == nil {
-		doScanImgArg.DeleteShow = &cons.DeleteShow
-	}
-	if doScanImgArg.MoveFileShow == nil {
-		doScanImgArg.MoveFileShow = &cons.MoveFileShow
-	}
-	if doScanImgArg.ModifyDateShow == nil {
-		doScanImgArg.ModifyDateShow = &cons.ModifyDateShow
-	}
-	if doScanImgArg.Md5Show == nil {
-		doScanImgArg.Md5Show = &cons.Md5Show
-	}
-	if doScanImgArg.DeleteAction == nil {
-		doScanImgArg.DeleteAction = &cons.DeleteAction
-	}
-	if doScanImgArg.MoveFileAction == nil {
-		doScanImgArg.MoveFileAction = &cons.MoveFileAction
-	}
-	if doScanImgArg.ModifyDateAction == nil {
-		doScanImgArg.ModifyDateAction = &cons.ModifyDateAction
-	}
-
-	tools.Logger.Info("DoScanImg args real: " + tools.MarshalJsonToString(doScanImgArg))
+	tools.Logger.Info("DoScanImg web args : " + tools.MarshalJsonToString(doScanImgArg))
 
 	go func() {
 

@@ -123,12 +123,13 @@ func (ps *photoStruct) psDatePrint() { //打印照片日期块信息
 }
 
 // 扫描并将结果写入数据库
-func ScanAndSave(scanArgs model.DoScanImgArg) {
+func ScanAndSave(scanArgs model.DoScanImgArg) (string, error) {
 
 	imgRecordString, err := DoScan(scanArgs)
 
 	if err != nil {
 		tools.Logger.Error("scan result error : ", err)
+		return "", err
 	}
 
 	var imgRecord ImgRecord
@@ -144,10 +145,11 @@ func ScanAndSave(scanArgs model.DoScanImgArg) {
 
 	if err = imgRecordService.CreateImgRecord(&imgRecordDB); err != nil {
 		tools.Logger.Error("create error : ", err)
-		return
+		return "", err
 	} else {
 		tools.Logger.Info("写入数据库成功")
 	}
+	return imgRecordString, nil
 }
 
 // 扫描主体程序
@@ -206,16 +208,67 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	elapsed1 := time.Since(start1)
 	start2 := time.Now() // 获取当前时间
 
-	startPath := *scanArgs.StartPath
-	startPathBak := *scanArgs.StartPathBak
+	var startPath string
+	if scanArgs.StartPath == nil || *scanArgs.StartPath == "" {
+		startPath = cons.StartPath
+	}
+	var startPathBak string
+	if scanArgs.StartPathBak == nil || *scanArgs.StartPathBak == "" {
+		startPathBak = cons.StartPathBak
+	}
+	var deleteShow bool
+	if scanArgs.DeleteShow == nil {
+		deleteShow = cons.DeleteShow
+	} else {
+		deleteShow = *scanArgs.DeleteShow
+	}
+	var moveFileShow bool
+	if scanArgs.MoveFileShow == nil {
+		moveFileShow = cons.MoveFileShow
+	} else {
+		moveFileShow = *scanArgs.MoveFileShow
+	}
+	var modifyDateShow bool
+	if scanArgs.ModifyDateShow == nil {
+		modifyDateShow = cons.ModifyDateShow
+	} else {
+		modifyDateShow = *scanArgs.ModifyDateShow
+	}
+	var md5Show bool
+	if scanArgs.Md5Show == nil {
+		md5Show = cons.Md5Show
+	} else {
+		md5Show = *scanArgs.Md5Show
+	}
+	var deleteAction bool
+	if scanArgs.DeleteAction == nil {
+		deleteAction = cons.DeleteAction
+	} else {
+		deleteAction = *scanArgs.DeleteAction
+	}
+	var moveFileAction bool
+	if scanArgs.MoveFileAction == nil {
+		moveFileAction = cons.MoveFileAction
+	} else {
+		moveFileAction = *scanArgs.MoveFileAction
+	}
+	var modifyDateAction bool
+	if scanArgs.ModifyDateAction == nil {
+		modifyDateAction = cons.ModifyDateAction
+	} else {
+		modifyDateAction = *scanArgs.ModifyDateAction
+	}
 
-	deleteShow := *scanArgs.DeleteShow
-	moveFileShow := *scanArgs.MoveFileShow
-	modifyDateShow := *scanArgs.ModifyDateShow
-	md5Show := *scanArgs.Md5Show
-	deleteAction := *scanArgs.DeleteAction
-	moveFileAction := *scanArgs.MoveFileAction
-	modifyDateAction := *scanArgs.ModifyDateAction
+	tools.Logger.Info("DoScan args final: ")
+	tools.Logger.Info("startPath : ", startPath)
+	tools.Logger.Info("startPathBak : ", startPathBak)
+	tools.Logger.Info("deleteShow : ", deleteShow)
+	tools.Logger.Info("moveFileShow : ", moveFileShow)
+	tools.Logger.Info("modifyDateShow : ", modifyDateShow)
+	tools.Logger.Info("md5Show : ", md5Show)
+	tools.Logger.Info("deleteAction : ", deleteAction)
+	tools.Logger.Info("moveFileAction : ", moveFileAction)
+	tools.Logger.Info("modifyDateAction : ", modifyDateAction)
 
 	scanUuid, err := uuid.NewUUID()
 	if err != nil {
@@ -230,8 +283,6 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	}
 
 	var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
-
-	tools.Logger.Info("DoScan args : ", deleteShow, moveFileShow, modifyDateShow, md5Show, deleteAction, moveFileAction, modifyDateAction)
 
 	defer tools.Logger.Sync()
 
@@ -673,9 +724,9 @@ func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool,
 		}
 		tools.Logger.Info(tools.StrWithColor("should modify file ", "yellow"), ps.photo, " modifyDate to ", ps.minDate)
 	}
-	if modifyDateAction { //移动文件
-		tm, _ := time.Parse("2006-01-02", ps.minDate)
-		tools.ChangeModifyDate(ps.photo, tm)
+	if modifyDateAction { //修改日期（不启用）
+		//tm, _ := time.Parse("2006-01-02", ps.minDate)
+		//tools.ChangeModifyDate(ps.photo, tm)
 		tools.Logger.Info(tools.StrWithColor("modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate, "get realdate", tools.GetModifyDate(ps.photo))
 	}
 }

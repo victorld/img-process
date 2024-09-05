@@ -8,10 +8,10 @@ import (
 
 type Img struct{}
 
-func (img *Img) DoScan(scanArgs *model.DoScanImgArg, reply *string) error {
+func (img *Img) DoScan(scanArgs model.DoScanImgArg, reply *string) error {
 	fmt.Println("received call")
 
-	ret, err := service.DoScan(*scanArgs)
+	ret, err := service.ScanAndSave(scanArgs)
 	if err != nil {
 		*reply = ""
 		return err
