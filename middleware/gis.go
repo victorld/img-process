@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"img_process/cons"
 	"img_process/model"
 	"img_process/tools"
 	"io"
@@ -62,7 +63,7 @@ func GetLocationAddressByCache(locNum string) (gitAddress string, err error) {
 
 func GetLocationAddress(locNum string) (locJson string, err error) {
 	// 此处填写您在控制台-应用管理-创建应用后获取的AK
-	key := "96fd6b0ee12dfee568cc3489f7d7bb28"
+	key := cons.GisKey
 
 	// 服务地址
 	host := "https://restapi.amap.com"

@@ -19,6 +19,7 @@ var (
 	HttpPassword     string
 	StartPath        string
 	StartPathBak     string
+	GisKey           string
 	DeleteShow       bool
 	MoveFileShow     bool
 	ModifyDateShow   bool
@@ -69,6 +70,8 @@ func InitConst() {
 	StartPathBak = tools.GetConfigString("bak.StartPathBak")
 	BakStatEnable, _ = strconv.ParseBool(tools.GetConfigString("bak.BakStatEnable"))
 
+	GisKey = tools.GetConfigString("gis.key")
+
 	fmt.Println("DbUsername :", DbUsername)
 	fmt.Println("DbPassword :", DbPassword)
 	fmt.Println("DbHost :", DbHost)
@@ -98,6 +101,8 @@ func InitConst() {
 	fmt.Println("PoolSize :", PoolSize)
 	fmt.Println("Md5Retry :", Md5Retry)
 	fmt.Println("Md5CountLength :", Md5CountLength)
+
+	fmt.Println("GisKey: " + GisKey)
 
 	WorkDir, _ = os.Getwd() // 项目工作目录
 	fmt.Println("工作目录: " + WorkDir)

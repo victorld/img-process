@@ -31,6 +31,8 @@ dump:
 bak:
   BakStatEnable: true
   StartPathBak: /Users/ld/Downloads/save/pic-lib-bak/pic-new
+gis:
+  key : abc
 
 
 
