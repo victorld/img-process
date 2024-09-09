@@ -8,33 +8,35 @@ import (
 )
 
 var (
-	DbUsername       string
-	DbPassword       string
-	DbHost           string
-	DbPort           string
-	DbName           string
-	DbConfig         string
-	HttpPort         string
-	HttpUsername     string
-	HttpPassword     string
-	StartPath        string
-	StartPathBak     string
-	GisKey           string
-	DeleteShow       bool
-	MoveFileShow     bool
-	ModifyDateShow   bool
-	Md5Show          bool
-	DeleteAction     bool
-	MoveFileAction   bool
-	ModifyDateAction bool
-	ImgCache         bool
-	SyncTable        bool
-	TruncateTable    bool
-	BakStatEnable    bool
-	WorkDir          string
-	PoolSize         int
-	Md5Retry         int
-	Md5CountLength   int64
+	DbUsername        string
+	DbPassword        string
+	DbHost            string
+	DbPort            string
+	DbName            string
+	DbConfig          string
+	HttpPort          string
+	HttpUsername      string
+	HttpPassword      string
+	StartPath         string
+	StartPathBak      string
+	GisKey            string
+	DeleteShow        bool
+	MoveFileShow      bool
+	ModifyDateShow    bool
+	Md5Show           bool
+	DeleteAction      bool
+	MoveFileAction    bool
+	ModifyDateAction  bool
+	ImgCache          bool
+	SyncTable         bool
+	TruncateTable     bool
+	BakStatEnable     bool
+	WorkDir           string
+	PoolSize          int
+	Md5Retry          int
+	Md5CountLength    int64
+	IDInsertBatchSize int
+	IDDeleteBatchSize int
 )
 
 func InitConst() {
@@ -72,6 +74,9 @@ func InitConst() {
 
 	GisKey = tools.GetConfigString("gis.key")
 
+	IDInsertBatchSize, _ = strconv.Atoi(tools.GetConfigString("batch.IDInsertBatchSize"))
+	IDDeleteBatchSize, _ = strconv.Atoi(tools.GetConfigString("batch.IDDeleteBatchSize"))
+
 	fmt.Println("DbUsername :", DbUsername)
 	fmt.Println("DbPassword :", DbPassword)
 	fmt.Println("DbHost :", DbHost)
@@ -102,7 +107,10 @@ func InitConst() {
 	fmt.Println("Md5Retry :", Md5Retry)
 	fmt.Println("Md5CountLength :", Md5CountLength)
 
-	fmt.Println("GisKey: " + GisKey)
+	fmt.Println("GisKey: ", GisKey)
+
+	fmt.Println("IDInsertBatchSize: ", IDInsertBatchSize)
+	fmt.Println("IDDeleteBatchSize: ", IDDeleteBatchSize)
 
 	WorkDir, _ = os.Getwd() // 项目工作目录
 	fmt.Println("工作目录: " + WorkDir)

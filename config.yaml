@@ -33,6 +33,10 @@ bak:
   StartPathBak: /Users/ld/Downloads/save/pic-lib-bak/pic-new
 gis:
   key : abc
+batch:
+  IDInsertBatchSize: 5000
+  IDDeleteBatchSize: 100
+
 
 
 

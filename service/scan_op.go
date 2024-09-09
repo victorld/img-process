@@ -208,56 +208,43 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	elapsed1 := time.Since(start1)
 	start2 := time.Now() // 获取当前时间
 
-	var startPath string
 	if scanArgs.StartPath == nil || *scanArgs.StartPath == "" {
-		startPath = cons.StartPath
+		scanArgs.StartPath = &cons.StartPath
 	}
-	var startPathBak string
 	if scanArgs.StartPathBak == nil || *scanArgs.StartPathBak == "" {
-		startPathBak = cons.StartPathBak
+		scanArgs.StartPathBak = &cons.StartPathBak
 	}
-	var deleteShow bool
 	if scanArgs.DeleteShow == nil {
-		deleteShow = cons.DeleteShow
-	} else {
-		deleteShow = *scanArgs.DeleteShow
+		scanArgs.DeleteShow = &cons.DeleteShow
 	}
-	var moveFileShow bool
 	if scanArgs.MoveFileShow == nil {
-		moveFileShow = cons.MoveFileShow
-	} else {
-		moveFileShow = *scanArgs.MoveFileShow
+		scanArgs.MoveFileShow = &cons.MoveFileShow
 	}
-	var modifyDateShow bool
 	if scanArgs.ModifyDateShow == nil {
-		modifyDateShow = cons.ModifyDateShow
-	} else {
-		modifyDateShow = *scanArgs.ModifyDateShow
+		scanArgs.ModifyDateShow = &cons.ModifyDateShow
 	}
-	var md5Show bool
 	if scanArgs.Md5Show == nil {
-		md5Show = cons.Md5Show
-	} else {
-		md5Show = *scanArgs.Md5Show
+		scanArgs.Md5Show = &cons.Md5Show
 	}
-	var deleteAction bool
 	if scanArgs.DeleteAction == nil {
-		deleteAction = cons.DeleteAction
-	} else {
-		deleteAction = *scanArgs.DeleteAction
+		scanArgs.DeleteAction = &cons.DeleteAction
 	}
-	var moveFileAction bool
 	if scanArgs.MoveFileAction == nil {
-		moveFileAction = cons.MoveFileAction
-	} else {
-		moveFileAction = *scanArgs.MoveFileAction
+		scanArgs.MoveFileAction = &cons.MoveFileAction
 	}
-	var modifyDateAction bool
 	if scanArgs.ModifyDateAction == nil {
-		modifyDateAction = cons.ModifyDateAction
-	} else {
-		modifyDateAction = *scanArgs.ModifyDateAction
+		scanArgs.ModifyDateAction = &cons.ModifyDateAction
 	}
+
+	var startPath = *scanArgs.StartPath
+	var startPathBak = *scanArgs.StartPathBak
+	var deleteShow = *scanArgs.DeleteShow
+	var moveFileShow = *scanArgs.MoveFileShow
+	var modifyDateShow = *scanArgs.ModifyDateShow
+	var md5Show = *scanArgs.Md5Show
+	var deleteAction = *scanArgs.DeleteAction
+	var moveFileAction = *scanArgs.MoveFileAction
+	var modifyDateAction = *scanArgs.ModifyDateAction
 
 	tools.Logger.Info("DoScan args final: ")
 	tools.Logger.Info("startPath : ", startPath)
@@ -617,7 +604,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		var imgKeyToDelete []string
 		for key, _ := range middleware.ShootDateCacheMapBak {
 			imgKeyToDelete = append(imgKeyToDelete, key)
-			if len(imgKeyToDelete) >= 100 {
+			if len(imgKeyToDelete) >= cons.IDDeleteBatchSize {
 				imgDatabaseService.DeleteImgDatabaseByImgKey(imgKeyToDelete)
 				imgKeyToDelete = []string{}
 			}

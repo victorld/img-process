@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"img_process/cons"
 	"img_process/model"
 	"img_process/plugin/orm"
 )
@@ -24,7 +25,7 @@ func (imgDatabaseService *ImgDatabaseService) CreateImgDatabase(imgDatabase *mod
 // CreateImgDatabaseBatch 批量创建imgDatabase表记录
 func (imgDatabaseService *ImgDatabaseService) CreateImgDatabaseBatch(imgDatabaseList []*model.ImgDatabaseDB) (err error) {
 	//
-	err = orm.ImgMysqlDB.CreateInBatches(imgDatabaseList, 5000).Error
+	err = orm.ImgMysqlDB.CreateInBatches(imgDatabaseList, cons.IDInsertBatchSize).Error
 	return err
 }
 
