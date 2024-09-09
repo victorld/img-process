@@ -624,6 +624,10 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		}
 		imgDatabaseService.DeleteImgDatabaseByImgKey(imgKeyToDelete)
 	}
+	var imgDatabaseSearch model.ImgDatabaseSearch
+	imgDatabaseTotal, _ := imgDatabaseService.GetImgDatabaseInfoCount(imgDatabaseSearch)
+	tools.Logger.Info("文件总数 : ", fileTotalCnt, " , imgDatabase总数 : ", imgDatabaseTotal)
+
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("==========ROUND 3: PROCESS COST==========", "red"))
 	tools.Logger.Info()

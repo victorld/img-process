@@ -92,3 +92,20 @@ func (imgDatabaseService *ImgDatabaseService) GetImgDatabaseInfoList(info model.
 	err = db.Find(&imgDatabases).Error
 	return imgDatabases, total, err
 }
+
+// GetImgDatabaseInfoCount 分页获取imgDatabase表记录数
+func (imgDatabaseService *ImgDatabaseService) GetImgDatabaseInfoCount(info model.ImgDatabaseSearch) (total int64, err error) {
+
+	// 创建db
+	db := orm.ImgMysqlDB.Debug().Model(&model.ImgDatabaseDB{})
+	// 如果有条件搜索 下方会自动创建搜索语句
+	if info.StartCreatedAt != nil && info.EndCreatedAt != nil {
+		db = db.Where("created_at BETWEEN ? AND ?", info.StartCreatedAt, info.EndCreatedAt)
+	}
+	err = db.Count(&total).Error
+	if err != nil {
+		return
+	}
+
+	return total, err
+}
