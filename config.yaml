@@ -14,16 +14,18 @@ scanArgs:
   DeleteShow: true
   MoveFileShow: true
   ModifyDateShow: false
+  RenameShow: true
   Md5Show: true
   DeleteAction: false
   MoveFileAction: false
   ModifyDateAction: false
+  RenameAction: false
 basic:
   ColorOutput: true
 cache:
-  ImgCache: false   #会根据当前环境删除匹配不上的
-  SyncTable: false
-  TruncateTable: false
+  ImgCache: false   #是否要使用图片cache
+  SyncTable: false    #会根据当前环境删除匹配不上的，添加新增的
+  TruncateTable: false    #先truncate表
 dump:
   PoolSize: 8
   Md5Retry: 3
@@ -35,7 +37,7 @@ gis:
   key : abc
 batch:
   IDInsertBatchSize: 5000
-  IDDeleteBatchSize: 100
+  IDDeleteBatchSize: 300
 
 
 

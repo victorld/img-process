@@ -5,7 +5,6 @@ import (
 	goexif "github.com/dsoprea/go-exif/v3"
 	exifcommon "github.com/dsoprea/go-exif/v3/common"
 	"img_process/tools"
-	"time"
 )
 
 // DateTime    DateTimeOriginal    DateTimeDigitized
@@ -54,21 +53,21 @@ func GetExifInfoGo(path string) (string, string, error) {
 	updatedRootIfd := index.RootIfd
 	updatedExifIfd, err := updatedRootIfd.ChildWithIfdPath(exifcommon.IfdExifStandardIfdIdentity)
 	if err == nil {
-		value, err := GetExifValue(updatedExifIfd, "DateTimeOriginal")
+		shootTime, err = GetExifValue(updatedExifIfd, "DateTimeOriginal")
 		if err != nil {
-			value, err = GetExifValue(updatedExifIfd, "DateTime")
+			shootTime, err = GetExifValue(updatedExifIfd, "DateTime")
 			if err != nil {
-				value, err = GetExifValue(updatedExifIfd, "DateTimeDigitized")
+				shootTime, err = GetExifValue(updatedExifIfd, "DateTimeDigitized")
 			}
 		}
 
-		if value != "" {
+		/*if shootTime != "" {
 			exifTimeLayout := "2006:01:02 15:04:05"
-			t, err := time.Parse(exifTimeLayout, value)
+			t, err := time.Parse(exifTimeLayout, shootTime)
 			if err == nil {
 				shootTime = t.Format("2006-01-02")
 			}
-		}
+		}*/
 	}
 
 	var locNum string

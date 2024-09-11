@@ -23,10 +23,12 @@ var (
 	DeleteShow        bool
 	MoveFileShow      bool
 	ModifyDateShow    bool
+	RenameShow        bool
 	Md5Show           bool
 	DeleteAction      bool
 	MoveFileAction    bool
 	ModifyDateAction  bool
+	RenameAction      bool
 	ImgCache          bool
 	SyncTable         bool
 	TruncateTable     bool
@@ -56,10 +58,12 @@ func InitConst() {
 	DeleteShow, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.DeleteShow"))
 	MoveFileShow, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.MoveFileShow"))
 	ModifyDateShow, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.ModifyDateShow"))
+	RenameShow, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.RenameShow"))
 	Md5Show, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.Md5Show"))
 	DeleteAction, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.DeleteAction"))
 	MoveFileAction, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.MoveFileAction"))
 	ModifyDateAction, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.ModifyDateAction"))
+	RenameAction, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.RenameAction"))
 
 	ImgCache, _ = strconv.ParseBool(tools.GetConfigString("cache.ImgCache"))
 	SyncTable, _ = strconv.ParseBool(tools.GetConfigString("cache.SyncTable"))
@@ -92,9 +96,11 @@ func InitConst() {
 	fmt.Println("DeleteShow :", DeleteShow)
 	fmt.Println("MoveFileShow :", MoveFileShow)
 	fmt.Println("ModifyDateShow :", ModifyDateShow)
+	fmt.Println("RenameShow :", RenameShow)
 	fmt.Println("DeleteAction :", DeleteAction)
 	fmt.Println("MoveFileAction :", MoveFileAction)
 	fmt.Println("ModifyDateAction :", ModifyDateAction)
+	fmt.Println("RenameAction :", RenameAction)
 
 	fmt.Println("ImgCache :", ImgCache)
 	fmt.Println("TruncateTable :", TruncateTable)

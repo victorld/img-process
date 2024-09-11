@@ -18,13 +18,15 @@ func main() {
 	var deleteShow = true      //是否统计并显示非法文件和空目录
 	var moveFileShow = true    //是否统计并显示需要移动目录的文件
 	var modifyDateShow = false //是否统计并显示需要修改日期的文件
+	var renameShow = false     //是否统计并显示需要修改名称的文件
 	var md5Show = true         //是否统计并显示重复文件
 
 	var deleteAction = false     //是否操作删除非法文件和空目录
 	var moveFileAction = false   //是否操作需要移动目录的文件
 	var modifyDateAction = false //是否操作修改日期的文件
+	var renameAction = false     //是否操作修改文件名称
 
-	scanArgs := model.DoScanImgArg{DeleteShow: &deleteShow, MoveFileShow: &moveFileShow, ModifyDateShow: &modifyDateShow, Md5Show: &md5Show, DeleteAction: &deleteAction, MoveFileAction: &moveFileAction, ModifyDateAction: &modifyDateAction, StartPath: &startPath, StartPathBak: &startPathBak}
+	scanArgs := model.DoScanImgArg{DeleteShow: &deleteShow, MoveFileShow: &moveFileShow, ModifyDateShow: &modifyDateShow, RenameShow: &renameShow, Md5Show: &md5Show, DeleteAction: &deleteAction, MoveFileAction: &moveFileAction, ModifyDateAction: &modifyDateAction, RenameAction: &renameAction, StartPath: &startPath, StartPathBak: &startPathBak}
 	tools.Logger.Info("DoScanImg rpc args : " + tools.MarshalJsonToString(scanArgs))
 
 	// 建立TCP连接

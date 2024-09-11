@@ -223,6 +223,9 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	if scanArgs.ModifyDateShow == nil {
 		scanArgs.ModifyDateShow = &cons.ModifyDateShow
 	}
+	if scanArgs.RenameShow == nil {
+		scanArgs.RenameShow = &cons.RenameShow
+	}
 	if scanArgs.Md5Show == nil {
 		scanArgs.Md5Show = &cons.Md5Show
 	}
@@ -235,16 +238,21 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	if scanArgs.ModifyDateAction == nil {
 		scanArgs.ModifyDateAction = &cons.ModifyDateAction
 	}
+	if scanArgs.RenameAction == nil {
+		scanArgs.RenameAction = &cons.RenameAction
+	}
 
 	var startPath = *scanArgs.StartPath
 	var startPathBak = *scanArgs.StartPathBak
 	var deleteShow = *scanArgs.DeleteShow
 	var moveFileShow = *scanArgs.MoveFileShow
 	var modifyDateShow = *scanArgs.ModifyDateShow
+	var renameShow = *scanArgs.RenameShow
 	var md5Show = *scanArgs.Md5Show
 	var deleteAction = *scanArgs.DeleteAction
 	var moveFileAction = *scanArgs.MoveFileAction
 	var modifyDateAction = *scanArgs.ModifyDateAction
+	var renameAction = *scanArgs.RenameAction
 
 	tools.Logger.Info("DoScan args final: ")
 	tools.Logger.Info("startPath : ", startPath)
@@ -252,10 +260,12 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	tools.Logger.Info("deleteShow : ", deleteShow)
 	tools.Logger.Info("moveFileShow : ", moveFileShow)
 	tools.Logger.Info("modifyDateShow : ", modifyDateShow)
+	tools.Logger.Info("renameShow : ", renameShow)
 	tools.Logger.Info("md5Show : ", md5Show)
 	tools.Logger.Info("deleteAction : ", deleteAction)
 	tools.Logger.Info("moveFileAction : ", moveFileAction)
 	tools.Logger.Info("modifyDateAction : ", modifyDateAction)
+	tools.Logger.Info("renameAction : ", renameAction)
 
 	scanUuid, err := uuid.NewUUID()
 	if err != nil {
@@ -857,14 +867,20 @@ func processOneFile(
 	}
 
 	shootDate := ""
-	//if suffix != ".mov" && suffix != ".mp4" { //exif拍摄时间获取
-	shootDate, _ = getImgShootDate(
+
+	shootDate, _ = getImgShootDate( //查询照片的拍摄时间，gis信息处理
 		photo,
 		suffix)
 	if shootDate != "" {
 		//tools.Logger.Info("shootDate : " + shootDate)
 	}
-	//}
+
+	if shootDate != "" {
+		t, err := time.Parse("2006:01:02 15:04:05", shootDate)
+		if err == nil {
+			shootDate = t.Format("2006-01-02")
+		}
+	}
 
 	dirDate := tools.GetDirDate(photo)
 
@@ -948,10 +964,10 @@ func getImgShootDate(
 	fileName := path.Base(filepath)
 	dirDate := tools.GetDirDate(filepath)
 	imgKey := dirDate + "|" + fileName
-	shootDateRet := ""
+	shootDate := ""
 
 	if value, ok := middleware.ShootDateCacheMap[imgKey]; ok {
-		shootDateRet = value
+		shootDate = value
 		shootDateCacheMapBakMu.Lock()
 		delete(middleware.ShootDateCacheMapBak, imgKey) //查完后删除，方便最后统计没用到的key删除
 		shootDateCacheMapBakMu.Unlock()
@@ -960,7 +976,7 @@ func getImgShootDate(
 		var output string
 		var err error
 		var state int
-		shootDateRet, locNum, state, output, err = middleware.GetExifInfo(filepath)
+		shootDate, locNum, state, output, err = middleware.GetExifInfo(filepath)
 
 		var imgDatabaseDB model.ImgDatabaseDB
 		imgDatabaseDB.ImgKey = imgKey
@@ -976,7 +992,7 @@ func getImgShootDate(
 			getExifInfoErrorSet.Add(filepath)
 			getExifInfoErrorSuffixMapMu.Unlock()
 		}
-		imgDatabaseDB.ShootDate = shootDateRet
+		imgDatabaseDB.ShootDate = shootDate
 		imgDatabaseDB.LocNum = locNum
 		imgDatabaseDB.Remark = output
 		if locNum != "" {
@@ -991,6 +1007,6 @@ func getImgShootDate(
 
 	}
 
-	return shootDateRet, nil
+	return shootDate, nil
 
 }

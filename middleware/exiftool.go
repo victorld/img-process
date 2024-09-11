@@ -14,7 +14,6 @@ var ExifDateNameSet = mapset.NewSet()
 
 func GetExifInfoCommand(path string) (string, string, string, error) {
 
-	var shootTime string
 	var locNum string
 	cmd := "exiftool -G '" + path + "' | grep -v '\\[File\\]' | grep -v '0000' | grep -v Stamp |  grep -E 'GPS Position|Date'"
 	output, err := tools.GetOutputCommand(cmd)
@@ -67,7 +66,7 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 	}
 
 	dateRegexp := regexp.MustCompile(`^.*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}).*$`)
-	var minDate string
+	var shootTime string
 	for _, line := range dateList {
 		dateValList := dateRegexp.FindStringSubmatch(line)
 		if len(dateValList) == 2 {
@@ -77,11 +76,11 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 				t, _ := time.ParseInLocation("2006:01:02 15:04:05", dateVal, loc)
 				dateVal = t.Local().Format("2006:01:02 15:04:05")
 			}
-			if minDate == "" {
-				minDate = dateVal
+			if shootTime == "" {
+				shootTime = dateVal
 			} else {
-				if dateVal < minDate {
-					minDate = dateVal
+				if dateVal < shootTime {
+					shootTime = dateVal
 				}
 			}
 			t := strings.Split(strings.Split(line, ":")[0], "]")
@@ -91,12 +90,12 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 			//tools.Logger.Error("date解析失败 ", dateList)
 		}
 	}
-	if minDate != "" {
-		t, err := time.Parse("2006:01:02 15:04:05", minDate)
+	/*	if shootTime != "" {
+		t, err := time.Parse("2006:01:02 15:04:05", shootTime)
 		if err == nil {
 			shootTime = t.Format("2006-01-02")
 		}
-	}
+	}*/
 
 	return shootTime, locNum, output, nil
 
