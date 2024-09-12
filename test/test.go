@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"img_process/cons"
 	"img_process/middleware"
-	"img_process/plugin/orm"
 	"img_process/tools"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -108,23 +108,48 @@ func getExifInfoCommand() {
 	}
 }
 
+func extractFileInfo() {
+	file := "/Users/ld/Downloads/save/pic-lib/pic-new/2023/2023-08/2023-08-23/IMG_8197[dda].MOV"
+	fileRegexp := regexp.MustCompile(`^.*\[(.*)\].*$`)
+	dateValList := fileRegexp.FindStringSubmatch(file)
+	var timeAndLoc string
+	if len(dateValList) == 2 {
+		timeAndLoc = dateValList[1]
+	}
+	fmt.Println(timeAndLoc)
+}
+
+func changeFileName() {
+	filePath := "/Users/ld/Downloads/save/pic-lib/pic-new/2023/2023-08/2023-08-23/IMG_8197.MOV"
+	var filePathNew string
+	replaceKey := "2010:04:11-00:00:00|北京市海淀区上地街道"
+	//fileName := path.Base(filePath)
+	//fileSuffix := strings.ToLower(path.Ext(filePath))
+	// 去除文件扩展名
+	//nameWithoutExt := strings.TrimSuffix(fileName, filepath.Ext(filePath))
+
+	if strings.Contains(filePath, "]") {
+		filePathNew = strings.ReplaceAll(filePath, ".", replaceKey+".")
+		re, _ := regexp.Compile(`\[.*\]`)
+		filePathNew = re.ReplaceAllString(filePath, "["+replaceKey+"]")
+	} else {
+		if strings.Count(filePath, ".") == 1 {
+			filePathNew = strings.ReplaceAll(filePath, ".", "["+replaceKey+"].")
+		} else {
+			fmt.Println("##################filePath error")
+		}
+	}
+	fmt.Println(filePathNew)
+
+}
+
 func main() {
 	fmt.Println()
 
-	tools.InitLogger()
-	tools.InitViper()
-	cons.InitConst()
-	orm.InitMysql()
-	testGetExifInfo()
+	//tools.InitLogger()
+	//tools.InitViper()
+	//cons.InitConst()
+	//orm.InitMysql()
 
-	//testGetExifInfo()
-	//testShootDate()
-	//testPrintExifData()
-	//getLocationAddress()
-	//testGps()
-	//testDate()
-	//testGetMD5()
-	//testMd5Delete()
-	//testModifyDate()
-	//testChan()
+	changeFileName()
 }

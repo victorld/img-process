@@ -15,6 +15,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,6 +24,22 @@ import (
 
 const monthFilter = "xx" //月份过滤参数，打印使用
 const dayFilter = "xx"   //日期过滤参数，打印使用
+
+var basePath string
+
+var startPath string
+var startPathBak string
+var deleteShow bool
+var moveFileShow bool
+var modifyDateShow bool
+var renameShow bool
+var md5Show bool
+var deleteAction bool
+var moveFileAction bool
+var modifyDateAction bool
+var renameAction bool
+
+var scanUuidFinal string
 
 var deleteDirList []dirStruct //需要处理的目录结构体列表（空目录）
 
@@ -70,6 +87,7 @@ type photoStruct struct { //照片打印需要的结构体
 	isMoveFile       bool
 	targetPhoto      string
 	isModifyDateFile bool
+	isRenameFile     bool
 }
 
 type ImgRecord struct {
@@ -242,17 +260,17 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		scanArgs.RenameAction = &cons.RenameAction
 	}
 
-	var startPath = *scanArgs.StartPath
-	var startPathBak = *scanArgs.StartPathBak
-	var deleteShow = *scanArgs.DeleteShow
-	var moveFileShow = *scanArgs.MoveFileShow
-	var modifyDateShow = *scanArgs.ModifyDateShow
-	var renameShow = *scanArgs.RenameShow
-	var md5Show = *scanArgs.Md5Show
-	var deleteAction = *scanArgs.DeleteAction
-	var moveFileAction = *scanArgs.MoveFileAction
-	var modifyDateAction = *scanArgs.ModifyDateAction
-	var renameAction = *scanArgs.RenameAction
+	startPath = *scanArgs.StartPath
+	startPathBak = *scanArgs.StartPathBak
+	deleteShow = *scanArgs.DeleteShow
+	moveFileShow = *scanArgs.MoveFileShow
+	modifyDateShow = *scanArgs.ModifyDateShow
+	renameShow = *scanArgs.RenameShow
+	md5Show = *scanArgs.Md5Show
+	deleteAction = *scanArgs.DeleteAction
+	moveFileAction = *scanArgs.MoveFileAction
+	modifyDateAction = *scanArgs.ModifyDateAction
+	renameAction = *scanArgs.RenameAction
 
 	tools.Logger.Info("DoScan args final: ")
 	tools.Logger.Info("startPath : ", startPath)
@@ -272,14 +290,14 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		return "", err
 	}
 	timeStr := time.Now().Format(tools.DatetimeDirTemplate)
-	scanUuidFinal := timeStr + "_" + strings.ReplaceAll(scanUuid.String(), "-", "")
+	scanUuidFinal = timeStr + "_" + strings.ReplaceAll(scanUuid.String(), "-", "")
 	tools.Logger.Info("SCAN JOBID : ", tools.StrWithColor(scanUuidFinal, "red"))
 
 	if !strings.Contains(startPath, "pic-new") {
 		return "", errors.New("startPath error ")
 	}
 
-	var basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
+	basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
 	defer tools.Logger.Sync()
 
@@ -397,10 +415,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 				wg.Add(1)
 
 				_ = p.Submit(func() {
-					processOneFile(
-						basePath,
-						file,
-						md5Show) //单个文件协程处理
+					processOneFile(file) //单个文件协程处理
 				})
 
 			}
@@ -524,14 +539,14 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("PRINT DETAIL TYPE1(delete file,modify date,move file): ", "red"))
 
-	processFileProcess(deleteShow, deleteAction, modifyDateShow, modifyDateAction, moveFileShow, moveFileAction) //待处理文件处理
+	processFileProcess() //待处理文件处理
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("PRINT DETAIL TYPE2(empty dir): ", "red"))
-	emptyDirProcess(deleteShow, deleteAction) //空目录处理
+	emptyDirProcess() //空目录处理
 	tools.Logger.Info()
 
 	tools.Logger.Info(tools.StrWithColor("PRINT DETAIL TYPE3(dump file): ", "red"))
-	dumpMap := dumpFileProcess(md5Show, scanUuidFinal) //5、重复文件处理处理
+	dumpMap := dumpFileProcess() //5、重复文件处理处理
 
 	tools.Logger.Info(tools.StrWithColor("PRINT STAT TYPE0(comman info): ", "red"))
 
@@ -673,27 +688,27 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 }
 
 // 主目录遍历完成后，待处理文件处理
-func processFileProcess(deleteShow bool, deleteAction bool, modifyDateShow bool, modifyDateAction bool, moveFileShow bool, moveFileAction bool) {
+func processFileProcess() {
 	for _, ps := range processFileList { //第一个参数是下标
 
 		printFileFlag := false
 		printDateFlag := false
 
 		if ps.isDeleteFile {
-			deleteFileProcess(ps, &printFileFlag, &printDateFlag, deleteShow, deleteAction) //1、需要删除的文件处理
+			deleteFileProcess(ps, &printFileFlag) //1、需要删除的文件处理
 		}
 		if ps.isModifyDateFile {
-			modifyDateProcess(ps, &printFileFlag, &printDateFlag, modifyDateShow, modifyDateAction) //2、需要修改时间的文件处理
+			modifyDateProcess(ps, &printFileFlag, &printDateFlag) //2、需要修改时间的文件处理
 		}
 		if ps.isMoveFile {
-			moveFileProcess(ps, &printFileFlag, &printDateFlag, moveFileShow, moveFileAction) //3、需要移动的文件处理
+			moveFileProcess(ps, &printFileFlag, &printDateFlag) //3、需要移动的文件处理
 		}
 
 	}
 }
 
 // 待删除文件处理逻辑
-func deleteFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool, deleteShow bool, deleteAction bool) {
+func deleteFileProcess(ps photoStruct, printFileFlag *bool) {
 	if deleteShow || deleteAction {
 		tools.Logger.Info()
 		tools.Logger.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
@@ -712,7 +727,7 @@ func deleteFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool,
 }
 
 // 待更新修改日期文件处理逻辑
-func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool, modifyDateShow bool, modifyDateAction bool) {
+func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
 	if modifyDateShow || modifyDateAction {
 		if !*printFileFlag {
 			tools.Logger.Info()
@@ -733,7 +748,7 @@ func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool,
 }
 
 // 待移动文件处理逻辑
-func moveFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool, moveFileShow bool, moveFileAction bool) {
+func moveFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
 	if moveFileShow || moveFileAction {
 		if !*printFileFlag {
 			tools.Logger.Info()
@@ -752,8 +767,28 @@ func moveFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool, m
 	}
 }
 
+// 重命名文件处理逻辑
+func renameFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
+	if renameShow || renameAction {
+		if !*printFileFlag {
+			tools.Logger.Info()
+			tools.Logger.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
+			*printFileFlag = true
+		}
+		if !*printDateFlag {
+			ps.psDatePrint()
+			*printDateFlag = true
+		}
+		tools.Logger.Info(tools.StrWithColor("should rename file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
+	}
+	if renameAction {
+		tools.MoveFile(ps.photo, ps.targetPhoto)
+		tools.Logger.Info(tools.StrWithColor("rename file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
+	}
+}
+
 // 空目录处理
-func emptyDirProcess(deleteShow bool, deleteAction bool) {
+func emptyDirProcess() {
 	for _, ds := range deleteDirList {
 		if ds.isEmptyDir {
 			if deleteShow || deleteAction {
@@ -776,7 +811,7 @@ func emptyDirProcess(deleteShow bool, deleteAction bool) {
 }
 
 // 重复文件处理
-func dumpFileProcess(md5Show bool, scanUuidFinal string) map[string][]string {
+func dumpFileProcess() map[string][]string {
 	var dumpMap = make(map[string][]string) //md5Map里筛选出有重复文件的Map
 
 	if md5Show {
@@ -853,24 +888,18 @@ func dumpFileProcess(md5Show bool, scanUuidFinal string) map[string][]string {
 }
 
 // 遍历逻辑单文件处理
-func processOneFile(
-	basePath string,
-	photo string,
-	md5Show bool) {
+func processOneFile(photo string) {
 
 	defer wg.Done()
 
-	suffix := strings.ToLower(path.Ext(photo))
-
-	if strings.HasSuffix(photo, "IMG_5081.HEIC") {
+	/*if strings.HasSuffix(photo, "IMG_5081.HEIC") {
 		tools.Logger.Info()
-	}
+	}*/
 
-	shootDate := ""
+	var shootDate string
+	var locStreet string
 
-	shootDate, _ = getImgShootDate( //查询照片的拍摄时间，gis信息处理
-		photo,
-		suffix)
+	shootDate, locStreet, _ = getImgShootDateAndLoc(photo) //查询照片的拍摄时间，gis信息处理
 	if shootDate != "" {
 		//tools.Logger.Info("shootDate : " + shootDate)
 	}
@@ -904,6 +933,43 @@ func processOneFile(
 	}
 	if fileDate != "" {
 		minDate = fileDate
+	}
+
+	if shootDate != "" || locStreet != "" {
+		fileRegexp := regexp.MustCompile(`^.*\[(.*)\].*$`)
+		dateValList := fileRegexp.FindStringSubmatch(photo)
+		var timeAndLocFile string
+		var timeAndLocShould string
+		if len(dateValList) == 2 {
+			timeAndLocFile = dateValList[1]
+		}
+
+		timeAndLocShould = strings.ReplaceAll(shootDate+"|"+locStreet, " ", "-")
+
+		var photoNew string
+
+		if timeAndLocFile == timeAndLocShould {
+			tools.Logger.Info("timeAndLoc match")
+		} else {
+			tools.Logger.Info("timeAndLoc not match")
+			if strings.Count(photo, "[") == 1 && strings.Count(photo, "]") == 1 {
+				re, _ := regexp.Compile(`\[.*\]`)
+				photoNew = re.ReplaceAllString(photo, "["+timeAndLocShould+"]")
+			} else if strings.Count(photo, "[") == 0 && strings.Count(photo, "]") == 0 {
+				if strings.Count(photo, ".") == 1 {
+					photoNew = strings.ReplaceAll(photo, ".", "["+timeAndLocShould+"].")
+				} else {
+					tools.Logger.Error("##################filePath . error")
+				}
+			} else {
+				tools.Logger.Error("##################filePath [] error")
+			}
+
+		}
+
+		tools.Logger.Info("filePath change before : ", photo)
+		tools.Logger.Info("filePath change  after : ", photoNew)
+
 	}
 
 	ps := photoStruct{photo: photo, dirDate: dirDate, modifyDate: modifyDate, shootDate: shootDate, fileDate: fileDate, minDate: minDate}
@@ -956,15 +1022,15 @@ func processOneFile(
 }
 
 // 获取文件的拍摄时间
-func getImgShootDate(
-	filepath string,
-	suffix string,
-) (string, error) {
+func getImgShootDateAndLoc(photo string) (string, string, error) {
 
-	fileName := path.Base(filepath)
-	dirDate := tools.GetDirDate(filepath)
+	suffix := strings.ToLower(path.Ext(photo))
+
+	fileName := path.Base(photo)
+	dirDate := tools.GetDirDate(photo)
 	imgKey := dirDate + "|" + fileName
 	shootDate := ""
+	locStreet := ""
 
 	if value, ok := middleware.ShootDateCacheMap[imgKey]; ok {
 		shootDate = value
@@ -976,7 +1042,7 @@ func getImgShootDate(
 		var output string
 		var err error
 		var state int
-		shootDate, locNum, state, output, err = middleware.GetExifInfo(filepath)
+		shootDate, locNum, state, output, err = middleware.GetExifInfo(photo)
 
 		var imgDatabaseDB model.ImgDatabaseDB
 		imgDatabaseDB.ImgKey = imgKey
@@ -989,7 +1055,7 @@ func getImgShootDate(
 			} else {
 				getExifInfoErrorSuffixMap[suffix] = 1
 			}
-			getExifInfoErrorSet.Add(filepath)
+			getExifInfoErrorSet.Add(photo)
 			getExifInfoErrorSuffixMapMu.Unlock()
 		}
 		imgDatabaseDB.ShootDate = shootDate
@@ -1000,6 +1066,7 @@ func getImgShootDate(
 			if err == nil {
 				imgDatabaseDB.LocAddr = gisData.LocAddr
 				imgDatabaseDB.LocStreet = gisData.LocStreet
+				locStreet = gisData.LocStreet
 			}
 		}
 		if cons.ImgCache {
@@ -1008,6 +1075,6 @@ func getImgShootDate(
 
 	}
 
-	return shootDate, nil
+	return shootDate, locStreet, nil
 
 }
