@@ -60,6 +60,7 @@ var shouldDeleteMd5Files []string //统计需要删除的文件
 var fileDateFileList = mapset.NewSet()   //文件名带日期的照片
 var deleteFileList = mapset.NewSet()     //需要删除的文件
 var moveFileList = mapset.NewSet()       //目录与最小日期不匹配，需要移动
+var renameFileList = mapset.NewSet()     //文件名不一致，需要改名
 var modifyDateFileList = mapset.NewSet() //修改时间与最小日期不匹配，需要修改
 var shootDateFileList = mapset.NewSet()  //拍摄时间与最小日期不匹配，需要修改
 
@@ -112,6 +113,7 @@ type ImgRecord struct {
 	DeleteFileCnt     int            //需要删除文件数
 	ModifyDateFileCnt int            //需要修改修改日期文件数
 	MoveFileCnt       int            //需要移动文件数
+	RenameFileCnt     int            //需要改名文件数
 	ShootDateFileCnt  int            //需要修改拍摄日期文件数
 	EmptyDirCnt       int            //空文件数
 	DumpFileCnt       int            //重复md5数
@@ -182,6 +184,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	fileDateFileList = mapset.NewSet()           //文件名带日期的照片
 	deleteFileList = mapset.NewSet()             //需要删除的文件
 	moveFileList = mapset.NewSet()               //目录与最小日期不匹配，需要移动
+	renameFileList = mapset.NewSet()             //文件名不一致，需要改名
 	modifyDateFileList = mapset.NewSet()         //修改时间与最小日期不匹配，需要修改
 	shootDateFileList = mapset.NewSet()          //拍摄时间与最小日期不匹配，需要修改
 	imgDatabaseDBList = []*model.ImgDatabaseDB{} //img_database 待插入list
@@ -581,6 +584,11 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		pr = pr + tools.StrWithColor("   actioned", "red")
 	}
 	tools.Logger.Info(pr)
+	pr = "rename file total（改名文件统计） : " + tools.StrWithColor(strconv.Itoa(renameFileList.Cardinality()), "red")
+	if renameFileList.Cardinality() > 0 && renameFileAction {
+		pr = pr + tools.StrWithColor("   actioned", "red")
+	}
+	tools.Logger.Info(pr)
 	tools.Logger.Info("shoot date total（拍摄日期不对统计） : ", tools.StrWithColor(strconv.Itoa(shootDateFileList.Cardinality()), "red"))
 
 	tools.Logger.Info()
@@ -672,6 +680,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	imgRecord.DeleteFileCnt = deleteFileList.Cardinality()
 	imgRecord.ModifyDateFileCnt = modifyDateFileList.Cardinality()
 	imgRecord.MoveFileCnt = moveFileList.Cardinality()
+	imgRecord.RenameFileCnt = renameFileList.Cardinality()
 	imgRecord.ShootDateFileCnt = shootDateFileList.Cardinality()
 	imgRecord.EmptyDirCnt = len(deleteDirList)
 	imgRecord.DumpFileCnt = len(dumpMap)
@@ -964,6 +973,7 @@ func processOneFile(photo string) {
 
 	targetPhoto := getRenameNewPhoto(photo, shootDateOrigin, locStreet)
 	if photo != targetPhoto {
+		renameFileList.Add(photo)
 		ps.isRenameFile = true
 		ps.targetPhoto = targetPhoto
 		flag = true
@@ -994,6 +1004,13 @@ func processOneFile(photo string) {
 
 func getRenameNewPhoto(photo string, shootDate string, locStreet string) string {
 	photoNew := photo
+
+	if shootDate != "" {
+		t, err := time.Parse("2006:01:02 15:04:05", shootDate)
+		if err == nil {
+			shootDate = t.Format("2006-01-02_15-04-05")
+		}
+	}
 	if shootDate != "" || locStreet != "" {
 		fileRegexp := regexp.MustCompile(`^.*\[(.*)\].*$`)
 		dateValList := fileRegexp.FindStringSubmatch(photo)
@@ -1003,7 +1020,7 @@ func getRenameNewPhoto(photo string, shootDate string, locStreet string) string 
 			timeAndLocFile = dateValList[1]
 		}
 
-		timeAndLocShould = strings.ReplaceAll(shootDate+"|"+locStreet, " ", "-")
+		timeAndLocShould = shootDate + "|" + locStreet
 
 		if timeAndLocFile == timeAndLocShould {
 			//tools.Logger.Info("timeAndLoc match")
