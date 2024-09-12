@@ -30,31 +30,32 @@ func main() {
 
 		var ret map[string]any
 		json.Unmarshal([]byte(locJson), &ret)
-		temp := (ret["regeocode"].(map[string]any))["addressComponent"].(map[string]any)
+		regeocode := ret["regeocode"].(map[string]any)
+		addressComponent := regeocode["addressComponent"].(map[string]any)
 		var province string
 		var district string
 		var township string
 		var street string
-		if _, ok := temp["province"].(string); ok {
-			province = temp["province"].(string)
+		if _, ok := addressComponent["province"].(string); ok {
+			province = addressComponent["province"].(string)
 			if strings.Contains(province, "中华人民共和国") {
 				province = ""
 			}
 		} else {
 			//fmt.Println("province not string : ", locJson)
 		}
-		if _, ok := temp["district"].(string); ok {
-			district = temp["district"].(string)
+		if _, ok := addressComponent["district"].(string); ok {
+			district = addressComponent["district"].(string)
 		} else {
 			//fmt.Println("district not string : ", locJson)
 		}
-		if _, ok := temp["township"].(string); ok {
-			township = temp["township"].(string)
+		if _, ok := addressComponent["township"].(string); ok {
+			township = addressComponent["township"].(string)
 		} else {
 			//fmt.Println("township not string : ", locJson)
 		}
-		if _, ok := temp["streetNumber"].(map[string]any)["street"].(string); ok {
-			street = temp["streetNumber"].(map[string]any)["street"].(string)
+		if _, ok := addressComponent["streetNumber"].(map[string]any)["street"].(string); ok {
+			street = addressComponent["streetNumber"].(map[string]any)["street"].(string)
 		} else {
 			//fmt.Println("street not string : ", locJson)
 		}
@@ -64,6 +65,15 @@ func main() {
 		//fmt.Println("locStreet : ", locStreet)
 
 		list[i].LocStreet = locStreet
+
+		var locAddr string
+		if _, ok := regeocode["formatted_address"].(string); ok {
+			locAddr = regeocode["formatted_address"].(string)
+		} else {
+			//fmt.Println("locAddr not string : ", locJson)
+		}
+
+		list[i].LocAddr = locAddr
 
 	}
 
