@@ -1033,7 +1033,13 @@ func getRenameNewPhoto(photo string, shootDate string, locStreet string) string 
 				if strings.Count(photo, ".") == 1 {
 					photoNew = strings.ReplaceAll(photo, ".", "["+timeAndLocShould+"].")
 				} else {
-					tools.Logger.Error("##################filePath . error , photo : ", photo)
+					fileName := path.Base(photo)
+					fileSuffix := strings.ToLower(path.Ext(photo))                                                                //文件后缀
+					nameWithoutExt := strings.TrimSuffix(fileName, filepath.Ext(photo))                                           // 去除文件扩展名
+					parentDir := filepath.Dir(photo)                                                                              // 获取文件的父目录
+					photoNew = parentDir + string(filepath.Separator) + strings.ReplaceAll(nameWithoutExt, ".", "_") + fileSuffix //去除文件名里的.
+					photoNew = strings.ReplaceAll(photoNew, ".", "["+timeAndLocShould+"].")
+					tools.Logger.Info("##################filePath with . , photo : ", photo, " photoNew : ", photoNew)
 				}
 			} else {
 				tools.Logger.Error("##################filePath [] error , photo : ", photo)

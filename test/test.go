@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"img_process/middleware"
 	"img_process/tools"
+	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -120,26 +122,36 @@ func extractFileInfo() {
 }
 
 func changeFileName() {
-	filePath := "/Users/ld/Downloads/save/pic-lib/pic-new/2023/2023-08/2023-08-23/IMG_8197.MOV"
-	var filePathNew string
-	replaceKey := "2010:04:11-00:00:00|北京市海淀区上地街道"
-	//fileName := path.Base(filePath)
+	photo := "/Users/ld/Downloads/save/pic-lib/pic-new/2023/2023-08/2023-08-23/IMG_8197.pic.MOV"
+	var photoNew string
+	timeAndLocShould := "2010:04:11-00:00:00|北京市海淀区上地街道"
+	fileName := path.Base(photo)
 	//fileSuffix := strings.ToLower(path.Ext(filePath))
-	// 去除文件扩展名
+	//// 去除文件扩展名
 	//nameWithoutExt := strings.TrimSuffix(fileName, filepath.Ext(filePath))
+	//// 获取文件的父目录
+	//parentDir := filepath.Dir(filePath)
+	//fmt.Println(fileSuffix, nameWithoutExt, parentDir)
 
-	if strings.Contains(filePath, "]") {
-		filePathNew = strings.ReplaceAll(filePath, ".", replaceKey+".")
+	if strings.Count(photo, "[") == 1 && strings.Count(photo, "]") == 1 {
 		re, _ := regexp.Compile(`\[.*\]`)
-		filePathNew = re.ReplaceAllString(filePath, "["+replaceKey+"]")
-	} else {
-		if strings.Count(filePath, ".") == 1 {
-			filePathNew = strings.ReplaceAll(filePath, ".", "["+replaceKey+"].")
+		photoNew = re.ReplaceAllString(photo, "["+timeAndLocShould+"]")
+	} else if strings.Count(photo, "[") == 0 && strings.Count(photo, "]") == 0 {
+		if strings.Count(photo, ".") == 1 {
+			photoNew = strings.ReplaceAll(photo, ".", "["+timeAndLocShould+"].")
 		} else {
-			fmt.Println("##################filePath error")
+			fileSuffix := strings.ToLower(path.Ext(photo))                                                               //文件后缀
+			nameWithoutExt := strings.TrimSuffix(fileName, filepath.Ext(photo))                                          // 去除文件扩展名
+			parentDir := filepath.Dir(photo)                                                                             // 获取文件的父目录
+			photoNew = parentDir + string(filepath.Separator) + strings.ReplaceAll(nameWithoutExt, ".", "") + fileSuffix //去除文件名里的.
+			photoNew = strings.ReplaceAll(photoNew, ".", "["+timeAndLocShould+"].")
+			tools.Logger.Info("##################filePath with . , photo : ", photo, " photoNew : ", photoNew)
 		}
+	} else {
+		tools.Logger.Error("##################filePath [] error , photo : ", photo)
 	}
-	fmt.Println(filePathNew)
+
+	fmt.Println(photoNew)
 
 }
 
