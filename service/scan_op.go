@@ -996,9 +996,10 @@ func getImgShootDate(
 		imgDatabaseDB.LocNum = locNum
 		imgDatabaseDB.Remark = output
 		if locNum != "" {
-			locAddr, err := middleware.GetLocationAddressByCache(locNum)
+			gisData, err := middleware.GetLocationAddressByCache(locNum)
 			if err == nil {
-				imgDatabaseDB.LocAddr = locAddr
+				imgDatabaseDB.LocAddr = gisData.LocAddr
+				imgDatabaseDB.LocStreet = gisData.LocStreet
 			}
 		}
 		if cons.ImgCache {

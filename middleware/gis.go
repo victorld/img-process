@@ -10,9 +10,15 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
-var gisDatabaseCacheMap = map[string]string{}
+var gisDatabaseCacheMap = map[string]GisData{}
+
+type GisData struct {
+	LocStreet string
+	LocAddr   string
+}
 
 func CreateGisDatabaseCache() {
 
@@ -22,41 +28,35 @@ func CreateGisDatabaseCache() {
 
 	}
 	for _, isd := range list {
-		gisDatabaseCacheMap[isd.LocNum] = isd.LocAddr
+		t := GisData{LocStreet: isd.LocStreet, LocAddr: isd.LocAddr}
+		gisDatabaseCacheMap[isd.LocNum] = t
 	}
 	tools.Logger.Info("use gisCache , cache size : ", len(gisDatabaseCacheMap))
 
 }
 
-func GetLocationAddressByCache(locNum string) (gitAddress string, err error) {
+func GetLocationAddressByCache(locNum string) (gisData GisData, err error) {
 
 	if value, ok := gisDatabaseCacheMap[locNum]; ok {
 		return value, nil
 	} else {
 		if locNum == "0.000000,0.000000" {
-			return "", errors.New("not right locNum")
+			return GisData{}, errors.New("not right locNum")
 		}
-		locJson, err := GetLocationAddress(locNum)
+		var locJson string
+		locJson, err = GetLocationAddress(locNum)
 		if err == nil {
-			var ret map[string]any
-			json.Unmarshal([]byte(locJson), &ret)
-			temp := ret["regeocode"].(map[string]any)
-			if _, ok := temp["formatted_address"].(string); ok {
-
-			} else {
-				return "", errors.New("formatted_address 不是string")
-			}
-
-			locAddr := temp["formatted_address"].(string)
+			gisData = GetGisDataFromJson(locJson)
 
 			var gisDatabaseDB model.GisDatabaseDB
 			gisDatabaseDB.LocNum = locNum
-			gisDatabaseDB.LocAddr = locAddr
+			gisDatabaseDB.LocAddr = gisData.LocAddr
+			gisDatabaseDB.LocStreet = gisData.LocStreet
 			gisDatabaseDB.LocJson = locJson
 			gisDatabaseService.CreateGisDatabase(&gisDatabaseDB)
-			return locAddr, nil
+			return gisData, nil
 		} else {
-			return "", err
+			return GisData{}, err
 		}
 	}
 }
@@ -104,4 +104,51 @@ func GetLocationAddress(locNum string) (locJson string, err error) {
 
 	return locJson, nil
 
+}
+
+func GetGisDataFromJson(locJson string) GisData {
+	var ret map[string]any
+	json.Unmarshal([]byte(locJson), &ret)
+	regeocode := ret["regeocode"].(map[string]any)
+	addressComponent := regeocode["addressComponent"].(map[string]any)
+	var province string
+	var district string
+	var township string
+	var street string
+	if _, ok := addressComponent["province"].(string); ok {
+		province = addressComponent["province"].(string)
+		if strings.Contains(province, "中华人民共和国") {
+			province = ""
+		}
+	} else {
+		//fmt.Println("province not string : ", locJson)
+	}
+	if _, ok := addressComponent["district"].(string); ok {
+		district = addressComponent["district"].(string)
+	} else {
+		//fmt.Println("district not string : ", locJson)
+	}
+	if _, ok := addressComponent["township"].(string); ok {
+		township = addressComponent["township"].(string)
+	} else {
+		//fmt.Println("township not string : ", locJson)
+	}
+	if _, ok := addressComponent["streetNumber"].(map[string]any)["street"].(string); ok {
+		street = addressComponent["streetNumber"].(map[string]any)["street"].(string)
+	} else {
+		//fmt.Println("street not string : ", locJson)
+	}
+
+	var locStreet string
+	locStreet = province + "" + district + "" + township + "" + street
+	//fmt.Println("locStreet : ", locStreet)
+
+	var locAddr string
+	if _, ok := regeocode["formatted_address"].(string); ok {
+		locAddr = regeocode["formatted_address"].(string)
+	} else {
+		//fmt.Println("locAddr not string : ", locJson)
+	}
+
+	return GisData{LocStreet: locStreet, LocAddr: locAddr}
 }
