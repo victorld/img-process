@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"fmt"
 	"img_process/model"
 	"img_process/plugin/orm"
 )
@@ -53,7 +54,7 @@ func (gisDatabaseService *GisDatabaseService) UpdateGisDatabaseBatch(gisDatabase
 			end = len(gisDatabaseList)
 		}
 		dbs := gisDatabaseList[i:end]
-		//fmt.Println(dbs)
+		fmt.Println("from end : ", i, " ", end)
 		updateGisDatabaseBatchCommit(dbs)
 	}
 

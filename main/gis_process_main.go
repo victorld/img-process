@@ -19,6 +19,12 @@ func main() {
 	cons.InitConst()
 	orm.InitMysql()
 
+	var gisDatabaseDB model.GisDatabaseDB
+	if err := gisDatabaseService.RegisterGisDatabase(&gisDatabaseDB); err != nil {
+		tools.Logger.Error("register error : ", err)
+		return
+	}
+
 	var gisDatabaseSearch model.GisDatabaseSearch
 	list, _, err := gisDatabaseService.GetGisDatabaseInfoList(gisDatabaseSearch)
 	if err != nil {
