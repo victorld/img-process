@@ -17,7 +17,7 @@ func DeleteMD5DupFilesByJson(filePath string) {
 	count := 0
 	for _, photo := range shouldDeleteFiles {
 		fmt.Println("file : " + photo)
-		err := tools.DeleteFile(photo)
+		err = tools.DeleteFile(photo)
 		if err != nil {
 			fmt.Println(tools.StrWithColor("delete file failed , reason : "+err.Error(), "red"))
 		} else {
@@ -41,7 +41,7 @@ func DeleteMD5DupFilesByLine(filePath string) {
 	count := 0
 	for _, photo := range shouldDeleteFiles {
 		fmt.Println("file : " + photo)
-		err := tools.DeleteFile(photo)
+		err = tools.DeleteFile(photo)
 		if err != nil {
 			fmt.Println(tools.StrWithColor("delete file failed , reason : "+err.Error(), "red"))
 		} else {

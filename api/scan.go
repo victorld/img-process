@@ -6,10 +6,13 @@ import (
 	"img_process/model"
 	"img_process/service"
 	"img_process/tools"
+	"sync"
 )
 
 type ImgRecordOwnApi struct {
 }
+
+var scanMu sync.Mutex //processFileList锁
 
 // DoScanImg 执行扫描
 // @Tags ImgRecord
@@ -32,7 +35,9 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 
 	go func() {
 
+		scanMu.Lock()
 		service.ScanAndSave(doScanImgArg)
+		scanMu.Unlock()
 
 	}()
 
