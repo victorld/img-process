@@ -622,12 +622,12 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		tools.Logger.Info("bakDeleteFile(备份里删除文件) : ", tools.MarshalJsonToString(bakDeleteFile))
 	}
 	tools.Logger.Info("img_database需要新插入的数量: ", len(imgDatabaseDBList))
-	tools.Logger.Info("img_database没有匹配上key，应该删除的数量: ", len(middleware.ShootDateCacheMapBak))
+	tools.Logger.Info("img_database没有匹配上key，应该删除的数量: ", len(middleware.ImgCacheMapBak))
 
-	if cons.SyncTable && len(middleware.ShootDateCacheMapBak) != 0 { //批量删除多余的img_database
+	if cons.SyncTable && len(middleware.ImgCacheMapBak) != 0 { //批量删除多余的img_database
 		tools.Logger.Info("正在批量删除多余的img_database。。。 ")
 		var imgKeyToDelete []string
-		for key, _ := range middleware.ShootDateCacheMapBak {
+		for key, _ := range middleware.ImgCacheMapBak {
 			imgKeyToDelete = append(imgKeyToDelete, key)
 			if len(imgKeyToDelete) >= cons.IDDeleteBatchSize {
 				imgDatabaseService.DeleteImgDatabaseByImgKey(imgKeyToDelete)
@@ -702,6 +702,9 @@ func processFileProcess() {
 		}
 		if ps.isMoveFile {
 			moveFileProcess(ps, &printFileFlag, &printDateFlag) //3、需要移动的文件处理
+		}
+		if ps.isRenameFile {
+			renameFileProcess(ps, &printFileFlag, &printDateFlag) //4、需要改名的文件处理
 		}
 
 	}
@@ -892,20 +895,14 @@ func processOneFile(photo string) {
 
 	defer wg.Done()
 
-	/*if strings.HasSuffix(photo, "IMG_5081.HEIC") {
-		tools.Logger.Info()
-	}*/
-
+	var shootDateOrigin string
 	var shootDate string
 	var locStreet string
 
-	shootDate, locStreet, _ = getImgShootDateAndLoc(photo) //查询照片的拍摄时间，gis信息处理
-	if shootDate != "" {
-		//tools.Logger.Info("shootDate : " + shootDate)
-	}
+	shootDateOrigin, locStreet, _ = getImgShootDateAndLoc(photo) //查询照片的拍摄时间，gis信息处理
 
-	if shootDate != "" {
-		t, err := time.Parse("2006:01:02 15:04:05", shootDate)
+	if shootDateOrigin != "" {
+		t, err := time.Parse("2006:01:02 15:04:05", shootDateOrigin)
 		if err == nil {
 			shootDate = t.Format("2006-01-02")
 		}
@@ -935,47 +932,10 @@ func processOneFile(photo string) {
 		minDate = fileDate
 	}
 
-	if shootDate != "" || locStreet != "" {
-		fileRegexp := regexp.MustCompile(`^.*\[(.*)\].*$`)
-		dateValList := fileRegexp.FindStringSubmatch(photo)
-		var timeAndLocFile string
-		var timeAndLocShould string
-		if len(dateValList) == 2 {
-			timeAndLocFile = dateValList[1]
-		}
-
-		timeAndLocShould = strings.ReplaceAll(shootDate+"|"+locStreet, " ", "-")
-
-		var photoNew string
-
-		if timeAndLocFile == timeAndLocShould {
-			tools.Logger.Info("timeAndLoc match")
-		} else {
-			tools.Logger.Info("timeAndLoc not match")
-			if strings.Count(photo, "[") == 1 && strings.Count(photo, "]") == 1 {
-				re, _ := regexp.Compile(`\[.*\]`)
-				photoNew = re.ReplaceAllString(photo, "["+timeAndLocShould+"]")
-			} else if strings.Count(photo, "[") == 0 && strings.Count(photo, "]") == 0 {
-				if strings.Count(photo, ".") == 1 {
-					photoNew = strings.ReplaceAll(photo, ".", "["+timeAndLocShould+"].")
-				} else {
-					tools.Logger.Error("##################filePath . error")
-				}
-			} else {
-				tools.Logger.Error("##################filePath [] error")
-			}
-
-		}
-
-		tools.Logger.Info("filePath change before : ", photo)
-		tools.Logger.Info("filePath change  after : ", photoNew)
-
-	}
-
 	ps := photoStruct{photo: photo, dirDate: dirDate, modifyDate: modifyDate, shootDate: shootDate, fileDate: fileDate, minDate: minDate}
 	flag := false
 
-	if dirDate != minDate {
+	if dirDate != minDate { //需要移动文件的判断
 		moveFileList.Add(photo)
 		targetPath := basePath + string(os.PathSeparator) + minDate[0:4] + string(os.PathSeparator) + minDate[0:7] + string(os.PathSeparator) + minDate
 		targetPath = tools.GetRealPath(targetPath)
@@ -992,9 +952,20 @@ func processOneFile(photo string) {
 	}
 	//}
 
-	if modifyDate != minDate {
+	if modifyDate != minDate { //需要修改文件修改时间的判断
 		modifyDateFileList.Add(photo)
 		ps.isModifyDateFile = true
+		flag = true
+	}
+
+	/*if strings.Contains(photo, "IMG_5574.JPG") {
+		tools.Logger.Info()
+	}*/
+
+	targetPhoto := getRenameNewPhoto(photo, shootDateOrigin, locStreet)
+	if photo != targetPhoto {
+		ps.isRenameFile = true
+		ps.targetPhoto = targetPhoto
 		flag = true
 	}
 
@@ -1021,6 +992,45 @@ func processOneFile(photo string) {
 
 }
 
+func getRenameNewPhoto(photo string, shootDate string, locStreet string) string {
+	photoNew := photo
+	if shootDate != "" || locStreet != "" {
+		fileRegexp := regexp.MustCompile(`^.*\[(.*)\].*$`)
+		dateValList := fileRegexp.FindStringSubmatch(photo)
+		var timeAndLocFile string
+		var timeAndLocShould string
+		if len(dateValList) == 2 {
+			timeAndLocFile = dateValList[1]
+		}
+
+		timeAndLocShould = strings.ReplaceAll(shootDate+"|"+locStreet, " ", "-")
+
+		if timeAndLocFile == timeAndLocShould {
+			//tools.Logger.Info("timeAndLoc match")
+		} else {
+			//tools.Logger.Info("timeAndLoc not match")
+			if strings.Count(photo, "[") == 1 && strings.Count(photo, "]") == 1 {
+				re, _ := regexp.Compile(`\[.*\]`)
+				photoNew = re.ReplaceAllString(photo, "["+timeAndLocShould+"]")
+			} else if strings.Count(photo, "[") == 0 && strings.Count(photo, "]") == 0 {
+				if strings.Count(photo, ".") == 1 {
+					photoNew = strings.ReplaceAll(photo, ".", "["+timeAndLocShould+"].")
+				} else {
+					tools.Logger.Error("##################filePath . error , photo : ", photo)
+				}
+			} else {
+				tools.Logger.Error("##################filePath [] error , photo : ", photo)
+			}
+
+		}
+
+		//tools.Logger.Info("filePath change before : ", photo)
+		//tools.Logger.Info("filePath change  after : ", photoNew)
+
+	}
+	return photoNew
+}
+
 // 获取文件的拍摄时间
 func getImgShootDateAndLoc(photo string) (string, string, error) {
 
@@ -1032,10 +1042,11 @@ func getImgShootDateAndLoc(photo string) (string, string, error) {
 	shootDate := ""
 	locStreet := ""
 
-	if value, ok := middleware.ShootDateCacheMap[imgKey]; ok {
-		shootDate = value
+	if value, ok := middleware.ImgCacheMap[imgKey]; ok {
+		shootDate = value.ShootDate
+		locStreet = value.LocStreet
 		shootDateCacheMapBakMu.Lock()
-		delete(middleware.ShootDateCacheMapBak, imgKey) //查完后删除，方便最后统计没用到的key删除
+		delete(middleware.ImgCacheMapBak, imgKey) //查完后删除，方便最后统计没用到的key删除
 		shootDateCacheMapBakMu.Unlock()
 	} else {
 		var locNum string
