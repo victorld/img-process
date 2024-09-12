@@ -28,6 +28,7 @@ type ImgRecordDB struct {
 	DeleteFileCnt     *int       `json:"deleteFileCnt" form:"deleteFileCnt" gorm:"type:int(10);column:delete_file_cnt;comment:需要删除文件数;size:10;"`                  //需要删除文件数
 	ModifyDateFileCnt *int       `json:"modifyDateFileCnt" form:"modifyDateFileCnt" gorm:"type:int(10);column:modify_date_file_cnt;comment:需要修改修改日期文件数;size:10;"` //需要修改修改日期文件数
 	MoveFileCnt       *int       `json:"moveFileCnt" form:"moveFileCnt" gorm:"type:int(10);column:move_file_cnt;comment:需要移动文件数;size:10;"`                        //需要移动文件数
+	RenameFileCnt     *int       `json:"renameFileCnt" form:"renameFileCnt" gorm:"type:int(10);column:rename_file_cnt;comment:需要改名文件数;size:10;"`                  //需要移动文件数
 	ShootDateFileCnt  *int       `json:"shootDateFileCnt" form:"shootDateFileCnt" gorm:"type:int(10);column:shoot_date_file_cnt;comment:需要修改拍摄日期文件数;size:10;"`    //需要修改拍摄日期文件数
 	EmptyDirCnt       *int       `json:"emptyDirCnt" form:"emptyDirCnt" gorm:"type:int(10);column:empty_dir_cnt;comment:空文件数;size:10;"`                           //空文件数
 	DumpFileCnt       *int       `json:"dumpFileCnt" form:"dumpFileCnt" gorm:"type:int(10);column:dump_file_cnt;comment:重复md5数;size:10;"`                         //重复md5数

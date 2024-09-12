@@ -14,12 +14,12 @@ scanArgs:
   DeleteShow: true
   MoveFileShow: true
   ModifyDateShow: false
-  RenameShow: true
+  RenameFileShow: true
   Md5Show: true
   DeleteAction: false
   MoveFileAction: false
   ModifyDateAction: false
-  RenameAction: false
+  RenameFileAction: false
 basic:
   ColorOutput: true
 cache:

@@ -32,12 +32,12 @@ var startPathBak string
 var deleteShow bool
 var moveFileShow bool
 var modifyDateShow bool
-var renameShow bool
+var renameFileShow bool
 var md5Show bool
 var deleteAction bool
 var moveFileAction bool
 var modifyDateAction bool
-var renameAction bool
+var renameFileAction bool
 
 var scanUuidFinal string
 
@@ -241,8 +241,8 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	if scanArgs.ModifyDateShow == nil {
 		scanArgs.ModifyDateShow = &cons.ModifyDateShow
 	}
-	if scanArgs.RenameShow == nil {
-		scanArgs.RenameShow = &cons.RenameShow
+	if scanArgs.RenameFileShow == nil {
+		scanArgs.RenameFileShow = &cons.RenameFileShow
 	}
 	if scanArgs.Md5Show == nil {
 		scanArgs.Md5Show = &cons.Md5Show
@@ -256,8 +256,8 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	if scanArgs.ModifyDateAction == nil {
 		scanArgs.ModifyDateAction = &cons.ModifyDateAction
 	}
-	if scanArgs.RenameAction == nil {
-		scanArgs.RenameAction = &cons.RenameAction
+	if scanArgs.RenameFileAction == nil {
+		scanArgs.RenameFileAction = &cons.RenameFileAction
 	}
 
 	startPath = *scanArgs.StartPath
@@ -265,12 +265,12 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	deleteShow = *scanArgs.DeleteShow
 	moveFileShow = *scanArgs.MoveFileShow
 	modifyDateShow = *scanArgs.ModifyDateShow
-	renameShow = *scanArgs.RenameShow
+	renameFileShow = *scanArgs.RenameFileShow
 	md5Show = *scanArgs.Md5Show
 	deleteAction = *scanArgs.DeleteAction
 	moveFileAction = *scanArgs.MoveFileAction
 	modifyDateAction = *scanArgs.ModifyDateAction
-	renameAction = *scanArgs.RenameAction
+	renameFileAction = *scanArgs.RenameFileAction
 
 	tools.Logger.Info("DoScan args final: ")
 	tools.Logger.Info("startPath : ", startPath)
@@ -278,12 +278,12 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	tools.Logger.Info("deleteShow : ", deleteShow)
 	tools.Logger.Info("moveFileShow : ", moveFileShow)
 	tools.Logger.Info("modifyDateShow : ", modifyDateShow)
-	tools.Logger.Info("renameShow : ", renameShow)
+	tools.Logger.Info("renameFileShow : ", renameFileShow)
 	tools.Logger.Info("md5Show : ", md5Show)
 	tools.Logger.Info("deleteAction : ", deleteAction)
 	tools.Logger.Info("moveFileAction : ", moveFileAction)
 	tools.Logger.Info("modifyDateAction : ", modifyDateAction)
-	tools.Logger.Info("renameAction : ", renameAction)
+	tools.Logger.Info("renameFileAction : ", renameFileAction)
 
 	scanUuid, err := uuid.NewUUID()
 	if err != nil {
@@ -772,7 +772,7 @@ func moveFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
 
 // 重命名文件处理逻辑
 func renameFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
-	if renameShow || renameAction {
+	if renameFileShow || renameFileAction {
 		if !*printFileFlag {
 			tools.Logger.Info()
 			tools.Logger.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
@@ -784,7 +784,7 @@ func renameFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool)
 		}
 		tools.Logger.Info(tools.StrWithColor("should rename file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
 	}
-	if renameAction {
+	if renameFileAction {
 		tools.MoveFile(ps.photo, ps.targetPhoto)
 		tools.Logger.Info(tools.StrWithColor("rename file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
 	}

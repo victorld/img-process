@@ -16,7 +16,7 @@ func main() {
 	cons.InitConst()
 	orm.InitMysql()
 
-	scanArgs := model.DoScanImgArg{DeleteShow: nil, MoveFileShow: nil, ModifyDateShow: nil, RenameShow: nil, Md5Show: nil, DeleteAction: nil, MoveFileAction: nil, ModifyDateAction: nil, RenameAction: nil, StartPath: nil, StartPathBak: nil}
+	scanArgs := model.DoScanImgArg{DeleteShow: nil, MoveFileShow: nil, ModifyDateShow: nil, RenameFileShow: nil, Md5Show: nil, DeleteAction: nil, MoveFileAction: nil, ModifyDateAction: nil, RenameFileAction: nil, StartPath: nil, StartPathBak: nil}
 	tools.Logger.Info("DoScanImg main args : " + tools.MarshalJsonToString(scanArgs))
 
 	middleware.RegisterTable()
