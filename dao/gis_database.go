@@ -46,6 +46,39 @@ func (gisDatabaseService *GisDatabaseService) UpdateGisDatabase(gisDatabase mode
 	err = orm.ImgMysqlDB.Save(&gisDatabase).Error
 	return err
 }
+func (gisDatabaseService *GisDatabaseService) UpdateGisDatabaseBatch(gisDatabaseList []model.GisDatabaseDB, batchSize int) (err error) {
+	for i := 0; i < len(gisDatabaseList); i += batchSize {
+		end := i + batchSize
+		if end > len(gisDatabaseList) {
+			end = len(gisDatabaseList)
+		}
+		dbs := gisDatabaseList[i:end]
+		//fmt.Println(dbs)
+		updateGisDatabaseBatchCommit(dbs)
+	}
+
+	return nil
+}
+
+func updateGisDatabaseBatchCommit(gisDatabaseList []model.GisDatabaseDB) (err error) {
+
+	tx := orm.ImgMysqlDB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	for _, gisDatabase := range gisDatabaseList {
+		if err := tx.Save(&gisDatabase).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit().Error
+
+}
 
 // GetGisDatabase 根据id获取gisDatabase表记录
 // Author [piexlmax](https://github.com/piexlmax)
