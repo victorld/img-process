@@ -402,9 +402,9 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 					}
 
 					if value, ok := imageNumRevMap[year+"-"+head]; ok { //返回值ok表示是否存在这个值
-						imageNumRevMap[year+"-"+head] = append(value, fileName+"["+day+"]")
+						imageNumRevMap[year+"-"+head] = append(value, fileName+","+day+"")
 					} else {
-						imageNumRevMap[year+"-"+head] = []string{fileName + "[" + day + "]"}
+						imageNumRevMap[year+"-"+head] = []string{fileName + "," + day + ""}
 					}
 				}
 
@@ -917,6 +917,10 @@ func processOneFile(photo string) {
 		}
 	}
 
+	/*if strings.Contains(photo, "h_large_yxNT_5fe8000087aa2f75") {
+		fmt.Println()
+	}*/
+
 	dirDate := tools.GetDirDate(photo)
 
 	fileDate := tools.GetFileDate(photo)
@@ -937,9 +941,9 @@ func processOneFile(photo string) {
 	if shootDate != "" && shootDate < minDate {
 		minDate = shootDate
 	}
-	if fileDate != "" {
+	/*if fileDate != "" {
 		minDate = fileDate
-	}
+	}*/
 
 	ps := photoStruct{photo: photo, dirDate: dirDate, modifyDate: modifyDate, shootDate: shootDate, fileDate: fileDate, minDate: minDate}
 	flag := false
