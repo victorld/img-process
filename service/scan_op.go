@@ -1025,6 +1025,10 @@ func getRenameNewPhoto(photo string, shootDate string, locStreet string) string 
 		}
 
 		timeAndLocShould = shootDate + "|" + locStreet
+		dirDate := tools.GetDirDate(photo)
+		if !strings.Contains(timeAndLocShould, dirDate) {
+			timeAndLocShould = "inconsistent|" + timeAndLocShould
+		}
 
 		if timeAndLocFile == timeAndLocShould {
 			//tools.Logger.Info("timeAndLoc match")
@@ -1043,6 +1047,7 @@ func getRenameNewPhoto(photo string, shootDate string, locStreet string) string 
 					parentDir := filepath.Dir(photo)                                                                              // 获取文件的父目录
 					photoNew = parentDir + string(filepath.Separator) + strings.ReplaceAll(nameWithoutExt, ".", "_") + fileSuffix //去除文件名里的.
 					photoNew = strings.ReplaceAll(photoNew, ".", "["+timeAndLocShould+"].")
+
 					tools.Logger.Info("##################filePath with . , photo : ", photo, " photoNew : ", photoNew)
 				}
 			} else {
