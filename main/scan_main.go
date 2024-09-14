@@ -9,6 +9,7 @@ import (
 	"img_process/tools"
 )
 
+// 扫描主入口
 func main() {
 
 	tools.InitLogger()

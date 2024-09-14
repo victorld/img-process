@@ -12,17 +12,9 @@ import (
 type ImgRecordOwnApi struct {
 }
 
-var scanMu sync.Mutex //processFileList锁
+var scanMu sync.Mutex //processFileList锁，保证只有一个后台扫描任务执行
 
 // DoScanImg 执行扫描
-// @Tags ImgRecord
-// @Summary 执行扫描
-// @Security ApiKeyAuth
-// @accept application/json
-// @Produce application/json
-// @Param data query DoScanImgArg true "扫描参数"
-// @Success 200 {string} string "{"success":true,"data":{},"msg":"创建成功"}"
-// @Router /imgRecord/doScanImg [get]
 func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 	var doScanImgArg model.DoScanImgArg
 	err := c.ShouldBindQuery(&doScanImgArg)
@@ -33,19 +25,30 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 
 	tools.Logger.Info("DoScanImg web args : " + tools.MarshalJsonToString(doScanImgArg))
 
-	go func() {
+	if scanMu.TryLock() {
+		go func() {
+			var imgRecordString string
+			tools.Logger.Info("扫描开始")
+			imgRecordString, err = service.ScanAndSave(doScanImgArg)
+			if err != nil {
+				tools.FancyHandleError(err)
+			} else {
+				tools.Logger.Info("扫描结束，结果：", imgRecordString)
+			}
 
-		scanMu.Lock()
-		service.ScanAndSave(doScanImgArg)
-		scanMu.Unlock()
+			scanMu.Unlock()
+		}()
 
-	}()
-
-	tools.Logger.Info("DoScanImg ret ok")
-	tools.Success(c, gin.H{"ret": "ok"}, "成功")
+		tools.Logger.Info("DoScanImg ret ok")
+		tools.Success(c, gin.H{"ret": "ok"}, "扫描任务下发成功，请稍后检查数据库记录")
+	} else {
+		tools.Logger.Info("DoScanImg processing, exit")
+		tools.Success(c, gin.H{"ret": "not ok"}, "扫描进行中，请等待扫描结束")
+	}
 
 }
 
+// DeleteMD5DupFiles 删除重复文件
 func (imgRecordOwnApi *ImgRecordOwnApi) DeleteMD5DupFiles(c *gin.Context) {
 
 	scanUuid, ok := c.GetQuery("scanUuid")

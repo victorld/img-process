@@ -12,6 +12,7 @@ import (
 
 var gisDatabaseService = dao.GisDatabaseService{}
 
+// 从img_database库里的json字段提取地址信息单独存储
 func main() {
 	tools.InitLogger()
 	tools.InitViper()
@@ -43,6 +44,6 @@ func main() {
 
 	fmt.Println()
 
-	gisDatabaseService.UpdateGisDatabaseBatch(list, 1000)
+	gisDatabaseService.UpdateGisDatabaseBatch(list, cons.GDUpdateBatchSize)
 
 }

@@ -1,15 +1,15 @@
-database:
+database:   #数据库参数
   DbUsername: root
   DbPassword: root
   DbHost: localhost
   DbPort: 3366
   DbName: img
   DbConfig: charset=utf8&parseTime=True&loc=Local
-server:
+server:  #web服务参数
   HttpPort: 8081
   HttpUsername: root
   HttpPassword: root@123
-scanArgs:
+scanArgs:  #扫描参数
   StartPath: /Users/ld/Downloads/save/pic-lib/pic-new
   DeleteShow: true
   MoveFileShow: true
@@ -21,23 +21,24 @@ scanArgs:
   ModifyDateAction: false
   RenameFileAction: false
 basic:
-  ColorOutput: true
+  ColorOutput: true   #日志是否输出彩色
 cache:
-  ImgCache: false   #是否要使用图片cache
-  SyncTable: false    #会根据当前环境删除匹配不上的，添加新增的
+  ImgCache: false   #是否要使用图片cache，会将新的记录插入数据库
+  SyncTable: false    #会根据当前数据库匹配不上的记录删掉
   TruncateTable: false    #先truncate表
 dump:
-  PoolSize: 8
-  Md5Retry: 3
+  PoolSize: 8   #单个照片处理的并行度
+  Md5Retry: 3   #获取哈希值的重试次数
   Md5CountLength: 65536    # 1024 * 64
 bak:
-  BakStatEnable: true
+  BakStatEnable: false   #是否启用备份目录的统计
   StartPathBak: /Users/ld/Downloads/save/pic-lib-bak/pic-new
 gis:
-  key : abc
+  key : abc   #amap的key
 batch:
-  IDInsertBatchSize: 5000
-  IDDeleteBatchSize: 300
+  IDInsertBatchSize: 1000   #img_database的查询批次
+  IDDeleteBatchSize: 300    #img_database的删除批次
+  GDUpdateBatchSize: 1000   #更新gis_database的批次
 
 
 

@@ -7,6 +7,7 @@ import (
 	"img_process/tools"
 )
 
+// 删除重复文件
 func main() {
 	tools.InitLogger()
 	tools.InitViper()

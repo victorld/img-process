@@ -8,6 +8,7 @@ import (
 	"net/rpc/jsonrpc"
 )
 
+// rpc客户端
 func main() {
 
 	tools.InitLogger()

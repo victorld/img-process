@@ -8,6 +8,7 @@ import (
 	"img_process/tools"
 )
 
+// 扫描web服务
 func main() {
 
 	tools.InitLogger()

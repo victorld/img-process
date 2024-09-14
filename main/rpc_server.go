@@ -10,6 +10,7 @@ import (
 	"net/rpc/jsonrpc"
 )
 
+// rpc服务端
 func main() {
 
 	tools.InitLogger()

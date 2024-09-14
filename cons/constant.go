@@ -39,6 +39,7 @@ var (
 	Md5CountLength    int64
 	IDInsertBatchSize int
 	IDDeleteBatchSize int
+	GDUpdateBatchSize int
 )
 
 func InitConst() {
@@ -80,6 +81,7 @@ func InitConst() {
 
 	IDInsertBatchSize, _ = strconv.Atoi(tools.GetConfigString("batch.IDInsertBatchSize"))
 	IDDeleteBatchSize, _ = strconv.Atoi(tools.GetConfigString("batch.IDDeleteBatchSize"))
+	GDUpdateBatchSize, _ = strconv.Atoi(tools.GetConfigString("batch.GDUpdateBatchSize"))
 
 	fmt.Println("DbUsername :", DbUsername)
 	fmt.Println("DbPassword :", DbPassword)
@@ -117,6 +119,7 @@ func InitConst() {
 
 	fmt.Println("IDInsertBatchSize: ", IDInsertBatchSize)
 	fmt.Println("IDDeleteBatchSize: ", IDDeleteBatchSize)
+	fmt.Println("GDUpdateBatchSize: ", GDUpdateBatchSize)
 
 	WorkDir, _ = os.Getwd() // 项目工作目录
 	fmt.Println("工作目录: " + WorkDir)
