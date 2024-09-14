@@ -2,17 +2,17 @@ package middleware
 
 func GetExifInfo(path string) (string, string, int, string, error) {
 
-	flag := -1
-	shootTime, locNum, output, err := GetExifInfoCommand(path)
+	flag := -1                                                 //都没获取到，默认置为-1
+	shootTime, locNum, output, err := GetExifInfoCommand(path) //优先从命令行获取shoottime
 	if err != nil {
-		shootTime, locNum, err = GetExifInfoGo(path)
+		shootTime, locNum, err = GetExifInfoGo(path) //如果命令行没有获取到shoottime，再用go语言获取
 		if err != nil {
 			//tools.Logger.Info("no exif : ", path)
-		} else {
+		} else { //如果go语言获取到了，flag置为2
 			flag = 2
 			//tools.Logger.Info("command get  exif : ", path)
 		}
-	} else {
+	} else { //如果命令行获取到了，flag置为2
 		flag = 1
 	}
 
