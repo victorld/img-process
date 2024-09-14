@@ -589,7 +589,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		pr = pr + tools.StrWithColor("   actioned", "red")
 	}
 	tools.Logger.Info(pr)
-	tools.Logger.Info("shoot date total（拍摄日期不对统计） : ", tools.StrWithColor(strconv.Itoa(shootDateFileList.Cardinality()), "red"))
+	tools.Logger.Info("shoot date total（拍摄日期跟目录不一致统计） : ", tools.StrWithColor(strconv.Itoa(shootDateFileList.Cardinality()), "red"))
 
 	tools.Logger.Info()
 	tools.Logger.Info("empty dir total（空目录总数） : ", tools.StrWithColor(strconv.Itoa(len(deleteDirList)), "red"))
@@ -960,7 +960,7 @@ func processOneFile(photo string) {
 	}
 
 	//if suffix != ".mov" && suffix != ".mp4" { //exif拍摄时间获取
-	if shootDate != minDate {
+	if shootDate != "" && shootDate != dirDate {
 		shootDateFileList.Add(photo)
 	}
 	//}
