@@ -908,6 +908,10 @@ func processOneFile(photo string) {
 	var shootDate string
 	var locStreet string
 
+	/*if strings.Contains(photo, "SIMG_1779") {
+		tools.Logger.Info()
+	}*/
+
 	shootDateOrigin, locStreet, _ = getImgShootDateAndLoc(photo) //查询照片的拍摄时间，gis信息处理
 
 	if shootDateOrigin != "" {
@@ -916,10 +920,6 @@ func processOneFile(photo string) {
 			shootDate = t.Format("2006-01-02")
 		}
 	}
-
-	/*if strings.Contains(photo, "h_large_yxNT_5fe8000087aa2f75") {
-		fmt.Println()
-	}*/
 
 	dirDate := tools.GetDirDate(photo)
 
@@ -1024,10 +1024,10 @@ func getRenameNewPhoto(photo string, shootDate string, locStreet string) string 
 			timeAndLocFile = dateValList[1]
 		}
 
-		timeAndLocShould = shootDate + "|" + locStreet
+		timeAndLocShould = shootDate + "^" + locStreet
 		dirDate := tools.GetDirDate(photo)
 		if !strings.Contains(timeAndLocShould, dirDate) {
-			timeAndLocShould = "inconsistent|" + timeAndLocShould
+			timeAndLocShould = "inconsistent^" + timeAndLocShould
 		}
 
 		if timeAndLocFile == timeAndLocShould {
