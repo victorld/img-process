@@ -596,9 +596,28 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 	tools.Logger.Info()
 	tools.Logger.Info("dump file total（重复文件组数量） : ", tools.StrWithColor(strconv.Itoa(len(dumpMap)), "red"))
+	if len(dumpMap) != 0 { //重复数据写文件
+		var builder strings.Builder
+		for md5, files := range dumpMap {
+			builder.WriteString(md5 + " : ")
+			for index, file := range files {
+				fileName := path.Base(file)
+				if index == 0 {
+					builder.WriteString(strings.Split(fileName, "[")[0])
+				} else {
+					builder.WriteString("|" + strings.Split(fileName, "[")[0])
+				}
+
+			}
+			builder.WriteString("\n")
+		}
+		filePath := cons.WorkDir + "/log/dump_delete_file/" + scanUuidFinal
+		os.MkdirAll(filePath, os.ModePerm)
+		tools.WriteStringToFile(builder.String(), filePath+"/dump_compare")
+	}
 
 	tools.Logger.Info("shouldDeleteMd5Files length（重复文件应该删除的数量） : ", tools.StrWithColor(strconv.Itoa(len(shouldDeleteMd5Files)), "red"))
-	if len(shouldDeleteMd5Files) != 0 {
+	if len(shouldDeleteMd5Files) != 0 { //待删除写文件
 		//sm3 := tools.MarshalJsonToString(shouldDeleteMd5Files)
 		sm3 := strings.Join(shouldDeleteMd5Files, "\n")
 		filePath := cons.WorkDir + "/log/dump_delete_file/" + scanUuidFinal + "/dump_delete_list"
@@ -863,32 +882,24 @@ func dumpFileProcess() map[string][]string {
 
 				tools.Logger.Info("file : ", tools.StrWithColor(md5, "blue"))
 				for _, photo := range files {
-					flag := ""
 					if photo != minPhoto {
 						if sizeMatch {
 							shouldDeleteMd5Files = append(shouldDeleteMd5Files, photo)
 							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"), " SIZE: ", *tools.GetFileSize(photo))
-							flag = "DELETE"
 						} else {
 							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
-							flag = "SAVE(SIZE MISMATCH) "
 						}
 
 					} else {
 
 						if sizeMatch {
 							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE", "green"), " SIZE: ", *tools.GetFileSize(photo))
-							flag = "SAVE"
 						} else {
 							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
-							flag = "SAVE(SIZE MISMATCH)"
 						}
 
 					}
-					targetFile := cons.WorkDir + "/log/dump_delete_file/" + scanUuidFinal + "/dump_compare/" + md5 + "/" + flag + "_" + tools.GetDirDate(photo) + "_" + path.Base(photo)
-					targetFileDir := filepath.Dir(targetFile)
-					os.MkdirAll(targetFileDir, os.ModePerm)
-					//tools.CopyFile(photo, targetFile)
+
 				}
 				tools.Logger.Info()
 

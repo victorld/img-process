@@ -51,10 +51,10 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 // DeleteMD5DupFiles 删除重复文件
 func (imgRecordOwnApi *ImgRecordOwnApi) DeleteMD5DupFiles(c *gin.Context) {
 
-	scanUuid, ok := c.GetQuery("scanUuid")
+	scanUuidFinal, ok := c.GetQuery("scanUuid")
 	if ok {
 
-		filePath := cons.WorkDir + "/log/dump_delete_file/" + scanUuid + "/dump_delete_list"
+		filePath := cons.WorkDir + "/log/dump_delete_file/" + scanUuidFinal + "/dump_delete_list"
 		tools.Logger.Info("file path : ", filePath)
 
 		service.DeleteMD5DupFilesByLine(filePath)
