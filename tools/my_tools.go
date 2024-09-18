@@ -154,12 +154,11 @@ func CopyFile(src, dst string) (int64, error) {
 	return nBytes, err
 }
 
-func GetFileSize(filePath string) *int64 {
+func GetFileSize(filePath string) int64 {
 	fi, err := os.Stat(filePath)
-	var fileSize *int64
+	var fileSize int64
 	if err == nil {
-		size := fi.Size()
-		fileSize = &size
+		fileSize = fi.Size()
 	}
 	return fileSize
 

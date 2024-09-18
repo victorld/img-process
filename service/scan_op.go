@@ -353,7 +353,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 			fileName := path.Base(file)
 			fileSuffix := strings.ToLower(path.Ext(file))
 
-			if strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || *(tools.GetFileSize(file)) == 0 { //非法文件加入待处理列表
+			if strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || tools.GetFileSize(file) == 0 { //非法文件加入待处理列表
 				ps := photoStruct{isDeleteFile: true, photo: file}
 				processFileListMu.Lock()
 				processFileList = append(processFileList, ps)
@@ -476,7 +476,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 				fileName := path.Base(file)
 				fileSuffix := strings.ToLower(path.Ext(file))
 
-				if strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || *(tools.GetFileSize(file)) == 0 { //非法文件加入待处理列表
+				if strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || tools.GetFileSize(file) == 0 { //非法文件加入待处理列表
 
 				} else {
 
@@ -744,7 +744,7 @@ func deleteFileProcess(ps photoStruct, printFileFlag *bool) {
 		tools.Logger.Info()
 		tools.Logger.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
 		*printFileFlag = true
-		tools.Logger.Info(tools.StrWithColor("should delete file :", "yellow"), ps.photo, " SIZE: ", *tools.GetFileSize(ps.photo))
+		tools.Logger.Info(tools.StrWithColor("should delete file :", "yellow"), ps.photo, " SIZE: ", tools.GetFileSize(ps.photo))
 	}
 
 	if deleteAction {
@@ -850,13 +850,13 @@ func dumpFileProcess() map[string][]string {
 			if len(files) > 1 {
 				dumpMap[md5] = files
 				minPhoto := ""
-				var fileSizeTemp *int64
+				var fileSizeTemp int64
 				sizeMatch := true
 				for _, photo := range files {
-					if fileSizeTemp == nil {
+					if fileSizeTemp == 0 {
 						fileSizeTemp = tools.GetFileSize(photo)
 					} else {
-						if *fileSizeTemp != *tools.GetFileSize(photo) {
+						if fileSizeTemp != tools.GetFileSize(photo) {
 							sizeMatch = false
 						}
 					}
@@ -885,17 +885,17 @@ func dumpFileProcess() map[string][]string {
 					if photo != minPhoto {
 						if sizeMatch {
 							shouldDeleteMd5Files = append(shouldDeleteMd5Files, photo)
-							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"), " SIZE: ", *tools.GetFileSize(photo))
+							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"), " SIZE: ", tools.GetFileSize(photo))
 						} else {
-							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
+							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", tools.GetFileSize(photo))
 						}
 
 					} else {
 
 						if sizeMatch {
-							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE", "green"), " SIZE: ", *tools.GetFileSize(photo))
+							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE", "green"), " SIZE: ", tools.GetFileSize(photo))
 						} else {
-							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", *tools.GetFileSize(photo))
+							tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", tools.GetFileSize(photo))
 						}
 
 					}
