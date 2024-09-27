@@ -12,6 +12,7 @@ import (
 
 var ExifDateNameSet = mapset.NewSet()
 
+// GetExifInfoCommand 用命令行找到照片的拍摄时间和地理位置
 func GetExifInfoCommand(path string) (string, string, string, error) {
 
 	var locNum string

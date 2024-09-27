@@ -20,6 +20,7 @@ type GisData struct {
 	LocAddr   string
 }
 
+// CreateGisDatabaseCache 创建gis database的cache
 func CreateGisDatabaseCache() {
 
 	var gisDatabaseSearch model.GisDatabaseSearch
@@ -35,6 +36,7 @@ func CreateGisDatabaseCache() {
 
 }
 
+// GetLocationAddressByCache 从cache里取gis数据，如果没有的话从线上去查询
 func GetLocationAddressByCache(locNum string) (gisData GisData, err error) {
 
 	if value, ok := gisDatabaseCacheMap[locNum]; ok {
@@ -44,7 +46,7 @@ func GetLocationAddressByCache(locNum string) (gisData GisData, err error) {
 			return GisData{}, errors.New("not right locNum")
 		}
 		var locJson string
-		locJson, err = GetLocationAddress(locNum)
+		locJson, err = getLocationAddressOnline(locNum)
 		if err == nil {
 			gisData = GetGisDataFromJson(locJson)
 
@@ -61,7 +63,8 @@ func GetLocationAddressByCache(locNum string) (gisData GisData, err error) {
 	}
 }
 
-func GetLocationAddress(locNum string) (locJson string, err error) {
+// 线上根据经纬度查询地址json
+func getLocationAddressOnline(locNum string) (locJson string, err error) {
 	// 此处填写您在控制台-应用管理-创建应用后获取的AK
 	key := cons.GisKey
 
@@ -106,6 +109,7 @@ func GetLocationAddress(locNum string) (locJson string, err error) {
 
 }
 
+// GetGisDataFromJson 从线上返回的json数据，组合GisData结构体
 func GetGisDataFromJson(locJson string) GisData {
 	var ret map[string]any
 	json.Unmarshal([]byte(locJson), &ret)

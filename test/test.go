@@ -87,17 +87,6 @@ func getLocationAddress() {
 	}
 }
 
-func testPrintExifData() {
-	//file := "/Users/ld/Desktop/IMG_0112.JPG"
-	file := "/Users/ld/Desktop/338_1725013247.mp4"
-	middleware.PrintExifData(file)
-}
-
-func testGps() {
-	file := "/Users/ld/Desktop/IMG_0112.JPG"
-	middleware.GetGpsData(file)
-}
-
 func getExifInfoCommand() {
 	file := "/Users/ld/Downloads/save/pic-lib/pic-new/2023/2023-08/2023-08-23/IMG_8197.MOV"
 	shootTime, locNum, output, err := middleware.GetExifInfoCommand(file)

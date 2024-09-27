@@ -10,6 +10,7 @@ var imgDatabaseService = dao.ImgDatabaseService{}
 var imgRecordService = dao.ImgRecordService{}
 var gisDatabaseService = dao.GisDatabaseService{}
 
+// RegisterTable 根据gorm配置同步表结构
 func RegisterTable() {
 	var err error
 	var imgRecordDB model.ImgRecordDB

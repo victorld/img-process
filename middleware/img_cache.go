@@ -6,7 +6,7 @@ import (
 )
 
 var ImgCacheMap map[string]ImgCacheData
-var ImgCacheMapBak map[string]ImgCacheData
+var ImgCacheMapBak map[string]ImgCacheData //复制一份ImgCacheMap，一次遍历匹配上的删掉ImgCacheMapBak里的key，剩下没匹配上的做清理操作（单独构建是因为直接操作ImgCacheMap删除有多线程问题）
 
 //var GpsCacheMap map[string]string
 
@@ -15,6 +15,7 @@ type ImgCacheData struct {
 	ShootDate string
 }
 
+// CreateImgCache 构建ImgCache
 func CreateImgCache() {
 
 	ImgCacheMap = map[string]ImgCacheData{}

@@ -4,11 +4,10 @@ import (
 	"fmt"
 	goexif "github.com/dsoprea/go-exif/v3"
 	exifcommon "github.com/dsoprea/go-exif/v3/common"
-	"img_process/tools"
 )
 
-// DateTime    DateTimeOriginal    DateTimeDigitized
-func GetExifValue(updatedExifIfd *goexif.Ifd, key string) (string, error) {
+// getExifValue 根据ifd找到值
+func getExifValue(updatedExifIfd *goexif.Ifd, key string) (string, error) {
 
 	results, err := updatedExifIfd.FindTagWithName(key)
 	if err != nil {
@@ -27,6 +26,7 @@ func GetExifValue(updatedExifIfd *goexif.Ifd, key string) (string, error) {
 	return phrase, nil
 }
 
+// GetExifInfoGo 用go语言找到照片的拍摄时间和地理位置
 func GetExifInfoGo(path string) (string, string, error) {
 
 	rawExif, err := goexif.SearchFileAndExtractExif(path)
@@ -53,11 +53,11 @@ func GetExifInfoGo(path string) (string, string, error) {
 	updatedRootIfd := index.RootIfd
 	updatedExifIfd, err := updatedRootIfd.ChildWithIfdPath(exifcommon.IfdExifStandardIfdIdentity)
 	if err == nil {
-		shootTime, err = GetExifValue(updatedExifIfd, "DateTimeOriginal")
+		shootTime, err = getExifValue(updatedExifIfd, "DateTimeOriginal")
 		if err != nil {
-			shootTime, err = GetExifValue(updatedExifIfd, "DateTime")
+			shootTime, err = getExifValue(updatedExifIfd, "DateTime")
 			if err != nil {
-				shootTime, err = GetExifValue(updatedExifIfd, "DateTimeDigitized")
+				shootTime, err = getExifValue(updatedExifIfd, "DateTimeDigitized")
 			}
 		}
 
@@ -83,7 +83,7 @@ func GetExifInfoGo(path string) (string, string, error) {
 	return shootTime, locNum, nil
 }
 
-func GetGpsData(path string) {
+/*func GetGpsData(path string) {
 
 	rawExif, err := goexif.SearchFileAndExtractExif(path)
 	if err != nil {
@@ -136,4 +136,4 @@ func PrintExifData(path string) {
 	for _, et := range ets {
 		fmt.Println(et.TagId, et.TagName, et.TagTypeName, et.Value)
 	}
-}
+}*/

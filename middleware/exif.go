@@ -1,5 +1,6 @@
 package middleware
 
+// GetExifInfo 获取拍摄日期和地理位置
 func GetExifInfo(path string) (string, string, int, string, error) {
 
 	flag := -1                                                 //都没获取到，默认置为-1
@@ -12,7 +13,7 @@ func GetExifInfo(path string) (string, string, int, string, error) {
 			flag = 2
 			//tools.Logger.Info("command get  exif : ", path)
 		}
-	} else { //如果命令行获取到了，flag置为2
+	} else { //如果命令行获取到了，flag置为1
 		flag = 1
 	}
 
