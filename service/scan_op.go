@@ -353,7 +353,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 			fileName := path.Base(file)
 			fileSuffix := strings.ToLower(path.Ext(file))
 
-			if strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || tools.GetFileSize(file) == 0 { //非法文件加入待处理列表
+			if strings.HasSuffix(fileName, "_.pic.jpg") || strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || tools.GetFileSize(file) == 0 { //非法文件加入待处理列表
 				ps := photoStruct{isDeleteFile: true, photo: file}
 				processFileListMu.Lock()
 				processFileList = append(processFileList, ps)
