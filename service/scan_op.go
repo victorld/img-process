@@ -574,7 +574,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		pr = pr + tools.StrWithColor("   actioned", "red")
 	}
 	tools.Logger.Info(pr)
-	pr = "modify date total（修改日期文件统计） : " + tools.StrWithColor(strconv.Itoa(modifyDateFileList.Cardinality()), "red")
+	pr = "modify date total（没有shootdate且修改日期不对文件统计） : " + tools.StrWithColor(strconv.Itoa(modifyDateFileList.Cardinality()), "red")
 	if modifyDateFileList.Cardinality() > 0 && modifyDateAction {
 		pr = pr + tools.StrWithColor("   actioned", "red")
 	}
@@ -592,7 +592,11 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	tools.Logger.Info("shoot date total（拍摄日期跟目录不一致统计） : ", tools.StrWithColor(strconv.Itoa(shootDateFileList.Cardinality()), "red"))
 
 	tools.Logger.Info()
-	tools.Logger.Info("empty dir total（空目录总数） : ", tools.StrWithColor(strconv.Itoa(len(deleteDirList)), "red"))
+	pr = "empty dir total（空目录总数） : " + tools.StrWithColor(strconv.Itoa(len(deleteDirList)), "red")
+	if len(deleteDirList) > 0 && deleteAction {
+		pr = pr + tools.StrWithColor("   actioned", "red")
+	}
+	tools.Logger.Info(pr)
 
 	tools.Logger.Info()
 	tools.Logger.Info("dump file total（重复文件组数量） : ", tools.StrWithColor(strconv.Itoa(len(dumpMap)), "red"))
@@ -772,8 +776,9 @@ func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool)
 		tools.Logger.Info(tools.StrWithColor("should modify file ", "yellow"), ps.photo, " modifyDate to ", ps.minDate)
 	}
 	if modifyDateAction { //修改日期（不启用）
-		//tm, _ := time.Parse("2006-01-02", ps.minDate)
-		//tools.ChangeModifyDate(ps.photo, tm)
+		localLoc, _ := time.LoadLocation("Asia/Shanghai") // 本地时区设置为上海
+		tm, _ := time.ParseInLocation("2006-01-02 15:04:05", ps.minDate+" 12:00:00", localLoc)
+		tools.ChangeModifyDate(ps.photo, tm)
 		tools.Logger.Info(tools.StrWithColor("modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate, "get realdate", tools.GetModifyDate(ps.photo))
 	}
 }
@@ -976,7 +981,7 @@ func processOneFile(photo string) {
 	}
 	//}
 
-	if modifyDate != minDate { //需要修改文件修改时间的判断
+	if shootDate == "" && modifyDate != minDate { //需要修改文件修改时间的判断
 		modifyDateFileList.Add(photo)
 		ps.isModifyDateFile = true
 		flag = true
