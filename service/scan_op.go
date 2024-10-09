@@ -779,6 +779,8 @@ func modifyDateProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool)
 		localLoc, _ := time.LoadLocation("Asia/Shanghai") // 本地时区设置为上海
 		tm, _ := time.ParseInLocation("2006-01-02 15:04:05", ps.minDate+" 12:00:00", localLoc)
 		tools.ChangeModifyDate(ps.photo, tm)
+		//shootDate := strings.ReplaceAll(ps.minDate, "-", ":") + " 12:00:00"
+		//middleware.ModifyShootDate(ps.photo, shootDate)
 		tools.Logger.Info(tools.StrWithColor("modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate, "get realdate", tools.GetModifyDate(ps.photo))
 	}
 }

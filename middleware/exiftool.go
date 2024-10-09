@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"fmt"
 	mapset "github.com/deckarep/golang-set"
 	"img_process/tools"
@@ -100,4 +101,19 @@ func GetExifInfoCommand(path string) (string, string, string, error) {
 
 	return shootTime, locNum, output, nil
 
+}
+
+func ModifyShootDate(path string, shootDate string) error {
+	cmd := "exiftool -DateTimeOriginal='" + shootDate + "'" + path
+	output, err := tools.GetOutputCommand(cmd)
+	if err != nil {
+		tools.FancyHandleError(err)
+		return err
+	}
+	if !strings.Contains(output, "updated") {
+		tools.Logger.Error("ModifyShootDate failed,file : ", path)
+		return errors.New("ModifyShootDate failed ")
+	}
+
+	return nil
 }
