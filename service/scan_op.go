@@ -57,12 +57,13 @@ var shootDateCacheMapBakMu sync.Mutex //待删除的img_database map删除key使
 
 var shouldDeleteMd5Files []string //统计需要删除的文件
 
-var fileDateFileList = mapset.NewSet()   //文件名带日期的照片
-var deleteFileList = mapset.NewSet()     //需要删除的文件
-var moveFileList = mapset.NewSet()       //目录与最小日期不匹配，需要移动
-var renameFileList = mapset.NewSet()     //文件名不一致，需要改名
-var modifyDateFileList = mapset.NewSet() //修改时间与最小日期不匹配，需要修改
-var shootDateFileList = mapset.NewSet()  //拍摄时间与最小日期不匹配，需要修改
+var fileDateFileList = mapset.NewSet()         //文件名带日期的照片
+var deleteFileList = mapset.NewSet()           //需要删除的文件
+var moveFileList = mapset.NewSet()             //目录与最小日期不匹配，需要移动
+var renameFileList = mapset.NewSet()           //文件名不一致，需要改名
+var modifyDateFileList = mapset.NewSet()       //修改时间与最小日期不匹配，需要修改
+var shootDateFileList = mapset.NewSet()        //拍摄时间与最小日期不匹配，需要修改
+var shootDateEarlierFileList = mapset.NewSet() //拍摄时间与最小日期不匹配，且拍摄日期比目录时间小，需要修改
 
 var imgDatabaseDBList []*model.ImgDatabaseDB //img_database 待插入list
 
@@ -92,35 +93,36 @@ type photoStruct struct { //照片打印需要的结构体
 }
 
 type ImgRecord struct {
-	ScanArgs          string         //扫描参数
-	FileTotal         int            //文件总数
-	FileTotalBak      int            //文件总数
-	DirTotal          int            //目录总数
-	DirTotalBak       int            //目录总数
-	StartDate         time.Time      //记录时间
-	UseTime           int            //用时
-	BakNewFileCnt     int            //用时
-	BakDeleteFileCnt  int            //用时
-	BasePath          string         //基础目录
-	BasePathBak       string         //基础目录
-	BakNewFile        string         //基础目录
-	BakDeleteFile     string         //基础目录
-	SuffixMap         map[string]int //后缀统计
-	SuffixMapBak      map[string]int //后缀统计
-	YearMap           map[string]int //年份统计
-	YearMapBak        map[string]int //年份统计
-	FileDateCnt       int            //有时间文件统计
-	DeleteFileCnt     int            //需要删除文件数
-	ModifyDateFileCnt int            //需要修改修改日期文件数
-	MoveFileCnt       int            //需要移动文件数
-	RenameFileCnt     int            //需要改名文件数
-	ShootDateFileCnt  int            //需要修改拍摄日期文件数
-	EmptyDirCnt       int            //空文件数
-	DumpFileCnt       int            //重复md5数
-	ExifDateNameSet   string         //需要删除文件数
-	ExifErrCnt        int            //exif错误数
-	IsComplete        int            //是否完整
-	Remark            string         //备注
+	ScanArgs                string         //扫描参数
+	FileTotal               int            //文件总数
+	FileTotalBak            int            //文件总数
+	DirTotal                int            //目录总数
+	DirTotalBak             int            //目录总数
+	StartDate               time.Time      //记录时间
+	UseTime                 int            //用时
+	BakNewFileCnt           int            //用时
+	BakDeleteFileCnt        int            //用时
+	BasePath                string         //基础目录
+	BasePathBak             string         //基础目录
+	BakNewFile              string         //基础目录
+	BakDeleteFile           string         //基础目录
+	SuffixMap               map[string]int //后缀统计
+	SuffixMapBak            map[string]int //后缀统计
+	YearMap                 map[string]int //年份统计
+	YearMapBak              map[string]int //年份统计
+	FileDateCnt             int            //有时间文件统计
+	DeleteFileCnt           int            //需要删除文件数
+	ModifyDateFileCnt       int            //需要修改修改日期文件数
+	MoveFileCnt             int            //需要移动文件数
+	RenameFileCnt           int            //需要改名文件数
+	ShootDateFileCnt        int            //需要修改拍摄日期文件数
+	ShootDateEarlierFileCnt int            //需要修改拍摄日期文件数
+	EmptyDirCnt             int            //空文件数
+	DumpFileCnt             int            //重复md5数
+	ExifDateNameSet         string         //需要删除文件数
+	ExifErrCnt              int            //exif错误数
+	IsComplete              int            //是否完整
+	Remark                  string         //备注
 }
 
 func (ps *photoStruct) psDatePrint() { //打印照片日期块信息
@@ -187,6 +189,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	renameFileList = mapset.NewSet()             //文件名不一致，需要改名
 	modifyDateFileList = mapset.NewSet()         //修改时间与最小日期不匹配，需要修改
 	shootDateFileList = mapset.NewSet()          //拍摄时间与最小日期不匹配，需要修改
+	shootDateEarlierFileList = mapset.NewSet()   //拍摄时间与最小日期不匹配（拍摄时间小），需要修改
 	imgDatabaseDBList = []*model.ImgDatabaseDB{} //img_database 待插入list
 
 	var bakNewFile []string    //主备目录对比后，主目录新增文件
@@ -590,6 +593,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	}
 	tools.Logger.Info(pr)
 	tools.Logger.Info("shoot date total（拍摄日期跟目录不一致统计） : ", tools.StrWithColor(strconv.Itoa(shootDateFileList.Cardinality()), "red"))
+	tools.Logger.Info("shoot date total（拍摄日期跟目录不一致统计，且拍摄日期更小） : ", tools.StrWithColor(strconv.Itoa(shootDateEarlierFileList.Cardinality()), "red"))
 
 	tools.Logger.Info()
 	pr = "empty dir total（空目录总数） : " + tools.StrWithColor(strconv.Itoa(len(deleteDirList)), "red")
@@ -705,6 +709,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	imgRecord.MoveFileCnt = moveFileList.Cardinality()
 	imgRecord.RenameFileCnt = renameFileList.Cardinality()
 	imgRecord.ShootDateFileCnt = shootDateFileList.Cardinality()
+	imgRecord.ShootDateEarlierFileCnt = shootDateEarlierFileList.Cardinality()
 	imgRecord.EmptyDirCnt = len(deleteDirList)
 	imgRecord.DumpFileCnt = len(dumpMap)
 	imgRecord.ExifDateNameSet = middleware.ExifDateNameSet.String()
@@ -980,6 +985,9 @@ func processOneFile(photo string) {
 	//if suffix != ".mov" && suffix != ".mp4" { //exif拍摄时间获取
 	if shootDate != "" && shootDate != dirDate {
 		shootDateFileList.Add(photo)
+		if shootDate < dirDate {
+			shootDateEarlierFileList.Add(photo)
+		}
 	}
 	//}
 
