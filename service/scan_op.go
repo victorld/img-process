@@ -996,7 +996,7 @@ func processOneFile(photo string) {
 	}
 	//}
 
-	if shootDate != "" {
+	if shootDate == "" {
 		shootDateNullFileList.Add(photo)
 	}
 
