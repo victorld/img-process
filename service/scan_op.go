@@ -368,8 +368,8 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 			} else {
 
-				dirDate := tools.GetDirDate(file)
-				imgKey := dirDate + "|" + fileName
+				parentDir := filepath.Dir(file)
+				dumpCompareKey := parentDir + "|" + fileName
 
 				if value, ok := suffixMap[fileSuffix]; ok { //统计文件的后缀
 					suffixMap[fileSuffix] = value + 1
@@ -415,7 +415,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 				}
 
 				fileTotalCnt = fileTotalCnt + 1
-				diffMap[imgKey] = 0
+				diffMap[dumpCompareKey] = 0
 				if fileTotalCnt%1000 == 0 { //每隔1000行打印一次
 					tools.Logger.Info("processed ", tools.StrWithColor(strconv.Itoa(fileTotalCnt), "red"))
 					tools.Logger.Info("pool running size : ", p.Running())
@@ -486,8 +486,8 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 				} else {
 
-					dirDate := tools.GetDirDate(file)
-					imgKey := dirDate + "|" + fileName
+					parentDir := filepath.Dir(file)
+					dumpCompareKey := parentDir + "|" + fileName
 
 					if value, ok := suffixMapBak[fileSuffix]; ok { //统计文件的后缀
 						suffixMapBak[fileSuffix] = value + 1
@@ -518,10 +518,10 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 					}
 
 					fileTotalCntBak = fileTotalCntBak + 1
-					if _, ok := diffMap[imgKey]; ok {
-						diffMap[imgKey] = 1
+					if _, ok := diffMap[dumpCompareKey]; ok {
+						diffMap[dumpCompareKey] = 1
 					} else {
-						diffMap[imgKey] = 2
+						diffMap[dumpCompareKey] = 2
 					}
 
 					if fileTotalCntBak%1000 == 0 { //每隔1000行打印一次
