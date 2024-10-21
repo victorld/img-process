@@ -369,7 +369,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 			} else {
 
-				parentDir := filepath.Dir(file)
+				parentDir := path.Base(filepath.Dir(file))
 				dumpCompareKey := parentDir + "|" + fileName
 
 				if value, ok := suffixMap[fileSuffix]; ok { //统计文件的后缀
@@ -487,7 +487,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 
 				} else {
 
-					parentDir := filepath.Dir(file)
+					parentDir := path.Base(filepath.Dir(file))
 					dumpCompareKey := parentDir + "|" + fileName
 
 					if value, ok := suffixMapBak[fileSuffix]; ok { //统计文件的后缀
