@@ -8,7 +8,7 @@ import (
 )
 
 // 删除重复文件
-func main() {
+func DeleteDumpFile() {
 	tools.InitLogger()
 	tools.InitViper()
 	cons.InitConst()

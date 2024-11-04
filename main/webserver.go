@@ -9,7 +9,7 @@ import (
 )
 
 // 扫描web服务
-func main() {
+func Webserver() {
 
 	tools.InitLogger()
 	tools.InitViper()

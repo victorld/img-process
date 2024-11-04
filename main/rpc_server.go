@@ -11,7 +11,7 @@ import (
 )
 
 // rpc服务端
-func main() {
+func RpcServer() {
 
 	tools.InitLogger()
 	tools.InitViper()
