@@ -3,9 +3,6 @@ package service
 import (
 	"encoding/json"
 	"errors"
-	mapset "github.com/deckarep/golang-set"
-	"github.com/google/uuid"
-	"github.com/panjf2000/ants/v2"
 	"img_process/cons"
 	"img_process/dao"
 	"img_process/middleware"
@@ -20,6 +17,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	mapset "github.com/deckarep/golang-set"
+	"github.com/google/uuid"
+	"github.com/panjf2000/ants/v2"
 )
 
 const monthFilter = "xx" //月份过滤参数，打印使用
@@ -356,7 +357,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 			dirTotalCnt = dirTotalCnt + 1
 		} else { //遍历文件
 			//tools.Logger.Info(file)
-			fileName := path.Base(file)
+			fileName := filepath.Base(file)
 			fileSuffix := strings.ToLower(path.Ext(file))
 
 			if strings.HasSuffix(fileName, "_.pic.jpg") || strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || tools.GetFileSize(file) == 0 { //非法文件加入待处理列表
@@ -479,7 +480,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 				dirTotalCntBak = dirTotalCntBak + 1
 
 			} else { //遍历文件
-				fileName := path.Base(file)
+				fileName := filepath.Base(file)
 				fileSuffix := strings.ToLower(path.Ext(file))
 
 				if strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || tools.GetFileSize(file) == 0 { //非法文件加入待处理列表
@@ -613,7 +614,7 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 		for md5, files := range dumpMap {
 			builder.WriteString(md5 + " : ")
 			for index, file := range files {
-				fileName := path.Base(file)
+				fileName := filepath.Base(file)
 				if index == 0 {
 					builder.WriteString(strings.Split(fileName, "[")[0])
 				} else {
@@ -980,7 +981,7 @@ func processOneFile(photo string) {
 		moveFileList.Add(photo)
 		targetPath := basePath + string(os.PathSeparator) + minDate[0:4] + string(os.PathSeparator) + minDate[0:7] + string(os.PathSeparator) + minDate
 		targetPath = tools.GetRealPath(targetPath)
-		targetPhoto := targetPath + string(os.PathSeparator) + path.Base(photo)
+		targetPhoto := targetPath + string(os.PathSeparator) + filepath.Base(photo)
 		ps.isMoveFile = true
 		ps.targetPhoto = targetPhoto
 		flag = true
@@ -1076,7 +1077,7 @@ func getRenameNewPhoto(photo string, shootDate string, locStreet string) string 
 				if strings.Count(photo, ".") == 1 {
 					photoNew = strings.ReplaceAll(photo, ".", "["+timeAndLocShould+"].")
 				} else {
-					fileName := path.Base(photo)
+					fileName := filepath.Base(photo)
 					fileSuffix := strings.ToLower(path.Ext(photo))                                                                //文件后缀
 					nameWithoutExt := strings.TrimSuffix(fileName, filepath.Ext(photo))                                           // 去除文件扩展名
 					parentDir := filepath.Dir(photo)                                                                              // 获取文件的父目录
@@ -1103,7 +1104,7 @@ func getImgShootDateAndLoc(photo string) (string, string, error) {
 
 	suffix := strings.ToLower(path.Ext(photo))
 
-	fileName := path.Base(photo)
+	fileName := filepath.Base(photo)
 	dirDate := tools.GetDirDate(photo)
 	imgKey := dirDate + "|" + fileName
 	shootDate := ""

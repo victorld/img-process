@@ -10,7 +10,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -98,7 +97,7 @@ func GetRealPath(file string) string {
 
 	} else {
 		parentDir := filepath.Dir(file)
-		fileName := path.Base(file)
+		fileName := filepath.Base(file)
 		files, err := os.ReadDir(parentDir)
 		if err != nil {
 			fmt.Println("read file path error", err, file)
@@ -255,13 +254,13 @@ func GetFileMD5WithRetry(photo string, retry int, length int64) (string, error) 
 
 func GetDirDate(photo string) string {
 	parentDir := filepath.Dir(photo)
-	dirDate := path.Base(parentDir)
+	dirDate := filepath.Base(parentDir)
 	dirDate = dirDate[0:10]
 	return dirDate
 }
 
 func GetFileDate(photo string) string {
-	filename := path.Base(photo)
+	filename := filepath.Base(photo)
 
 	var fileDate string
 	for i, v := range timePatternArray {

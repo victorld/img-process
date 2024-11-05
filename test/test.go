@@ -114,7 +114,7 @@ func changeFileName() {
 	photo := "/Users/ld/Downloads/save/pic-lib/pic-new/2023/2023-08/2023-08-23/IMG_8197.pic.MOV"
 	var photoNew string
 	timeAndLocShould := "2010:04:11-00:00:00|北京市海淀区上地街道"
-	fileName := path.Base(photo)
+	fileName := filepath.Base(photo)
 	//fileSuffix := strings.ToLower(path.Ext(filePath))
 	//// 去除文件扩展名
 	//nameWithoutExt := strings.TrimSuffix(fileName, filepath.Ext(filePath))
