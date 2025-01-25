@@ -259,6 +259,12 @@ func GetDirDate(photo string) string {
 	return dirDate
 }
 
+func GetParentDir(photo string) string {
+	parentDir := filepath.Dir(photo)
+	dirDate := path.Base(parentDir)
+	return dirDate
+}
+
 func GetFileDate(photo string) string {
 	filename := filepath.Base(photo)
 

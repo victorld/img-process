@@ -882,10 +882,12 @@ func dumpFileProcess() map[string][]string {
 					if minPhoto == "" {
 						minPhoto = photo
 					} else {
-						if tools.GetDirDate(minPhoto) > tools.GetDirDate(photo) { //留目录日期早的
+						if tools.GetDirDate(minPhoto) > tools.GetDirDate(photo) { //比minPhoto小则替换minPhoto
 							minPhoto = photo
-						} else if tools.GetDirDate(minPhoto) < tools.GetDirDate(photo) {
+						} else if tools.GetDirDate(minPhoto) < tools.GetDirDate(photo) { //比minPhoto大则不变
 
+						} else if len(tools.GetParentDir(minPhoto)) < len(tools.GetParentDir(photo)) { //如果目录的日期一样，优先保留增加了目录描述的
+							minPhoto = photo
 						} else {
 							if len(path.Base(minPhoto)) > len(path.Base(photo)) { //留文件名短的
 								minPhoto = photo

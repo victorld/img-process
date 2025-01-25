@@ -13,7 +13,7 @@ func DeleteDumpFile() {
 	tools.InitViper()
 	cons.InitConst()
 
-	const scanUuidFinal = "2024-07-02-21-37-34_3cf10ae4387811ef8e5a265653c10cb8"
+	const scanUuidFinal = "2025-01-25-20-07-24_f0530738db1411ef97c0265653c10cb8"
 
 	fmt.Println()
 	filePath := cons.WorkDir + "/log/dump_delete_file/" + scanUuidFinal + "/dump_delete_list"
