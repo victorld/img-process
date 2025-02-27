@@ -13,7 +13,7 @@ import (
 var gisDatabaseService = dao.GisDatabaseService{}
 
 // 从img_database库里的json字段提取地址信息单独存储
-func GisProcess() {
+func main() {
 	tools.InitLogger()
 	tools.InitViper()
 	cons.InitConst()

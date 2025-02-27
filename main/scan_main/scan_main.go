@@ -10,7 +10,7 @@ import (
 )
 
 // 扫描主入口
-func ScanMain() {
+func main() {
 
 	tools.InitLogger()
 	tools.InitViper()

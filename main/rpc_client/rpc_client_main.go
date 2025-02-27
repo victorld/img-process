@@ -9,7 +9,7 @@ import (
 )
 
 // rpc客户端
-func RpcClient() {
+func main() {
 
 	tools.InitLogger()
 

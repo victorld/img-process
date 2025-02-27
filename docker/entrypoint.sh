@@ -1,3 +1,3 @@
 #!/bin/sh
 
-go run ./main/webserver.go
+go run ./main/webserver/webserver_main.go
