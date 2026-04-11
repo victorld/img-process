@@ -1,10 +1,10 @@
 package middleware
 
 // GetExifInfo 获取拍摄日期和地理位置
-func GetExifInfo(path string) (string, string, int, string, error) {
+func GetExifInfo(path string) (string, string, int, string, []string, error) {
 
-	flag := -1                                                 //都没获取到，默认置为-1
-	shootTime, locNum, output, err := GetExifInfoCommand(path) //优先从命令行获取shoottime
+	flag := -1                                                               //都没获取到，默认置为-1
+	shootTime, locNum, output, dateTagNames, err := GetExifInfoCommand(path) //优先从命令行获取shoottime
 	if err != nil {
 		shootTime, locNum, err = GetExifInfoGo(path) //如果命令行没有获取到shoottime，再用go语言获取
 		if err != nil {
@@ -17,5 +17,5 @@ func GetExifInfo(path string) (string, string, int, string, error) {
 		flag = 1
 	}
 
-	return shootTime, locNum, flag, output, err
+	return shootTime, locNum, flag, output, dateTagNames, err
 }

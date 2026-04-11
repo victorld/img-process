@@ -27,7 +27,12 @@ func main() {
 	r = route.InitRouter(r)
 	port := cons.HttpPort
 	if port != "" {
-		panic(r.Run(":" + port))
+		if err := r.Run(":" + port); err != nil {
+			tools.Logger.Error("web server run error : ", err)
+		}
+		return
 	}
-	panic(r.Run()) // listen and serve on 0.0.0.0
+	if err := r.Run(); err != nil { // listen and serve on 0.0.0.0
+		tools.Logger.Error("web server run error : ", err)
+	}
 }

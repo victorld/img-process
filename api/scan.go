@@ -27,6 +27,7 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 
 	if scanMu.TryLock() {
 		go func() {
+			defer scanMu.Unlock()
 			var imgRecordString string
 			tools.Logger.Info("扫描开始")
 			imgRecordString, err = service.ScanAndSave(doScanImgArg)
@@ -36,7 +37,6 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 				tools.Logger.Info("扫描结束，结果：", imgRecordString)
 			}
 
-			scanMu.Unlock()
 		}()
 
 		tools.Logger.Info("DoScanImg ret ok")

@@ -61,7 +61,7 @@ func testChan() {
 
 func testGetExifInfo() {
 	file := "/Users/ld/Desktop/IMG_0112.JPG"
-	shootTime, locNum, state, output, err := middleware.GetExifInfo(file)
+	shootTime, locNum, state, output, _, err := middleware.GetExifInfo(file)
 	if err != nil {
 		tools.FancyHandleError(err)
 	} else {
@@ -76,20 +76,23 @@ func testGetExifInfo() {
 }
 
 func getLocationAddress() {
-	middleware.CreateGisDatabaseCache()
-	//address, err := middleware.GetLocationAddressByCache("116.310454,39.992734")
-	address, err := middleware.GetLocationAddressByCache("30.559343,114.279656")
-	//address, err := middleware.GetLocationAddressByCache("114.279656,30.559343")
+	cache, err := middleware.LoadGisCache()
 	if err != nil {
 		tools.FancyHandleError(err)
-	} else {
-		fmt.Println("address : ", address)
+		return
 	}
+	fmt.Println("cache size : ", len(cache))
+	address, err := middleware.GetLocationAddressOnline("30.559343,114.279656")
+	if err != nil {
+		tools.FancyHandleError(err)
+		return
+	}
+	fmt.Println("address : ", address)
 }
 
 func getExifInfoCommand() {
 	file := "/Users/ld/Downloads/save/pic-lib/pic-new/2023/2023-08/2023-08-23/IMG_8197.MOV"
-	shootTime, locNum, output, err := middleware.GetExifInfoCommand(file)
+	shootTime, locNum, output, _, err := middleware.GetExifInfoCommand(file)
 	if err != nil {
 		tools.FancyHandleError(err)
 	} else {

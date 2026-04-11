@@ -200,7 +200,10 @@ func IsEmpty(filePath string) (bool, error) {
 
 }
 
-func GetSyncMapLens(sm sync.Map) int {
+func GetSyncMapLens(sm *sync.Map) int {
+	if sm == nil {
+		return 0
+	}
 	len := 0
 	sm.Range(func(k, v interface{}) bool {
 		len++

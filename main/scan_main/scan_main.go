@@ -24,6 +24,8 @@ func main() {
 
 	middleware.RegisterTable()
 
-	service.ScanAndSave(scanArgs)
+	if _, err := service.ScanAndSave(scanArgs); err != nil {
+		tools.Logger.Error("scan main error : ", err)
+	}
 
 }

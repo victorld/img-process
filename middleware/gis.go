@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"img_process/cons"
 	"img_process/model"
@@ -13,58 +12,29 @@ import (
 	"strings"
 )
 
-var gisDatabaseCacheMap = map[string]GisData{}
-
 type GisData struct {
 	LocStreet string
 	LocAddr   string
 }
 
-// CreateGisDatabaseCache 创建gis database的cache
-func CreateGisDatabaseCache() {
-
+// LoadGisCache 创建gis database的cache快照
+func LoadGisCache() (map[string]GisData, error) {
+	gisDatabaseCacheMap := map[string]GisData{}
 	var gisDatabaseSearch model.GisDatabaseSearch
 	list, _, err := gisDatabaseService.GetGisDatabaseInfoList(gisDatabaseSearch)
 	if err != nil {
-
+		return nil, err
 	}
 	for _, isd := range list {
 		t := GisData{LocStreet: isd.LocStreet, LocAddr: isd.LocAddr}
 		gisDatabaseCacheMap[isd.LocNum] = t
 	}
 	tools.Logger.Info("use gisCache , cache size : ", len(gisDatabaseCacheMap))
-
-}
-
-// GetLocationAddressByCache 从cache里取gis数据，如果没有的话从线上去查询
-func GetLocationAddressByCache(locNum string) (gisData GisData, err error) {
-
-	if value, ok := gisDatabaseCacheMap[locNum]; ok {
-		return value, nil
-	} else {
-		if locNum == "0.000000,0.000000" {
-			return GisData{}, errors.New("not right locNum")
-		}
-		var locJson string
-		locJson, err = getLocationAddressOnline(locNum)
-		if err == nil {
-			gisData = GetGisDataFromJson(locJson)
-
-			var gisDatabaseDB model.GisDatabaseDB
-			gisDatabaseDB.LocNum = locNum
-			gisDatabaseDB.LocAddr = gisData.LocAddr
-			gisDatabaseDB.LocStreet = gisData.LocStreet
-			gisDatabaseDB.LocJson = locJson
-			gisDatabaseService.CreateGisDatabase(&gisDatabaseDB)
-			return gisData, nil
-		} else {
-			return GisData{}, err
-		}
-	}
+	return gisDatabaseCacheMap, nil
 }
 
 // 线上根据经纬度查询地址json
-func getLocationAddressOnline(locNum string) (locJson string, err error) {
+func GetLocationAddressOnline(locNum string) (locJson string, err error) {
 	// 此处填写您在控制台-应用管理-创建应用后获取的AK
 	key := cons.GisKey
 
@@ -106,7 +76,6 @@ func getLocationAddressOnline(locNum string) (locJson string, err error) {
 	fmt.Println(locJson)
 
 	return locJson, nil
-
 }
 
 // GetGisDataFromJson 从线上返回的json数据，组合GisData结构体
