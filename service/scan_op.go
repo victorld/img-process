@@ -303,11 +303,10 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	scanUuidFinal = timeStr + "_" + strings.ReplaceAll(scanUuid.String(), "-", "")
 	tools.Logger.Info("SCAN JOBID : ", tools.StrWithColor(scanUuidFinal, "red"))
 
-	if !strings.Contains(startPath, "pic-new") {
-		return "", errors.New("startPath error ")
+	basePath, err = resolveBasePath(startPath)
+	if err != nil {
+		return "", err
 	}
-
-	basePath = startPath[0 : strings.Index(startPath, "pic-new")+7] //指向pic-new的目录
 
 	defer tools.Logger.Sync()
 
@@ -455,10 +454,10 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	var basePathBak = ""
 
 	if cons.BakStatEnable {
-		if startPathBak == "" || !strings.Contains(startPathBak, "pic-new") {
-			return "", errors.New("StartPathBak error ")
+		basePathBak, err = resolveBasePath(startPathBak)
+		if err != nil {
+			return "", errors.New("StartPathBak error : " + err.Error())
 		}
-		basePathBak = startPathBak[0 : strings.Index(startPathBak, "pic-new")+7] //指向pic-new的目录
 		tools.Logger.Info("basePathBak : ", basePathBak)
 
 		ticker := time.NewTicker(time.Minute * 1)
@@ -728,6 +727,27 @@ func DoScan(scanArgs model.DoScanImgArg) (string, error) {
 	tools.Logger.Info("scan result : ", ret)
 	return ret, nil
 
+}
+
+func resolveBasePath(scanPath string) (string, error) {
+	if scanPath == "" {
+		return "", errors.New("startPath is empty")
+	}
+
+	fileInfo, err := os.Stat(scanPath)
+	if err != nil {
+		return "", err
+	}
+	if !fileInfo.IsDir() {
+		return "", errors.New("startPath is not a directory")
+	}
+
+	cleanPath := filepath.Clean(scanPath)
+	if idx := strings.Index(cleanPath, "pic-new"); idx >= 0 {
+		return cleanPath[:idx+7], nil
+	}
+
+	return cleanPath, nil
 }
 
 // 主目录遍历完成后，待处理文件处理

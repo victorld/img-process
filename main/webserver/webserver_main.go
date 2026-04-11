@@ -14,7 +14,9 @@ func main() {
 	tools.InitLogger()
 	tools.InitViper()
 	cons.InitConst()
-	orm.InitMysql()
+	if err := orm.InitMysql(); err != nil {
+		tools.Logger.Fatal("init mysql error : ", err)
+	}
 
 	if orm.ImgMysqlDB != nil {
 		db, _ := orm.ImgMysqlDB.DB()

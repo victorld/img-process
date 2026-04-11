@@ -16,7 +16,9 @@ func main() {
 	tools.InitLogger()
 	tools.InitViper()
 	cons.InitConst()
-	orm.InitMysql()
+	if err := orm.InitMysql(); err != nil {
+		tools.Logger.Fatal("init mysql error : ", err)
+	}
 
 	img := new(img_rpc.Img)
 	rpc.Register(img) // 注册RPC服务
