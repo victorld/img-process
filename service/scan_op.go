@@ -375,6 +375,10 @@ func (s *Scanner) Run() (string, error) {
 	}
 	s.gisCache = gisCache
 
+	if !middleware.IsExiftoolAvailable() {
+		tools.Logger.Warn("未检测到 exiftool，当前会自动回退到 Go EXIF 解析。建议先安装 exiftool（macOS 可执行：brew install exiftool），安装后照片和视频的拍摄时间、GPS 等信息识别效果会大大增强。")
+	}
+
 	defer tools.Logger.Sync()
 
 	tools.Logger.Info("DoScan args final: ")

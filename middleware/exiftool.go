@@ -12,6 +12,11 @@ import (
 	"img_process/tools"
 )
 
+func IsExiftoolAvailable() bool {
+	_, err := exec.LookPath("exiftool")
+	return err == nil
+}
+
 // GetExifInfoCommand 用命令行找到照片的拍摄时间和地理位置
 func GetExifInfoCommand(path string) (string, string, string, []string, error) {
 	output, err := runExiftool("-G", path)
