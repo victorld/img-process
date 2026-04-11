@@ -1,8 +1,8 @@
 database:   #数据库参数
   DbUsername: root
   DbPassword: root
-  DbHost: localhost
-  DbPort: 3366
+  DbHost: 127.0.0.1
+  DbPort: 33060
   DbName: img
   DbConfig: charset=utf8&parseTime=True&loc=Local
 server:  #web服务参数
@@ -10,7 +10,7 @@ server:  #web服务参数
   HttpUsername: root
   HttpPassword: root@123
 scanArgs:  #扫描参数
-  StartPath: /Users/ld/Downloads/save/pic-lib/pic-new
+  StartPath: /Users/ld/my-file/pic-lab
   DeleteShow: true
   MoveFileShow: true
   ModifyDateShow: false
@@ -39,7 +39,6 @@ batch:
   IDInsertBatchSize: 1000   #img_database的查询批次
   IDDeleteBatchSize: 300    #img_database的删除批次
   GDUpdateBatchSize: 1000   #更新gis_database的批次
-
 
 
 

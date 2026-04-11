@@ -1,1 +1,6 @@
 /.idea/
+/log/
+log/img_num_list
+log/img_num_rev_list
+log/out.log
+main/scan_main/log/out.log
