@@ -202,6 +202,40 @@ func (s *Scanner) applyFileDecision(decision fileDecision) {
 		s.shootDateNullFileList.Add(decision.photo.photo)
 	}
 	if decision.hasChanges {
+		if decision.shouldMove {
+			decision.photo.moveActionID = s.recorder.RecordCandidateAction(model.ScanActionItemDB{
+				ActionType: model.ActionTypeMove,
+				ObjectType: model.ActionObjectFile,
+				SourcePath: decision.photo.photo,
+				TargetPath: decision.photo.targetPhoto,
+				ReasonCode: "dir_date_mismatch",
+				ReasonText: "目录日期与最小日期不一致，需要移动",
+				MetadataJSON: tools.MarshalJsonToString(ginH(
+					"dirDate", decision.photo.dirDate,
+					"minDate", decision.photo.minDate,
+				)),
+			})
+		}
+		if decision.shouldRename {
+			decision.photo.renameActionID = s.recorder.RecordCandidateAction(model.ScanActionItemDB{
+				ActionType: model.ActionTypeRename,
+				ObjectType: model.ActionObjectFile,
+				SourcePath: decision.photo.photo,
+				TargetPath: decision.photo.targetPhoto,
+				ReasonCode: "name_metadata_mismatch",
+				ReasonText: "文件名中的时间地点信息与识别结果不一致，需要重命名",
+			})
+		}
+		if decision.shouldModify {
+			decision.photo.modifyActionID = s.recorder.RecordCandidateAction(model.ScanActionItemDB{
+				ActionType:   model.ActionTypeModifyTime,
+				ObjectType:   model.ActionObjectFile,
+				SourcePath:   decision.photo.photo,
+				ReasonCode:   "modify_time_mismatch",
+				ReasonText:   "修改时间与最小日期不一致，需要修正",
+				MetadataJSON: tools.MarshalJsonToString(ginH("targetDate", decision.photo.minDate)),
+			})
+		}
 		s.processFileMu.Lock()
 		s.processFileList = append(s.processFileList, decision.photo)
 		s.processFileMu.Unlock()

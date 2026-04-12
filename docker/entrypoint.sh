@@ -1,3 +1,7 @@
 #!/bin/sh
 
-go run ./main/webserver/webserver_main.go
+set -eu
+
+mkdir -p /app/log
+
+exec /app/img-process

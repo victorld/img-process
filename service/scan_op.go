@@ -35,6 +35,7 @@ var gisDatabaseService = dao.GisDatabaseService{}
 type dirStruct struct { //目录打印需要的结构体
 	dir        string
 	isEmptyDir bool
+	actionID   uint
 }
 
 type photoStruct struct { //照片打印需要的结构体
@@ -49,6 +50,10 @@ type photoStruct struct { //照片打印需要的结构体
 	targetPhoto      string
 	isModifyDateFile bool
 	isRenameFile     bool
+	deleteActionID   uint
+	moveActionID     uint
+	modifyActionID   uint
+	renameActionID   uint
 }
 
 type ImgRecord struct {
@@ -156,6 +161,8 @@ type Scanner struct {
 	firstErr   error
 	isComplete int
 	metrics    scanMetrics
+	recorder   ScanRecorder
+	phase      string
 
 	wg sync.WaitGroup
 
@@ -186,6 +193,13 @@ func (ps *photoStruct) psDatePrint() { //打印照片日期块信息
 }
 
 func newScanner(scanArgs model.DoScanImgArg) *Scanner {
+	return newScannerWithRecorder(scanArgs, noopScanRecorder{})
+}
+
+func newScannerWithRecorder(scanArgs model.DoScanImgArg, recorder ScanRecorder) *Scanner {
+	if recorder == nil {
+		recorder = noopScanRecorder{}
+	}
 	return &Scanner{
 		scanArgs:                  scanArgs,
 		md5DumpMap:                make(map[string][]string),
@@ -220,12 +234,17 @@ func newScanner(scanArgs model.DoScanImgArg) *Scanner {
 		getExifInfo:               middleware.GetExifInfo,
 		getLocationAddressOnline:  middleware.GetLocationAddressOnline,
 		createGisDatabase:         gisDatabaseService.CreateGisDatabase,
+		recorder:                  recorder,
 	}
 }
 
 // 扫描并将结果写入数据库
 func ScanAndSave(scanArgs model.DoScanImgArg) (string, error) {
-	imgRecordString, err := DoScan(scanArgs)
+	return ScanAndSaveWithRecorder(scanArgs, noopScanRecorder{})
+}
+
+func ScanAndSaveWithRecorder(scanArgs model.DoScanImgArg, recorder ScanRecorder) (string, error) {
+	imgRecordString, err := DoScanWithRecorder(scanArgs, recorder)
 	if err != nil {
 		tools.Logger.Error("scan result error : ", err)
 		return "", err
@@ -289,7 +308,11 @@ func timePtr(v time.Time) *time.Time {
 
 // 扫描主体程序
 func DoScan(scanArgs model.DoScanImgArg) (string, error) {
-	scanner := newScanner(scanArgs)
+	return DoScanWithRecorder(scanArgs, noopScanRecorder{})
+}
+
+func DoScanWithRecorder(scanArgs model.DoScanImgArg, recorder ScanRecorder) (string, error) {
+	scanner := newScannerWithRecorder(scanArgs, recorder)
 	return scanner.Run()
 }
 
@@ -350,6 +373,7 @@ func (s *Scanner) Run() (string, error) {
 	}
 
 	s.scanUUID = time.Now().Format(tools.DatetimeDirTemplate) + "_" + strings.ReplaceAll(scanUUID.String(), "-", "")
+	s.recorder.SetScanUUID(s.scanUUID)
 	s.basePath, err = resolveBasePath(s.startPath)
 	if err != nil {
 		return "", fmt.Errorf("startPath error: %w", err)
@@ -396,6 +420,7 @@ func (s *Scanner) Run() (string, error) {
 	tools.Logger.Info("modifyDateAction : ", s.modifyDateAction)
 	tools.Logger.Info("renameFileAction : ", s.renameFileAction)
 	tools.Logger.Info("SCAN JOBID : ", tools.StrWithColor(s.scanUUID, "red"))
+	s.setPhase("initializing", ginH("scanUUID", s.scanUUID))
 
 	start1 := time.Now()
 	tools.Logger.Info()
@@ -407,6 +432,7 @@ func (s *Scanner) Run() (string, error) {
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("==========ROUND 1: SCAN FILE==========", "red"))
 	tools.Logger.Info()
+	s.setPhase("scan_primary", ginH("startPath", s.startPath))
 
 	p, err := ants.NewPool(cons.PoolSize)
 	if err != nil {
@@ -414,12 +440,13 @@ func (s *Scanner) Run() (string, error) {
 	}
 	defer p.Release()
 
-	stopPrimaryTicker := s.startProgressTicker(&s.fileTotalCnt)
+	stopPrimaryTicker := s.startProgressTicker(&s.fileTotalCnt, "scan_primary")
 	if err := s.walkPrimaryPath(p); err != nil {
 		return "", err
 	}
 	s.wg.Wait()
 	stopPrimaryTicker()
+	s.recorder.SetTotalCount(s.fileTotalCnt.Load())
 
 	elapsed2 := time.Since(start1)
 	start3 := time.Now()
@@ -435,12 +462,13 @@ func (s *Scanner) Run() (string, error) {
 	basePathBak := ""
 
 	if cons.BakStatEnable {
+		s.setPhase("scan_backup", ginH("startPathBak", s.startPathBak))
 		basePathBak, err = resolveBasePath(s.startPathBak)
 		if err != nil {
 			return "", fmt.Errorf("StartPathBak error: %w", err)
 		}
 		tools.Logger.Info("basePathBak : ", basePathBak)
-		stopBackupTicker := s.startProgressTicker(&s.fileTotalCntBak)
+		stopBackupTicker := s.startProgressTicker(&s.fileTotalCntBak, "scan_backup")
 		if err := s.walkBackupPath(p); err != nil {
 			return "", err
 		}
@@ -453,6 +481,7 @@ func (s *Scanner) Run() (string, error) {
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("==========ROUND 2: PROCESS FILE==========", "red"))
 	tools.Logger.Info()
+	s.setPhase("process_actions", nil)
 	tools.Logger.Info(tools.StrWithColor("PRINT DETAIL TYPE1(delete file,modify date,move file): ", "red"))
 	s.processFileProcess()
 	tools.Logger.Info()
@@ -460,8 +489,10 @@ func (s *Scanner) Run() (string, error) {
 	s.emptyDirProcess()
 	tools.Logger.Info()
 	tools.Logger.Info(tools.StrWithColor("PRINT DETAIL TYPE3(dump file): ", "red"))
+	s.setPhase("process_duplicates", nil)
 	dumpMap := s.dumpFileProcess()
 
+	s.setPhase("build_result", nil)
 	ret, err := s.buildResult(start1, basePathBak, dumpMap, elapsed2, elapsed3, elapsed4, start5)
 	if err != nil {
 		return "", err
@@ -481,7 +512,14 @@ func (s *Scanner) walkPrimaryPath(p *ants.Pool) error {
 		}
 		if info.IsDir() {
 			if flag, err := tools.IsEmpty(file); err == nil && flag {
-				s.deleteDirList = append(s.deleteDirList, dirStruct{isEmptyDir: true, dir: file})
+				actionID := s.recorder.RecordCandidateAction(model.ScanActionItemDB{
+					ActionType: model.ActionTypeDeleteEmptyDir,
+					ObjectType: model.ActionObjectDir,
+					SourcePath: file,
+					ReasonCode: "empty_dir",
+					ReasonText: "目录为空，建议删除",
+				})
+				s.deleteDirList = append(s.deleteDirList, dirStruct{isEmptyDir: true, dir: file, actionID: actionID})
 			}
 			s.dirTotalCnt++
 			return nil
@@ -491,6 +529,13 @@ func (s *Scanner) walkPrimaryPath(p *ants.Pool) error {
 		fileSuffix := strings.ToLower(path.Ext(file))
 		if shouldDeleteFileByName(file) {
 			ps := newDeletePhotoStruct(file)
+			ps.deleteActionID = s.recorder.RecordCandidateAction(model.ScanActionItemDB{
+				ActionType: model.ActionTypeDelete,
+				ObjectType: model.ActionObjectFile,
+				SourcePath: file,
+				ReasonCode: "invalid_name",
+				ReasonText: "文件名命中删除规则",
+			})
 			s.processFileMu.Lock()
 			s.processFileList = append(s.processFileList, ps)
 			s.processFileMu.Unlock()
@@ -729,6 +774,7 @@ func (s *Scanner) buildResult(start1 time.Time, basePathBak string, dumpMap map[
 
 	ret := tools.MarshalJsonToString(imgRecord)
 	tools.Logger.Info("scan result : ", ret)
+	s.recorder.Finish(imgRecord, cons.WorkDir+"/log/dump_delete_file/"+s.scanUUID)
 	return ret, nil
 }
 
@@ -760,7 +806,7 @@ func (s *Scanner) snapshotStaleImgCache() map[string]middleware.ImgCacheData {
 	return ret
 }
 
-func (s *Scanner) startProgressTicker(counter *atomic.Int64) func() {
+func (s *Scanner) startProgressTicker(counter *atomic.Int64, phase string) func() {
 	ticker := time.NewTicker(time.Minute)
 	done := make(chan struct{})
 	var lastValue int64
@@ -771,6 +817,7 @@ func (s *Scanner) startProgressTicker(counter *atomic.Int64) func() {
 			case t := <-ticker.C:
 				current := counter.Load()
 				tools.Logger.Info(tools.StrWithColor("Tick at "+t.Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.FormatInt(current-lastValue, 10), "red"))
+				s.recorder.Heartbeat(phase, current, ginH("tickRange", current-lastValue))
 				lastValue = current
 			case <-done:
 				return
@@ -781,6 +828,7 @@ func (s *Scanner) startProgressTicker(counter *atomic.Int64) func() {
 	return func() {
 		current := counter.Load()
 		tools.Logger.Info(tools.StrWithColor("Tick at "+time.Now().Format(tools.DatetimeTemplate), "red") + tools.StrWithColor(" , tick range processed "+strconv.FormatInt(current-lastValue, 10), "red"))
+		s.recorder.Heartbeat(phase, current, ginH("tickRange", current-lastValue, "final", true))
 		close(done)
 		ticker.Stop()
 	}
@@ -792,6 +840,7 @@ func (s *Scanner) recordNonFatalError(err error) {
 	}
 
 	tools.Logger.Error("scan warning : ", err)
+	s.recorder.RecordError(s.phase, "", err, nil)
 
 	s.errorStatsMu.Lock()
 	defer s.errorStatsMu.Unlock()
@@ -856,6 +905,11 @@ func (s *Scanner) processFileProcess() {
 	}
 }
 
+func (s *Scanner) setPhase(phase string, payload map[string]any) {
+	s.phase = phase
+	s.recorder.SetPhase(phase, payload)
+}
+
 // 待删除文件处理逻辑
 func (s *Scanner) deleteFileProcess(ps photoStruct, printFileFlag *bool) {
 	if s.deleteShow || s.deleteAction {
@@ -869,8 +923,10 @@ func (s *Scanner) deleteFileProcess(ps photoStruct, printFileFlag *bool) {
 		if err := os.Remove(ps.photo); err != nil {
 			s.recordActionError("delete file", ps.photo, err)
 			tools.Logger.Info(tools.StrWithColor("delete file failed:", "yellow"), ps.photo, err)
+			s.recorder.RecordActionResult(ps.deleteActionID, false, err, ginH("path", ps.photo))
 		} else {
 			tools.Logger.Info(tools.StrWithColor("delete file sucessed:", "green"), ps.photo)
+			s.recorder.RecordActionResult(ps.deleteActionID, true, nil, ginH("path", ps.photo))
 		}
 	}
 }
@@ -898,6 +954,7 @@ func (s *Scanner) modifyDateProcess(ps photoStruct, printFileFlag *bool, printDa
 		if err == nil {
 			tools.Logger.Info(tools.StrWithColor("modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate, "get realdate", tools.GetModifyDate(ps.photo))
 		}
+		s.recorder.RecordActionResult(ps.modifyActionID, err == nil, err, ginH("path", ps.photo, "targetDate", ps.minDate))
 	}
 }
 
@@ -920,8 +977,10 @@ func (s *Scanner) moveFileProcess(ps photoStruct, printFileFlag *bool, printDate
 		if err := tools.MoveFile(ps.photo, ps.targetPhoto); err != nil {
 			s.recordActionError("move file", ps.photo, err)
 			tools.Logger.Error("move file failed: ", ps.photo, " to ", ps.targetPhoto, " err: ", err)
+			s.recorder.RecordActionResult(ps.moveActionID, false, err, ginH("path", ps.photo, "targetPath", ps.targetPhoto))
 		} else {
 			tools.Logger.Info(tools.StrWithColor("move file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
+			s.recorder.RecordActionResult(ps.moveActionID, true, nil, ginH("path", ps.photo, "targetPath", ps.targetPhoto))
 		}
 	}
 }
@@ -945,8 +1004,10 @@ func (s *Scanner) renameFileProcess(ps photoStruct, printFileFlag *bool, printDa
 		if err := tools.MoveFile(ps.photo, ps.targetPhoto); err != nil {
 			s.recordActionError("rename file", ps.photo, err)
 			tools.Logger.Error("rename file failed: ", ps.photo, " to ", ps.targetPhoto, " err: ", err)
+			s.recorder.RecordActionResult(ps.renameActionID, false, err, ginH("path", ps.photo, "targetPath", ps.targetPhoto))
 		} else {
 			tools.Logger.Info(tools.StrWithColor("rename file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
+			s.recorder.RecordActionResult(ps.renameActionID, true, nil, ginH("path", ps.photo, "targetPath", ps.targetPhoto))
 		}
 	}
 }
@@ -964,8 +1025,10 @@ func (s *Scanner) emptyDirProcess() {
 				if err := os.Remove(ds.dir); err != nil {
 					s.recordActionError("delete empty dir", ds.dir, err)
 					tools.Logger.Info(tools.StrWithColor("delete empty dir failed:", "yellow"), ds.dir, err)
+					s.recorder.RecordActionResult(ds.actionID, false, err, ginH("path", ds.dir))
 				} else {
 					tools.Logger.Info(tools.StrWithColor("delete empty dir sucessed:", "green"), ds.dir)
+					s.recorder.RecordActionResult(ds.actionID, true, nil, ginH("path", ds.dir))
 				}
 			}
 		}
@@ -1017,6 +1080,15 @@ func (s *Scanner) dumpFileProcess() map[string][]string {
 			if photo != minPhoto {
 				if sizeMatch {
 					s.shouldDeleteMd5Files = append(s.shouldDeleteMd5Files, photo)
+					s.recorder.RecordCandidateAction(model.ScanActionItemDB{
+						ActionType:     model.ActionTypeDeleteDup,
+						ObjectType:     model.ActionObjectFile,
+						SourcePath:     photo,
+						ReasonCode:     "duplicate_md5",
+						ReasonText:     "重复文件候选删除",
+						DuplicateGroup: md5,
+						MetadataJSON:   tools.MarshalJsonToString(ginH("keepPath", minPhoto, "sizeMatch", sizeMatch)),
+					})
 					tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"), " SIZE: ", tools.GetFileSize(photo))
 				} else {
 					tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE(SIZE MISMATCH)", "green"), " SIZE: ", tools.GetFileSize(photo))
@@ -1056,6 +1128,7 @@ func (s *Scanner) writeDumpArtifacts(dumpMap map[string][]string) error {
 		if err := tools.WriteStringToFile(builder.String(), filePath+"/dump_compare"); err != nil {
 			return err
 		}
+		s.recorder.RecordArtifact("dump compare generated", filePath+"/dump_compare", nil)
 	}
 
 	tools.Logger.Info("shouldDeleteMd5Files length（重复文件应该删除的数量） : ", tools.StrWithColor(strconv.Itoa(len(s.shouldDeleteMd5Files)), "red"))
@@ -1066,6 +1139,7 @@ func (s *Scanner) writeDumpArtifacts(dumpMap map[string][]string) error {
 		if err := tools.WriteStringToFile(strings.Join(s.shouldDeleteMd5Files, "\n"), filePath+"/dump_delete_list"); err != nil {
 			return err
 		}
+		s.recorder.RecordArtifact("dump delete list generated", filePath+"/dump_delete_list", ginH("count", len(s.shouldDeleteMd5Files)))
 	}
 
 	return nil

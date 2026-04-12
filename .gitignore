@@ -5,3 +5,6 @@ log/img_num_rev_list
 log/out.log
 main/scan_main/log/out.log
 main/scan_main/__*
+web/node_modules/
+web/dist/
+web/*.tsbuildinfo

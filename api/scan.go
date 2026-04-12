@@ -2,24 +2,23 @@ package api
 
 import (
 	"errors"
+	"net/http"
+	"path/filepath"
+	"regexp"
+
 	"github.com/gin-gonic/gin"
+
 	"img_process/cons"
 	"img_process/model"
 	"img_process/service"
 	"img_process/tools"
-	"net/http"
-	"path/filepath"
-	"regexp"
-	"sync"
 )
 
-type ImgRecordOwnApi struct {
-}
+type ImgRecordOwnApi struct{}
 
 var (
-	scanMu             sync.Mutex //processFileList锁，保证只有一个后台扫描任务执行
-	scanAndSaveFunc    = service.ScanAndSave
 	deleteDumpFileFunc = service.DeleteMD5DupFilesByLine
+	createJobFunc      = service.Runtime.CreateJob
 	scanUUIDPattern    = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}_[A-Za-z0-9]+$`)
 )
 
@@ -27,7 +26,7 @@ type deleteReq struct {
 	ScanUUID string `json:"scanUuid" form:"scanUuid"`
 }
 
-// DoScanImg 执行扫描
+// DoScanImg 兼容旧接口，改为创建异步任务
 func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 	var doScanImgArg model.DoScanImgArg
 	if err := bindDoScanImgArg(c, &doScanImgArg); err != nil {
@@ -35,27 +34,18 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DoScanImg(c *gin.Context) {
 		return
 	}
 
-	tools.Logger.Info("DoScanImg web args : " + tools.MarshalJsonToString(doScanImgArg))
-
-	if scanMu.TryLock() {
-		go func() {
-			defer scanMu.Unlock()
-			tools.Logger.Info("扫描开始")
-			imgRecordString, err := scanAndSaveFunc(doScanImgArg)
-			if err != nil {
-				tools.FancyHandleError(err)
-				return
-			}
-			tools.Logger.Info("扫描结束，结果：", imgRecordString)
-		}()
-
-		tools.Logger.Info("DoScanImg ret accepted")
-		tools.SuccessWithStatus(c, http.StatusAccepted, gin.H{"ret": "ok"}, "扫描任务下发成功，请稍后检查数据库记录")
+	job, err := createJobFunc(model.JobSourceManual, nil, doScanImgArg)
+	if err != nil {
+		tools.Fail(c, "扫描任务下发失败", gin.H{"error": err.Error()})
 		return
 	}
 
-	tools.Logger.Info("DoScanImg processing, exit")
-	tools.FailWithStatus(c, http.StatusConflict, "扫描进行中，请等待扫描结束", gin.H{"ret": "not ok"})
+	tools.SuccessWithStatus(c, http.StatusAccepted, gin.H{
+		"ret":     "ok",
+		"jobId":   job.ID,
+		"jobUuid": job.JobUUID,
+		"status":  job.Status,
+	}, "扫描任务下发成功")
 }
 
 // DeleteMD5DupFiles 删除重复文件
@@ -71,7 +61,6 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DeleteMD5DupFiles(c *gin.Context) {
 		tools.FailWithStatus(c, http.StatusBadRequest, err.Error(), gin.H{"error": err.Error()})
 		return
 	}
-	tools.Logger.Info("file path : ", filePath)
 	deleteDumpFileFunc(filePath)
 	tools.Success(c, gin.H{"ret": "ok"}, "删除任务执行完成")
 }

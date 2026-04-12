@@ -1,0 +1,77 @@
+:root {
+  color: #1b2632;
+  background: linear-gradient(180deg, #eef5f1 0%, #f8faf7 100%);
+  font-family: "SF Pro Display", "PingFang SC", "Hiragino Sans GB", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-sider {
+  border-right: 1px solid #d9e1dd;
+}
+
+.brand {
+  padding: 20px 24px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid #dde5e1;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.app-content {
+  padding: 24px;
+}
+
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at top left, rgba(48, 109, 88, 0.2), transparent 30%),
+    linear-gradient(135deg, #eff5f1 0%, #f8faf7 100%);
+}
+
+.login-card {
+  width: 420px;
+  padding: 32px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 20px 60px rgba(35, 66, 53, 0.12);
+}
+
+.center-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.json-block {
+  margin: 0;
+  padding: 16px;
+  background: #f5f7f6;
+  border-radius: 12px;
+  overflow: auto;
+}

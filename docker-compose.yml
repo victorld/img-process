@@ -1,0 +1,31 @@
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: img
+    ports:
+      - "33060:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      IMG_PROCESS_CONFIG: /app/config.yaml
+      TZ: Asia/Shanghai
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./log:/app/log
+      - ${IMG_PROCESS_SCAN_PATH:-./sample-data}:/data/scan
+
+volumes:
+  mysql-data:

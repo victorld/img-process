@@ -47,6 +47,7 @@
 1. 支持直接运行、web api、rpc方式调用
 1. 支持主备目录的照片差异对比
 1. 支持gps地理坐标缓存，支持照片和视频的拍摄时间缓存
+1. 支持 Web 管理台查看扫描历史、实时过程和计划任务
 
 
 处理性能：  
@@ -58,3 +59,59 @@
 1. `config.yaml` 仅建议本地开发使用，数据库密码、HTTP 口令、GIS key 等敏感信息不要提交到共享环境配置中
 2. 生产或共享环境建议通过 `IMG_PROCESS_CONFIG` 或 `IMG_PROCESS_CONFIG_DIR` 指定外部配置文件
 3. `basic.SqlDebug` 默认关闭，只有排查数据库问题时再临时开启
+
+## Web 管理台
+
+当前仓库已经包含 Web 管理台能力，后端继续使用 Go + Gin + Gorm + MySQL，前端使用 React + TypeScript + Vite + Ant Design。
+
+Web 管理台支持：
+
+1. 查看扫描历史任务列表
+2. 查看单次扫描的实时事件、待执行动作、已执行动作、错误和重复文件
+3. 页面中发起扫描任务，默认参数来自当前配置
+4. 配置并执行定时扫描计划
+
+主要接口：
+
+1. `POST /api/auth/login`
+2. `GET /api/jobs`
+3. `POST /api/jobs`
+4. `GET /api/jobs/:id`
+5. `GET /api/jobs/:id/events`
+6. `GET /api/jobs/:id/action-items`
+7. `GET /api/jobs/:id/stream`
+8. `GET /api/schedules`
+9. `POST /api/schedules`
+
+## 本地开发
+
+后端：
+
+```bash
+go run ./main/webserver/webserver_main.go
+```
+
+前端：
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+前端开发模式默认代理到 `http://localhost:8081`。
+
+## Docker 运行
+
+项目已提供 `docker-compose.yml` 和多阶段构建镜像：
+
+```bash
+docker compose up --build
+```
+
+默认会启动：
+
+1. `mysql:8.0`
+2. `img-process` Web 服务
+
+建议通过挂载外部配置文件和照片目录运行，尤其是生产环境不要直接使用仓库里的默认 `config.yaml`。
