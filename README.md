@@ -53,3 +53,8 @@
 
 实际测试40000张照片、视频（495G）整体处理一遍大概需要15秒左右时间
 
+配置说明：
+
+1. `config.yaml` 仅建议本地开发使用，数据库密码、HTTP 口令、GIS key 等敏感信息不要提交到共享环境配置中
+2. 生产或共享环境建议通过 `IMG_PROCESS_CONFIG` 或 `IMG_PROCESS_CONFIG_DIR` 指定外部配置文件
+3. `basic.SqlDebug` 默认关闭，只有排查数据库问题时再临时开启

@@ -36,7 +36,7 @@ func InitMysql() error {
 // GormMysql 初始化Mysql数据库
 func GormMysql(mysqlArgs MysqlArgs) error {
 	dsn := getDSN(mysqlArgs, true)
-	tools.Logger.Info("dsn : ", dsn)
+	tools.Logger.Info("mysql target : ", maskedDSN(mysqlArgs))
 
 	db, err := openMysql(dsn)
 	if err != nil && strings.Contains(err.Error(), "Unknown database") {
@@ -51,7 +51,11 @@ func GormMysql(mysqlArgs MysqlArgs) error {
 	}
 
 	ImgMysqlDB = db
-	ImgMysqlDB.Logger = logger.Default.LogMode(logger.Silent)
+	logMode := logger.Silent
+	if cons.SqlDebug {
+		logMode = logger.Info
+	}
+	ImgMysqlDB.Logger = logger.Default.LogMode(logMode)
 	return nil
 }
 
@@ -81,4 +85,8 @@ func createDatabase(mysqlArgs MysqlArgs) error {
 	}
 
 	return db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", mysqlArgs.Dbname)).Error
+}
+
+func maskedDSN(mysqlArgs MysqlArgs) string {
+	return fmt.Sprintf("%s:%s/%s?%s", mysqlArgs.Host, mysqlArgs.Port, mysqlArgs.Dbname, mysqlArgs.Config)
 }

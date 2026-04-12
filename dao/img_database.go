@@ -74,7 +74,7 @@ func (imgDatabaseService *ImgDatabaseService) GetImgDatabaseInfoList(info model.
 	limit := info.PageSize
 	offset := info.PageSize * (info.Page - 1)
 	// 创建db
-	db := orm.ImgMysqlDB.Debug().Model(&model.ImgDatabaseDB{})
+	db := orm.ImgMysqlDB.Model(&model.ImgDatabaseDB{})
 	var imgDatabases []model.ImgDatabaseDB
 	// 如果有条件搜索 下方会自动创建搜索语句
 	db = db.Select("img_key", "shoot_date", "loc_num", "loc_addr", "loc_street", "state")
@@ -98,7 +98,7 @@ func (imgDatabaseService *ImgDatabaseService) GetImgDatabaseInfoList(info model.
 func (imgDatabaseService *ImgDatabaseService) GetImgDatabaseInfoCount(info model.ImgDatabaseSearch) (total int64, err error) {
 
 	// 创建db
-	db := orm.ImgMysqlDB.Debug().Model(&model.ImgDatabaseDB{})
+	db := orm.ImgMysqlDB.Model(&model.ImgDatabaseDB{})
 	// 如果有条件搜索 下方会自动创建搜索语句
 	if info.StartCreatedAt != nil && info.EndCreatedAt != nil {
 		db = db.Where("created_at BETWEEN ? AND ?", info.StartCreatedAt, info.EndCreatedAt)

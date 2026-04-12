@@ -10,12 +10,18 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 type GisData struct {
 	LocStreet string
 	LocAddr   string
 }
+
+var (
+	amapBaseURL = "https://restapi.amap.com"
+	amapClient  = &http.Client{Timeout: 5 * time.Second}
+)
 
 // LoadGisCache 创建gis database的cache快照
 func LoadGisCache() (map[string]GisData, error) {
@@ -34,94 +40,93 @@ func LoadGisCache() (map[string]GisData, error) {
 }
 
 // 线上根据经纬度查询地址json
-func GetLocationAddressOnline(locNum string) (locJson string, err error) {
-	// 此处填写您在控制台-应用管理-创建应用后获取的AK
-	key := cons.GisKey
+func GetLocationAddressOnline(locNum string) (string, error) {
+	requestURL, err := buildAmapRequestURL(locNum)
+	if err != nil {
+		tools.Logger.Error("build gis request error : ", err)
+		return "", err
+	}
 
-	// 服务地址
-	host := "https://restapi.amap.com"
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	if err != nil {
+		return "", err
+	}
 
-	// 接口地址
-	uri := "/v3/geocode/regeo"
+	resp, err := amapClient.Do(req)
+	if err != nil {
+		tools.Logger.Warn("gis request failed for locNum ", locNum, " : ", err)
+		return "", err
+	}
+	defer resp.Body.Close()
 
-	// 设置请求参数
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("gis request status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	locJSON := string(body)
+	if _, err := GetGisDataFromJson(locJSON); err != nil {
+		return "", err
+	}
+
+	return locJSON, nil
+}
+
+func buildAmapRequestURL(locNum string) (string, error) {
 	params := url.Values{
 		"location": []string{locNum},
 		"output":   []string{"json"},
 		"radius":   []string{"0"},
-		"key":      []string{key},
+		"key":      []string{cons.GisKey},
 	}
 
-	// 发起请求
-	request, err := url.Parse(host + uri + "?" + params.Encode())
-	if nil != err {
-		fmt.Println("host error: ", err)
+	request, err := url.Parse(amapBaseURL + "/v3/geocode/regeo?" + params.Encode())
+	if err != nil {
 		return "", err
 	}
 
-	resp, err1 := http.Get(request.String())
-	fmt.Println("url: ", request.String())
-
-	if err1 != nil {
-		fmt.Println("request error: ", err1)
-		return "", err
-	}
-	body, err2 := io.ReadAll(resp.Body)
-	if err2 != nil {
-		fmt.Println("response error: ", err2)
-	}
-	resp.Body.Close()
-
-	locJson = string(body)
-	fmt.Println(locJson)
-
-	return locJson, nil
+	return request.String(), nil
 }
 
 // GetGisDataFromJson 从线上返回的json数据，组合GisData结构体
-func GetGisDataFromJson(locJson string) GisData {
+func GetGisDataFromJson(locJson string) (GisData, error) {
 	var ret map[string]any
-	json.Unmarshal([]byte(locJson), &ret)
-	regeocode := ret["regeocode"].(map[string]any)
-	addressComponent := regeocode["addressComponent"].(map[string]any)
-	var province string
-	var district string
-	var township string
-	var street string
-	if _, ok := addressComponent["province"].(string); ok {
-		province = addressComponent["province"].(string)
-		if strings.Contains(province, "中华人民共和国") {
-			province = ""
-		}
-	} else {
-		//fmt.Println("province not string : ", locJson)
-	}
-	if _, ok := addressComponent["district"].(string); ok {
-		district = addressComponent["district"].(string)
-	} else {
-		//fmt.Println("district not string : ", locJson)
-	}
-	if _, ok := addressComponent["township"].(string); ok {
-		township = addressComponent["township"].(string)
-	} else {
-		//fmt.Println("township not string : ", locJson)
-	}
-	if _, ok := addressComponent["streetNumber"].(map[string]any)["street"].(string); ok {
-		street = addressComponent["streetNumber"].(map[string]any)["street"].(string)
-	} else {
-		//fmt.Println("street not string : ", locJson)
+	if err := json.Unmarshal([]byte(locJson), &ret); err != nil {
+		return GisData{}, err
 	}
 
-	var locStreet string
-	locStreet = province + "" + district + "" + township + "" + street
-	//fmt.Println("locStreet : ", locStreet)
-
-	var locAddr string
-	if _, ok := regeocode["formatted_address"].(string); ok {
-		locAddr = regeocode["formatted_address"].(string)
-	} else {
-		//fmt.Println("locAddr not string : ", locJson)
+	regeocode, ok := ret["regeocode"].(map[string]any)
+	if !ok {
+		return GisData{}, fmt.Errorf("invalid regeocode payload")
+	}
+	addressComponent, ok := regeocode["addressComponent"].(map[string]any)
+	if !ok {
+		return GisData{}, fmt.Errorf("invalid addressComponent payload")
 	}
 
-	return GisData{LocStreet: locStreet, LocAddr: locAddr}
+	province := getStringValue(addressComponent["province"])
+	if strings.Contains(province, "中华人民共和国") {
+		province = ""
+	}
+	district := getStringValue(addressComponent["district"])
+	township := getStringValue(addressComponent["township"])
+
+	street := ""
+	if streetNumber, ok := addressComponent["streetNumber"].(map[string]any); ok {
+		street = getStringValue(streetNumber["street"])
+	}
+
+	locStreet := province + district + township + street
+	locAddr := getStringValue(regeocode["formatted_address"])
+
+	return GisData{LocStreet: locStreet, LocAddr: locAddr}, nil
+}
+
+func getStringValue(v any) string {
+	s, _ := v.(string)
+	return s
 }

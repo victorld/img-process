@@ -14,7 +14,9 @@ import (
 func main() {
 
 	tools.InitLogger()
-	tools.InitViper()
+	if err := tools.InitViper(); err != nil {
+		tools.Logger.Fatal("init viper error : ", err)
+	}
 	cons.InitConst()
 	if err := orm.InitMysql(); err != nil {
 		tools.Logger.Fatal("init mysql error : ", err)

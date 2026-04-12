@@ -498,8 +498,8 @@ func (s *Scanner) walkPrimaryPath(p *ants.Pool) error {
 
 		parentDir := path.Base(filepath.Dir(file))
 		dumpCompareKey := parentDir + "|" + fileName
-		s.dayMap[tools.GetDirDate(file)]++
 		day := tools.GetDirDate(file)
+		s.dayMap[day]++
 		year := day[0:4]
 		month := day[0:7]
 		s.suffixMap[fileSuffix]++
@@ -908,8 +908,11 @@ func (s *Scanner) moveFileProcess(ps photoStruct, printFileFlag *bool, printDate
 	}
 
 	if s.moveFileAction {
-		tools.MoveFile(ps.photo, ps.targetPhoto)
-		tools.Logger.Info(tools.StrWithColor("move file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
+		if err := tools.MoveFile(ps.photo, ps.targetPhoto); err != nil {
+			tools.Logger.Error("move file failed: ", ps.photo, " to ", ps.targetPhoto, " err: ", err)
+		} else {
+			tools.Logger.Info(tools.StrWithColor("move file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
+		}
 	}
 }
 
@@ -929,8 +932,11 @@ func (s *Scanner) renameFileProcess(ps photoStruct, printFileFlag *bool, printDa
 	}
 
 	if s.renameFileAction {
-		tools.MoveFile(ps.photo, ps.targetPhoto)
-		tools.Logger.Info(tools.StrWithColor("rename file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
+		if err := tools.MoveFile(ps.photo, ps.targetPhoto); err != nil {
+			tools.Logger.Error("rename file failed: ", ps.photo, " to ", ps.targetPhoto, " err: ", err)
+		} else {
+			tools.Logger.Info(tools.StrWithColor("rename file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
+		}
 	}
 }
 
@@ -1035,7 +1041,9 @@ func (s *Scanner) writeDumpArtifacts(dumpMap map[string][]string) error {
 		if err := os.MkdirAll(filePath, os.ModePerm); err != nil {
 			return err
 		}
-		tools.WriteStringToFile(builder.String(), filePath+"/dump_compare")
+		if err := tools.WriteStringToFile(builder.String(), filePath+"/dump_compare"); err != nil {
+			return err
+		}
 	}
 
 	tools.Logger.Info("shouldDeleteMd5Files length（重复文件应该删除的数量） : ", tools.StrWithColor(strconv.Itoa(len(s.shouldDeleteMd5Files)), "red"))
@@ -1043,7 +1051,9 @@ func (s *Scanner) writeDumpArtifacts(dumpMap map[string][]string) error {
 		if err := os.MkdirAll(filePath, os.ModePerm); err != nil {
 			return err
 		}
-		tools.WriteStringToFile(strings.Join(s.shouldDeleteMd5Files, "\n"), filePath+"/dump_delete_list")
+		if err := tools.WriteStringToFile(strings.Join(s.shouldDeleteMd5Files, "\n"), filePath+"/dump_delete_list"); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -1243,7 +1253,10 @@ func (s *Scanner) getLocationAddressByCache(locNum string) (middleware.GisData, 
 	if err != nil {
 		return middleware.GisData{}, err
 	}
-	gisData := middleware.GetGisDataFromJson(locJSON)
+	gisData, err := middleware.GetGisDataFromJson(locJSON)
+	if err != nil {
+		return middleware.GisData{}, err
+	}
 
 	s.gisCacheMu.Lock()
 	if value, ok := s.gisCache[locNum]; ok {

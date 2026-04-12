@@ -15,7 +15,9 @@ var gisDatabaseService = dao.GisDatabaseService{}
 // 从img_database库里的json字段提取地址信息单独存储
 func main() {
 	tools.InitLogger()
-	tools.InitViper()
+	if err := tools.InitViper(); err != nil {
+		tools.Logger.Fatal("init viper error : ", err)
+	}
 	cons.InitConst()
 	if err := orm.InitMysql(); err != nil {
 		tools.Logger.Fatal("init mysql error : ", err)
@@ -36,7 +38,11 @@ func main() {
 
 		locJson := list[i].LocJson
 
-		gisData := middleware.GetGisDataFromJson(locJson)
+		gisData, err := middleware.GetGisDataFromJson(locJson)
+		if err != nil {
+			tools.Logger.Warn("parse gis json failed : ", err)
+			continue
+		}
 
 		list[i].LocStreet = gisData.LocStreet
 

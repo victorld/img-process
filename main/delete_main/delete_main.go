@@ -10,7 +10,9 @@ import (
 // 删除重复文件
 func main() {
 	tools.InitLogger()
-	tools.InitViper()
+	if err := tools.InitViper(); err != nil {
+		tools.Logger.Fatal("init viper error : ", err)
+	}
 	cons.InitConst()
 
 	const scanUuidFinal = "2025-01-25-20-07-24_f0530738db1411ef97c02656"

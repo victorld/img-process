@@ -22,6 +22,7 @@ scanArgs:  #扫描参数
   RenameFileAction: false
 basic:
   ColorOutput: true   #日志是否输出彩色
+  SqlDebug: false     #是否输出SQL调试日志
 cache:
   ImgCache: false   #是否要使用图片cache，会将新的记录插入数据库
   SyncTable: false    #会根据当前数据库匹配不上的记录删掉
@@ -39,7 +40,6 @@ batch:
   IDInsertBatchSize: 1000   #img_database的查询批次
   IDDeleteBatchSize: 300    #img_database的删除批次
   GDUpdateBatchSize: 1000   #更新gis_database的批次
-
 
 
 

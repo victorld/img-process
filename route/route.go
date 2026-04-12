@@ -15,7 +15,10 @@ func InitRouter(r *gin.Engine) *gin.Engine {
 	}))
 
 	var imgRecordApi = new(api.ImgRecordOwnApi)
+	scanGroup.POST("scan", imgRecordApi.DoScanImg)
 	scanGroup.GET("scan", imgRecordApi.DoScanImg)
+	scanGroup.POST("delete", imgRecordApi.DeleteMD5DupFiles)
+	scanGroup.DELETE("delete", imgRecordApi.DeleteMD5DupFiles)
 	scanGroup.GET("delete", imgRecordApi.DeleteMD5DupFiles)
 
 	return r

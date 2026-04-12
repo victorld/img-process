@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -40,6 +42,13 @@ const DatetimeDirTemplate = "2006-01-02-15-04-05"
 
 var timePatternArray = []*regexp.Regexp{date1Pattern, date2Pattern, date3Pattern, date4Pattern, datetimePattern}
 var timeTemplateArray = []string{Data1Template, Data2Template, Data3Template, Data4Template, DatetimeTemplate}
+
+var (
+	renameFile = os.Rename
+	removeFile = os.Remove
+	mkdirAll   = os.MkdirAll
+	writeFile  = os.WriteFile
+)
 
 func StrWithColor(str string, color string) string {
 
@@ -82,6 +91,9 @@ func GetFileMD5(filePath string, length int64) (string, error) {
 func Exists(path string) bool {
 	_, err := os.Stat(path) //os.Stat获取文件信息
 	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
 		if os.IsExist(err) {
 			return true
 		}
@@ -115,20 +127,36 @@ func GetRealPath(file string) string {
 	return realpath
 }
 
-func MoveFile(src string, dst string) {
+func MoveFile(src string, dst string) error {
 
 	parentDir := filepath.Dir(dst)
 	if !Exists(parentDir) {
-		err := os.MkdirAll(parentDir, os.ModePerm)
+		err := mkdirAll(parentDir, os.ModePerm)
 		if err != nil {
-			FancyHandleError(err)
-			return
+			return err
+		}
+		if Logger != nil {
+			Logger.Info("创建父目录：", parentDir)
 		} else {
 			fmt.Println("创建父目录：", parentDir)
 		}
 	}
-	// 移动文件
-	os.Rename(src, dst)
+
+	if err := renameFile(src, dst); err == nil {
+		return nil
+	} else if !errors.Is(err, syscall.EXDEV) {
+		return err
+	}
+
+	if _, err := CopyFile(src, dst); err != nil {
+		return err
+	}
+	if err := removeFile(src); err != nil {
+		_ = removeFile(dst)
+		return err
+	}
+
+	return nil
 }
 
 func CopyFile(src, dst string) (int64, error) {
@@ -165,24 +193,32 @@ func GetFileSize(filePath string) int64 {
 func DeleteFile(filePath string) error {
 
 	// 删除文件
-	err := os.Remove(filePath)
+	err := removeFile(filePath)
 	return err
 
 }
 
-func DeleteEmptyDir(filePath string) {
+func DeleteEmptyDir(filePath string) error {
 
 	for {
 		if flag, err := IsEmpty(filePath); err == nil && flag {
-			os.Remove(filePath)
-			fmt.Println("remove dir : ", filePath)
+			if err := removeFile(filePath); err != nil {
+				return err
+			}
+			if Logger != nil {
+				Logger.Info("remove dir : ", filePath)
+			} else {
+				fmt.Println("remove dir : ", filePath)
+			}
 			parentDir := filepath.Dir(filePath)
-			DeleteEmptyDir(parentDir)
+			if err := DeleteEmptyDir(parentDir); err != nil {
+				return err
+			}
 		} else {
 			break
 		}
 	}
-	return
+	return nil
 
 }
 
@@ -212,9 +248,9 @@ func GetSyncMapLens(sm *sync.Map) int {
 	return len
 }
 
-func WriteStringToFile(content string, filepath string) {
+func WriteStringToFile(content string, filepath string) error {
 	contentBytes := []byte(content)
-	os.WriteFile(filepath, contentBytes, 0666)
+	return writeFile(filepath, contentBytes, 0666)
 }
 
 func ReadFileString(fileName string) (string, error) {

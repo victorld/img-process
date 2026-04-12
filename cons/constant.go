@@ -33,6 +33,7 @@ var (
 	SyncTable         bool
 	TruncateTable     bool
 	BakStatEnable     bool
+	SqlDebug          bool
 	WorkDir           string
 	PoolSize          int
 	Md5Retry          int
@@ -78,52 +79,62 @@ func InitConst() {
 	BakStatEnable, _ = strconv.ParseBool(tools.GetConfigString("bak.BakStatEnable"))
 
 	GisKey = tools.GetConfigString("gis.key")
+	SqlDebug, _ = strconv.ParseBool(tools.GetConfigString("basic.SqlDebug"))
 
 	IDInsertBatchSize, _ = strconv.Atoi(tools.GetConfigString("batch.IDInsertBatchSize"))
 	IDDeleteBatchSize, _ = strconv.Atoi(tools.GetConfigString("batch.IDDeleteBatchSize"))
 	GDUpdateBatchSize, _ = strconv.Atoi(tools.GetConfigString("batch.GDUpdateBatchSize"))
 
-	fmt.Println("DbUsername :", DbUsername)
-	fmt.Println("DbPassword :", DbPassword)
-	fmt.Println("DbHost :", DbHost)
-	fmt.Println("DbPort :", DbPort)
-	fmt.Println("DbName :", DbName)
-	fmt.Println("DbConfig :", DbConfig)
+	logConfig("DbUsername", DbUsername)
+	logConfig("DbPassword", "[REDACTED]")
+	logConfig("DbHost", DbHost)
+	logConfig("DbPort", DbPort)
+	logConfig("DbName", DbName)
+	logConfig("DbConfig", DbConfig)
 
-	fmt.Println("HttpPort :", HttpPort)
-	fmt.Println("HttpUsername :", HttpUsername)
-	fmt.Println("HttpPassword :", HttpPassword)
+	logConfig("HttpPort", HttpPort)
+	logConfig("HttpUsername", HttpUsername)
+	logConfig("HttpPassword", "[REDACTED]")
 
-	fmt.Println("StartPath :", StartPath)
-	fmt.Println("DeleteShow :", DeleteShow)
-	fmt.Println("MoveFileShow :", MoveFileShow)
-	fmt.Println("ModifyDateShow :", ModifyDateShow)
-	fmt.Println("RenameFileShow :", RenameFileShow)
-	fmt.Println("DeleteAction :", DeleteAction)
-	fmt.Println("MoveFileAction :", MoveFileAction)
-	fmt.Println("ModifyDateAction :", ModifyDateAction)
-	fmt.Println("RenameFileAction :", RenameFileAction)
+	logConfig("StartPath", StartPath)
+	logConfig("DeleteShow", DeleteShow)
+	logConfig("MoveFileShow", MoveFileShow)
+	logConfig("ModifyDateShow", ModifyDateShow)
+	logConfig("RenameFileShow", RenameFileShow)
+	logConfig("DeleteAction", DeleteAction)
+	logConfig("MoveFileAction", MoveFileAction)
+	logConfig("ModifyDateAction", ModifyDateAction)
+	logConfig("RenameFileAction", RenameFileAction)
 
-	fmt.Println("ImgCache :", ImgCache)
-	fmt.Println("TruncateTable :", TruncateTable)
-	fmt.Println("SyncTable :", SyncTable)
+	logConfig("ImgCache", ImgCache)
+	logConfig("TruncateTable", TruncateTable)
+	logConfig("SyncTable", SyncTable)
+	logConfig("SqlDebug", SqlDebug)
 
-	fmt.Println("StartPathBak :", StartPathBak)
-	fmt.Println("BakStatEnable :", BakStatEnable)
+	logConfig("StartPathBak", StartPathBak)
+	logConfig("BakStatEnable", BakStatEnable)
 
-	fmt.Println("PoolSize :", PoolSize)
-	fmt.Println("Md5Retry :", Md5Retry)
-	fmt.Println("Md5CountLength :", Md5CountLength)
+	logConfig("PoolSize", PoolSize)
+	logConfig("Md5Retry", Md5Retry)
+	logConfig("Md5CountLength", Md5CountLength)
 
-	fmt.Println("GisKey: ", GisKey)
+	logConfig("GisKey", "[REDACTED]")
 
-	fmt.Println("IDInsertBatchSize: ", IDInsertBatchSize)
-	fmt.Println("IDDeleteBatchSize: ", IDDeleteBatchSize)
-	fmt.Println("GDUpdateBatchSize: ", GDUpdateBatchSize)
+	logConfig("IDInsertBatchSize", IDInsertBatchSize)
+	logConfig("IDDeleteBatchSize", IDDeleteBatchSize)
+	logConfig("GDUpdateBatchSize", GDUpdateBatchSize)
 
 	WorkDir, _ = os.Getwd() // 项目工作目录
-	fmt.Println("工作目录: " + WorkDir)
+	logConfig("工作目录", WorkDir)
 
 	fmt.Println()
 
+}
+
+func logConfig(key string, value any) {
+	if tools.Logger != nil {
+		tools.Logger.Info(key, " : ", value)
+		return
+	}
+	fmt.Println(key, ":", value)
 }

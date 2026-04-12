@@ -12,6 +12,8 @@ import (
 	"img_process/tools"
 )
 
+var runExiftoolFunc = runExiftool
+
 func IsExiftoolAvailable() bool {
 	_, err := exec.LookPath("exiftool")
 	return err == nil
@@ -19,7 +21,7 @@ func IsExiftoolAvailable() bool {
 
 // GetExifInfoCommand 用命令行找到照片的拍摄时间和地理位置
 func GetExifInfoCommand(path string) (string, string, string, []string, error) {
-	output, err := runExiftool("-G", path)
+	output, err := runExiftoolFunc("-G", path)
 	if err != nil {
 		return "", "", "", nil, err
 	}
@@ -99,7 +101,7 @@ func parseExiftoolOutput(output string) (string, string, []string) {
 }
 
 func ModifyShootDate(path string, shootDate string) error {
-	output, err := runExiftool("-DateTimeOriginal="+shootDate, path)
+	output, err := runExiftoolFunc("-DateTimeOriginal="+shootDate, path)
 	if err != nil {
 		tools.FancyHandleError(err)
 		return err

@@ -1,9 +1,9 @@
 package dao
 
 import (
-	"fmt"
 	"img_process/model"
 	"img_process/plugin/orm"
+	"img_process/tools"
 )
 
 type GisDatabaseService struct {
@@ -54,8 +54,10 @@ func (gisDatabaseService *GisDatabaseService) UpdateGisDatabaseBatch(gisDatabase
 			end = len(gisDatabaseList)
 		}
 		dbs := gisDatabaseList[i:end]
-		fmt.Println("from end : ", i, " ", end)
-		updateGisDatabaseBatchCommit(dbs)
+		tools.Logger.Info("update gis database batch from ", i, " to ", end)
+		if err := updateGisDatabaseBatchCommit(dbs); err != nil {
+			return err
+		}
 	}
 
 	return nil
