@@ -3,7 +3,6 @@ package middleware
 import (
 	"img_process/dao"
 	"img_process/model"
-	"img_process/tools"
 )
 
 var imgDatabaseService = dao.ImgDatabaseService{}
@@ -15,47 +14,40 @@ var scanEventService = dao.ScanEventService{}
 var scanScheduleService = dao.ScanScheduleService{}
 
 // RegisterTable 根据gorm配置同步表结构
-func RegisterTable() {
-	var err error
+func RegisterTable() error {
 	var imgRecordDB model.ImgRecordDB
-	if err = imgRecordService.RegisterImgRecord(&imgRecordDB); err != nil {
-		tools.Logger.Error("register error : ", err)
-		return
+	if err := imgRecordService.RegisterImgRecord(&imgRecordDB); err != nil {
+		return err
 	}
 
 	var gisDatabaseDB model.GisDatabaseDB
 	if err := gisDatabaseService.RegisterGisDatabase(&gisDatabaseDB); err != nil {
-		tools.Logger.Error("register error : ", err)
-		return
+		return err
 	}
 
 	var imgDatabaseDB model.ImgDatabaseDB
-	if err = imgDatabaseService.RegisterImgDatabase(&imgDatabaseDB); err != nil {
-		tools.Logger.Error("register error : ", err)
-		return
+	if err := imgDatabaseService.RegisterImgDatabase(&imgDatabaseDB); err != nil {
+		return err
 	}
 
 	var scanJobDB model.ScanJobDB
-	if err = scanJobService.RegisterScanJob(&scanJobDB); err != nil {
-		tools.Logger.Error("register error : ", err)
-		return
+	if err := scanJobService.RegisterScanJob(&scanJobDB); err != nil {
+		return err
 	}
 
 	var scanActionItemDB model.ScanActionItemDB
-	if err = scanActionItemService.RegisterScanActionItem(&scanActionItemDB); err != nil {
-		tools.Logger.Error("register error : ", err)
-		return
+	if err := scanActionItemService.RegisterScanActionItem(&scanActionItemDB); err != nil {
+		return err
 	}
 
 	var scanEventDB model.ScanEventDB
-	if err = scanEventService.RegisterScanEvent(&scanEventDB); err != nil {
-		tools.Logger.Error("register error : ", err)
-		return
+	if err := scanEventService.RegisterScanEvent(&scanEventDB); err != nil {
+		return err
 	}
 
 	var scanScheduleDB model.ScanScheduleDB
-	if err = scanScheduleService.RegisterScanSchedule(&scanScheduleDB); err != nil {
-		tools.Logger.Error("register error : ", err)
-		return
+	if err := scanScheduleService.RegisterScanSchedule(&scanScheduleDB); err != nil {
+		return err
 	}
+	return nil
 }

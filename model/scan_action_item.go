@@ -27,7 +27,7 @@ type ScanActionItemDB struct {
 	JobID          uint       `json:"jobId" gorm:"column:job_id;index;comment:任务ID"`
 	ActionType     string     `json:"actionType" gorm:"column:action_type;size:64;index;comment:动作类型"`
 	ObjectType     string     `json:"objectType" gorm:"column:object_type;size:32;comment:对象类型"`
-	SourcePath     string     `json:"sourcePath" gorm:"column:source_path;size:1024;index;comment:源路径"`
+	SourcePath     string     `json:"sourcePath" gorm:"column:source_path;size:512;index;comment:源路径"`
 	TargetPath     string     `json:"targetPath" gorm:"column:target_path;size:1024;comment:目标路径"`
 	ReasonCode     string     `json:"reasonCode" gorm:"column:reason_code;size:64;comment:原因码"`
 	ReasonText     string     `json:"reasonText" gorm:"column:reason_text;type:text;comment:原因文本"`

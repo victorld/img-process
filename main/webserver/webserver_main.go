@@ -17,7 +17,9 @@ func main() {
 		tools.Logger.Fatal("bootstrap init error : ", err)
 	}
 	defer closeFn()
-	middleware.RegisterTable()
+	if err := middleware.RegisterTable(); err != nil {
+		tools.Logger.Fatal("register table error : ", err)
+	}
 	if err := service.Runtime.Start(); err != nil {
 		tools.Logger.Fatal("runtime start error : ", err)
 	}

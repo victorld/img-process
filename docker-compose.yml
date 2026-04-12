@@ -6,9 +6,14 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: img
     ports:
-      - "33060:3306"
+      - "${IMG_PROCESS_MYSQL_PORT:-33061}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   app:
     build:
@@ -16,14 +21,15 @@ services:
       dockerfile: docker/Dockerfile
     restart: unless-stopped
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     environment:
-      IMG_PROCESS_CONFIG: /app/config.yaml
+      IMG_PROCESS_CONFIG: /app/docker-config.yaml
       TZ: Asia/Shanghai
     ports:
       - "8081:8081"
     volumes:
-      - ./config.yaml:/app/config.yaml:ro
+      - ./docker/config.docker.yaml:/app/docker-config.yaml:ro
       - ./log:/app/log
       - ${IMG_PROCESS_SCAN_PATH:-./sample-data}:/data/scan
 
