@@ -2,28 +2,19 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"img_process/bootstrap"
 	"img_process/cons"
-	"img_process/plugin/orm"
 	"img_process/route"
 	"img_process/tools"
 )
 
 // 扫描web服务
 func main() {
-
-	tools.InitLogger()
-	if err := tools.InitViper(); err != nil {
-		tools.Logger.Fatal("init viper error : ", err)
+	closeFn, err := bootstrap.InitApp(true)
+	if err != nil {
+		tools.Logger.Fatal("bootstrap init error : ", err)
 	}
-	cons.InitConst()
-	if err := orm.InitMysql(); err != nil {
-		tools.Logger.Fatal("init mysql error : ", err)
-	}
-
-	if orm.ImgMysqlDB != nil {
-		db, _ := orm.ImgMysqlDB.DB()
-		defer db.Close()
-	}
+	defer closeFn()
 
 	r := gin.Default()
 	r = route.InitRouter(r)

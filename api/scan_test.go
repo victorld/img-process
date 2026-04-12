@@ -114,6 +114,7 @@ func TestDeleteMD5DupFilesSuccess(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodDelete, "/img/delete?scanUuid=test-id", nil)
+	c.Request = httptest.NewRequest(http.MethodDelete, "/img/delete?scanUuid=2025-01-25-20-07-24_f0530738db1411ef97c02656", nil)
 
 	new(ImgRecordOwnApi).DeleteMD5DupFiles(c)
 
@@ -122,6 +123,21 @@ func TestDeleteMD5DupFilesSuccess(t *testing.T) {
 	}
 	if !called {
 		t.Fatal("deleteDumpFileFunc should be called")
+	}
+}
+
+func TestDeleteMD5DupFilesRejectsInvalidScanUUID(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodDelete, "/img/delete?scanUuid=../bad", nil)
+
+	new(ImgRecordOwnApi).DeleteMD5DupFiles(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadRequest)
 	}
 }
 

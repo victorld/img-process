@@ -8,6 +8,8 @@ import (
 	"img_process/service"
 	"img_process/tools"
 	"net/http"
+	"path/filepath"
+	"regexp"
 	"sync"
 )
 
@@ -18,6 +20,7 @@ var (
 	scanMu             sync.Mutex //processFileList锁，保证只有一个后台扫描任务执行
 	scanAndSaveFunc    = service.ScanAndSave
 	deleteDumpFileFunc = service.DeleteMD5DupFilesByLine
+	scanUUIDPattern    = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}_[A-Za-z0-9]+$`)
 )
 
 type deleteReq struct {
@@ -63,7 +66,11 @@ func (imgRecordOwnApi *ImgRecordOwnApi) DeleteMD5DupFiles(c *gin.Context) {
 		return
 	}
 
-	filePath := cons.WorkDir + "/log/dump_delete_file/" + req.ScanUUID + "/dump_delete_list"
+	filePath, err := resolveDeleteListPath(req.ScanUUID)
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, err.Error(), gin.H{"error": err.Error()})
+		return
+	}
 	tools.Logger.Info("file path : ", filePath)
 	deleteDumpFileFunc(filePath)
 	tools.Success(c, gin.H{"ret": "ok"}, "删除任务执行完成")
@@ -96,7 +103,23 @@ func bindDeleteReq(c *gin.Context, req interface{}) error {
 		if v.ScanUUID == "" {
 			return errors.New("missing scanUuid")
 		}
+		if !scanUUIDPattern.MatchString(v.ScanUUID) {
+			return errors.New("invalid scanUuid")
+		}
 	}
 
 	return nil
+}
+
+func resolveDeleteListPath(scanUUID string) (string, error) {
+	root := filepath.Join(cons.WorkDir, "log", "dump_delete_file")
+	target := filepath.Join(root, scanUUID, "dump_delete_list")
+	rel, err := filepath.Rel(root, target)
+	if err != nil {
+		return "", err
+	}
+	if rel == ".." || len(rel) >= 3 && rel[:3] == ".."+string(filepath.Separator) {
+		return "", errors.New("invalid scanUuid path")
+	}
+	return target, nil
 }

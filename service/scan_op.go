@@ -105,6 +105,7 @@ type Scanner struct {
 	deleteDirList   []dirStruct
 	processFileList []photoStruct
 	processFileMu   sync.Mutex
+	stateMu         sync.Mutex
 
 	md5DumpMap   map[string][]string
 	md5DumpMapMu sync.Mutex
@@ -154,6 +155,7 @@ type Scanner struct {
 
 	firstErr   error
 	isComplete int
+	metrics    scanMetrics
 
 	wg sync.WaitGroup
 
@@ -487,8 +489,8 @@ func (s *Scanner) walkPrimaryPath(p *ants.Pool) error {
 
 		fileName := filepath.Base(file)
 		fileSuffix := strings.ToLower(path.Ext(file))
-		if strings.HasSuffix(fileName, "_.pic.jpg") || strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || tools.GetFileSize(file) == 0 {
-			ps := photoStruct{isDeleteFile: true, photo: file}
+		if shouldDeleteFileByName(file) {
+			ps := newDeletePhotoStruct(file)
 			s.processFileMu.Lock()
 			s.processFileList = append(s.processFileList, ps)
 			s.processFileMu.Unlock()
@@ -499,13 +501,14 @@ func (s *Scanner) walkPrimaryPath(p *ants.Pool) error {
 		parentDir := path.Base(filepath.Dir(file))
 		dumpCompareKey := parentDir + "|" + fileName
 		day := tools.GetDirDate(file)
-		s.dayMap[day]++
-		year := day[0:4]
-		month := day[0:7]
+		year, month, hasDate := splitDateParts(day)
 		s.suffixMap[fileSuffix]++
-		s.yearMap[year]++
-		s.monthMap[month]++
-		if strings.HasPrefix(fileName, "IMG_") {
+		if hasDate {
+			s.dayMap[day]++
+			s.yearMap[year]++
+			s.monthMap[month]++
+		}
+		if hasDate && strings.HasPrefix(fileName, "IMG_") && len(fileName) >= 5 {
 			head := fileName[4:5]
 			s.imageNumMap[fileName] = append(s.imageNumMap[fileName], day)
 			s.imageNumRevMap[year+"-"+head] = append(s.imageNumRevMap[year+"-"+head], fileName+","+day)
@@ -546,7 +549,7 @@ func (s *Scanner) walkBackupPath(p *ants.Pool) error {
 
 		fileName := filepath.Base(file)
 		fileSuffix := strings.ToLower(path.Ext(file))
-		if strings.HasPrefix(fileName, ".") || strings.HasPrefix(fileName, "IMG_E") || strings.HasSuffix(fileName, "nas_downloading") || tools.GetFileSize(file) == 0 {
+		if shouldDeleteFileByName(file) {
 			return nil
 		}
 
@@ -554,12 +557,13 @@ func (s *Scanner) walkBackupPath(p *ants.Pool) error {
 		parentDir := path.Base(filepath.Dir(file))
 		dumpCompareKey := parentDir + "|" + fileName
 		day := tools.GetDirDate(file)
-		year := day[0:4]
-		month := day[0:7]
+		year, month, hasDate := splitDateParts(day)
 		s.suffixMapBak[fileSuffix]++
-		s.yearMapBak[year]++
-		s.monthMapBak[month]++
-		s.dayMapBak[day]++
+		if hasDate {
+			s.yearMapBak[year]++
+			s.monthMapBak[month]++
+			s.dayMapBak[day]++
+		}
 		if _, ok := s.diffMap[dumpCompareKey]; ok {
 			s.diffMap[dumpCompareKey] = 1
 		} else {
@@ -683,6 +687,7 @@ func (s *Scanner) buildResult(start1 time.Time, basePathBak string, dumpMap map[
 	tools.Logger.Info("执行img_database批量写入完成耗时 : ", elapsed3)
 	tools.Logger.Info("执行备目录扫描完成耗时 : ", elapsed4)
 	tools.Logger.Info("执行数据处理完成耗时 : ", elapsed5)
+	s.logMetrics()
 	tools.Logger.Info()
 
 	imgRecord := ImgRecord{
@@ -862,6 +867,7 @@ func (s *Scanner) deleteFileProcess(ps photoStruct, printFileFlag *bool) {
 
 	if s.deleteAction {
 		if err := os.Remove(ps.photo); err != nil {
+			s.recordActionError("delete file", ps.photo, err)
 			tools.Logger.Info(tools.StrWithColor("delete file failed:", "yellow"), ps.photo, err)
 		} else {
 			tools.Logger.Info(tools.StrWithColor("delete file sucessed:", "green"), ps.photo)
@@ -887,8 +893,11 @@ func (s *Scanner) modifyDateProcess(ps photoStruct, printFileFlag *bool, printDa
 	if s.modifyDateAction {
 		localLoc, _ := time.LoadLocation("Asia/Shanghai")
 		tm, _ := time.ParseInLocation("2006-01-02 15:04:05", ps.minDate+" 12:00:00", localLoc)
-		tools.ChangeModifyDate(ps.photo, tm)
-		tools.Logger.Info(tools.StrWithColor("modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate, "get realdate", tools.GetModifyDate(ps.photo))
+		err := tools.ChangeModifyDate(ps.photo, tm)
+		s.recordActionError("modify file", ps.photo, err)
+		if err == nil {
+			tools.Logger.Info(tools.StrWithColor("modify file ", "yellow"), ps.photo, "modifyDate to", ps.minDate, "get realdate", tools.GetModifyDate(ps.photo))
+		}
 	}
 }
 
@@ -909,6 +918,7 @@ func (s *Scanner) moveFileProcess(ps photoStruct, printFileFlag *bool, printDate
 
 	if s.moveFileAction {
 		if err := tools.MoveFile(ps.photo, ps.targetPhoto); err != nil {
+			s.recordActionError("move file", ps.photo, err)
 			tools.Logger.Error("move file failed: ", ps.photo, " to ", ps.targetPhoto, " err: ", err)
 		} else {
 			tools.Logger.Info(tools.StrWithColor("move file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
@@ -933,6 +943,7 @@ func (s *Scanner) renameFileProcess(ps photoStruct, printFileFlag *bool, printDa
 
 	if s.renameFileAction {
 		if err := tools.MoveFile(ps.photo, ps.targetPhoto); err != nil {
+			s.recordActionError("rename file", ps.photo, err)
 			tools.Logger.Error("rename file failed: ", ps.photo, " to ", ps.targetPhoto, " err: ", err)
 		} else {
 			tools.Logger.Info(tools.StrWithColor("rename file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
@@ -951,6 +962,7 @@ func (s *Scanner) emptyDirProcess() {
 
 			if s.deleteAction {
 				if err := os.Remove(ds.dir); err != nil {
+					s.recordActionError("delete empty dir", ds.dir, err)
 					tools.Logger.Info(tools.StrWithColor("delete empty dir failed:", "yellow"), ds.dir, err)
 				} else {
 					tools.Logger.Info(tools.StrWithColor("delete empty dir sucessed:", "green"), ds.dir)
@@ -1062,66 +1074,13 @@ func (s *Scanner) writeDumpArtifacts(dumpMap map[string][]string) error {
 // 遍历逻辑单文件处理
 func (s *Scanner) processOneFile(photo string) {
 	shootDateOrigin, locStreet, _ := s.getImgShootDateAndLoc(photo)
-
-	shootDate := ""
-	if shootDateOrigin != "" {
-		if t, err := time.Parse("2006:01:02 15:04:05", shootDateOrigin); err == nil {
-			shootDate = t.Format("2006-01-02")
-		}
-	}
-
-	dirDate := tools.GetDirDate(photo)
-	fileDate := tools.GetFileDate(photo)
-	if fileDate != "" {
-		s.fileDateFileList.Add(photo)
-	}
-
-	modifyDate := tools.GetModifyDate(photo)
-	minDate := modifyDate
-	if dirDate < modifyDate {
-		minDate = dirDate
-	}
-	if shootDate != "" && shootDate < minDate {
-		minDate = shootDate
-	}
-
-	ps := photoStruct{photo: photo, dirDate: dirDate, modifyDate: modifyDate, shootDate: shootDate, fileDate: fileDate, minDate: minDate}
-	flag := false
-
-	if dirDate != minDate {
-		s.moveFileList.Add(photo)
-		targetPath := s.basePath + string(os.PathSeparator) + minDate[0:4] + string(os.PathSeparator) + minDate[0:7] + string(os.PathSeparator) + minDate
-		targetPath = tools.GetRealPath(targetPath)
-		ps.isMoveFile = true
-		ps.targetPhoto = targetPath + string(os.PathSeparator) + filepath.Base(photo)
-		flag = true
-	}
-
-	if shootDate != "" && shootDate != dirDate {
-		s.shootDateMismatchFileList.Add(photo)
-		if shootDate < dirDate {
-			s.shootDateEarlierFileList.Add(photo)
-		}
-	}
-	if shootDate == "" {
-		s.shootDateNullFileList.Add(photo)
-	}
-	if shootDate == "" && modifyDate != minDate {
-		s.modifyDateFileList.Add(photo)
-		ps.isModifyDateFile = true
-		flag = true
-	}
-
-	targetPhoto := getRenameNewPhoto(photo, shootDateOrigin, locStreet)
-	if photo != targetPhoto {
-		s.renameFileList.Add(photo)
-		ps.isRenameFile = true
-		ps.targetPhoto = targetPhoto
-		flag = true
-	}
+	meta := collectFileMetadata(photo, shootDateOrigin, locStreet)
+	s.applyFileDecision(evaluateFileDecision(meta, s.basePath))
 
 	if s.md5Show {
+		start := time.Now()
 		md5, err := tools.GetFileMD5WithRetry(photo, cons.Md5Retry, cons.Md5CountLength)
+		s.recordMD5Duration(time.Since(start))
 		if err != nil {
 			tools.Logger.Info("GetFileMD5 err for ", cons.Md5Retry, " times : ", err, " file : ", photo)
 		} else {
@@ -1129,12 +1088,6 @@ func (s *Scanner) processOneFile(photo string) {
 			s.md5DumpMap[md5] = append(s.md5DumpMap[md5], photo)
 			s.md5DumpMapMu.Unlock()
 		}
-	}
-
-	if flag {
-		s.processFileMu.Lock()
-		s.processFileList = append(s.processFileList, ps)
-		s.processFileMu.Unlock()
 	}
 }
 
@@ -1198,20 +1151,20 @@ func (s *Scanner) getImgShootDateAndLoc(photo string) (string, string, error) {
 		s.staleImgCacheMu.Lock()
 		delete(s.staleImgCache, imgKey)
 		s.staleImgCacheMu.Unlock()
+		s.metrics.imgCacheHits.Add(1)
 		return value.ShootDate, value.LocStreet, nil
 	}
 
 	shootDate, locNum, state, output, dateTagNames, err := s.getExifInfo(photo)
+	s.stateMu.Lock()
 	for _, dateTagName := range dateTagNames {
 		s.exifDateNameSet.Add(dateTagName)
 	}
-
-	imgDatabaseDB := model.ImgDatabaseDB{
-		ImgKey:    imgKey,
-		ShootDate: shootDate,
-		LocNum:    locNum,
-		Remark:    output,
-		State:     &state,
+	s.stateMu.Unlock()
+	if state == 1 {
+		s.metrics.exiftoolHits.Add(1)
+	} else if state == 2 {
+		s.metrics.exifGoHits.Add(1)
 	}
 
 	if err != nil {
@@ -1219,18 +1172,18 @@ func (s *Scanner) getImgShootDateAndLoc(photo string) (string, string, error) {
 	}
 
 	locStreet := ""
+	locAddr := ""
 	if locNum != "" {
 		gisData, gisErr := s.getLocationAddressByCache(locNum)
 		if gisErr == nil {
-			imgDatabaseDB.LocAddr = gisData.LocAddr
-			imgDatabaseDB.LocStreet = gisData.LocStreet
+			locAddr = gisData.LocAddr
 			locStreet = gisData.LocStreet
 		}
 	}
 
 	if cons.ImgCache {
 		s.imgDatabaseDBListMu.Lock()
-		s.imgDatabaseDBList = append(s.imgDatabaseDBList, &imgDatabaseDB)
+		s.imgDatabaseDBList = append(s.imgDatabaseDBList, buildImgDatabaseRecord(imgKey, shootDate, locNum, output, state, locStreet, locAddr))
 		s.imgDatabaseDBListMu.Unlock()
 	}
 
@@ -1249,6 +1202,7 @@ func (s *Scanner) getLocationAddressByCache(locNum string) (middleware.GisData, 
 		return middleware.GisData{}, errors.New("not right locNum")
 	}
 
+	s.metrics.gisRequests.Add(1)
 	locJSON, err := s.getLocationAddressOnline(locNum)
 	if err != nil {
 		return middleware.GisData{}, err

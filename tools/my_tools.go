@@ -15,7 +15,6 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -44,16 +43,15 @@ var timePatternArray = []*regexp.Regexp{date1Pattern, date2Pattern, date3Pattern
 var timeTemplateArray = []string{Data1Template, Data2Template, Data3Template, Data4Template, DatetimeTemplate}
 
 var (
-	renameFile = os.Rename
-	removeFile = os.Remove
-	mkdirAll   = os.MkdirAll
-	writeFile  = os.WriteFile
+	renameFile         = os.Rename
+	removeFile         = os.Remove
+	mkdirAll           = os.MkdirAll
+	writeFile          = os.WriteFile
+	colorOutputEnabled bool
 )
 
 func StrWithColor(str string, color string) string {
-
-	ColorOutput, _ := strconv.ParseBool(GetConfigString("basic.ColorOutput"))
-	if !ColorOutput {
+	if !colorOutputEnabled {
 		return str
 	}
 	if color == "red" {
@@ -68,6 +66,10 @@ func StrWithColor(str string, color string) string {
 
 	}
 	return str
+}
+
+func SetColorOutput(enabled bool) {
+	colorOutputEnabled = enabled
 }
 
 func GetFileMD5(filePath string, length int64) (string, error) {
@@ -294,7 +296,13 @@ func GetFileMD5WithRetry(photo string, retry int, length int64) (string, error) 
 func GetDirDate(photo string) string {
 	parentDir := filepath.Dir(photo)
 	dirDate := filepath.Base(parentDir)
-	dirDate = dirDate[0:10]
+	if len(dirDate) < len("2006-01-02") {
+		return ""
+	}
+	dirDate = dirDate[:len("2006-01-02")]
+	if _, err := time.Parse("2006-01-02", dirDate); err != nil {
+		return ""
+	}
 	return dirDate
 }
 
@@ -329,11 +337,13 @@ func GetModifyDate(photo string) string {
 	return modifyDate
 }
 
-func ChangeModifyDate(photo string, time time.Time) {
+func ChangeModifyDate(photo string, time time.Time) error {
 	err := os.Chtimes(photo, time, time)
 	if err != nil {
 		fmt.Print("ChangeModifyDate error : ", photo)
+		return err
 	}
+	return nil
 }
 
 func MarshalJsonToString(v any) string {

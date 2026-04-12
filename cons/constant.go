@@ -4,8 +4,61 @@ import (
 	"fmt"
 	"img_process/tools"
 	"os"
-	"strconv"
 )
+
+type Config struct {
+	Database struct {
+		DbUsername string
+		DbPassword string
+		DbHost     string
+		DbPort     string
+		DbName     string
+		DbConfig   string
+	}
+	Server struct {
+		HttpPort     string
+		HttpUsername string
+		HttpPassword string
+	}
+	ScanArgs struct {
+		StartPath        string
+		DeleteShow       bool
+		MoveFileShow     bool
+		ModifyDateShow   bool
+		RenameFileShow   bool
+		Md5Show          bool
+		DeleteAction     bool
+		MoveFileAction   bool
+		ModifyDateAction bool
+		RenameFileAction bool
+	}
+	Cache struct {
+		ImgCache      bool
+		SyncTable     bool
+		TruncateTable bool
+	}
+	Bak struct {
+		StartPathBak  string
+		BakStatEnable bool
+	}
+	Gis struct {
+		Key string
+	}
+	Basic struct {
+		SqlDebug    bool
+		ColorOutput bool
+	}
+	Dump struct {
+		PoolSize       int
+		Md5Retry       int
+		Md5CountLength int64
+	}
+	Batch struct {
+		IDInsertBatchSize int
+		IDDeleteBatchSize int
+		GDUpdateBatchSize int
+	}
+}
 
 var (
 	DbUsername        string
@@ -41,49 +94,55 @@ var (
 	IDInsertBatchSize int
 	IDDeleteBatchSize int
 	GDUpdateBatchSize int
+	AppConfig         Config
 )
 
 func InitConst() {
-	//server
-	DbUsername = tools.GetConfigString("database.DbUsername")
-	DbPassword = tools.GetConfigString("database.DbPassword")
-	DbHost = tools.GetConfigString("database.DbHost")
-	DbPort = tools.GetConfigString("database.DbPort")
-	DbName = tools.GetConfigString("database.DbName")
-	DbConfig = tools.GetConfigString("database.DbConfig")
+	AppConfig = Config{}
+	if err := tools.UnmarshalConfig(&AppConfig); err != nil {
+		logConfig("config unmarshal error", err)
+	}
 
-	HttpPort = tools.GetConfigString("server.HttpPort")
-	HttpUsername = tools.GetConfigString("server.HttpUsername")
-	HttpPassword = tools.GetConfigString("server.HttpPassword")
+	DbUsername = AppConfig.Database.DbUsername
+	DbPassword = AppConfig.Database.DbPassword
+	DbHost = AppConfig.Database.DbHost
+	DbPort = AppConfig.Database.DbPort
+	DbName = AppConfig.Database.DbName
+	DbConfig = AppConfig.Database.DbConfig
 
-	StartPath = tools.GetConfigString("scanArgs.StartPath")
-	DeleteShow, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.DeleteShow"))
-	MoveFileShow, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.MoveFileShow"))
-	ModifyDateShow, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.ModifyDateShow"))
-	RenameFileShow, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.RenameFileShow"))
-	Md5Show, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.Md5Show"))
-	DeleteAction, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.DeleteAction"))
-	MoveFileAction, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.MoveFileAction"))
-	ModifyDateAction, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.ModifyDateAction"))
-	RenameFileAction, _ = strconv.ParseBool(tools.GetConfigString("scanArgs.RenameFileAction"))
+	HttpPort = AppConfig.Server.HttpPort
+	HttpUsername = AppConfig.Server.HttpUsername
+	HttpPassword = AppConfig.Server.HttpPassword
 
-	ImgCache, _ = strconv.ParseBool(tools.GetConfigString("cache.ImgCache"))
-	SyncTable, _ = strconv.ParseBool(tools.GetConfigString("cache.SyncTable"))
-	TruncateTable, _ = strconv.ParseBool(tools.GetConfigString("cache.TruncateTable"))
+	StartPath = AppConfig.ScanArgs.StartPath
+	DeleteShow = AppConfig.ScanArgs.DeleteShow
+	MoveFileShow = AppConfig.ScanArgs.MoveFileShow
+	ModifyDateShow = AppConfig.ScanArgs.ModifyDateShow
+	RenameFileShow = AppConfig.ScanArgs.RenameFileShow
+	Md5Show = AppConfig.ScanArgs.Md5Show
+	DeleteAction = AppConfig.ScanArgs.DeleteAction
+	MoveFileAction = AppConfig.ScanArgs.MoveFileAction
+	ModifyDateAction = AppConfig.ScanArgs.ModifyDateAction
+	RenameFileAction = AppConfig.ScanArgs.RenameFileAction
 
-	PoolSize, _ = strconv.Atoi(tools.GetConfigString("dump.PoolSize"))
-	Md5Retry, _ = strconv.Atoi(tools.GetConfigString("dump.Md5Retry"))
-	Md5CountLength, _ = strconv.ParseInt(tools.GetConfigString("dump.Md5CountLength"), 10, 64)
+	ImgCache = AppConfig.Cache.ImgCache
+	SyncTable = AppConfig.Cache.SyncTable
+	TruncateTable = AppConfig.Cache.TruncateTable
 
-	StartPathBak = tools.GetConfigString("bak.StartPathBak")
-	BakStatEnable, _ = strconv.ParseBool(tools.GetConfigString("bak.BakStatEnable"))
+	PoolSize = AppConfig.Dump.PoolSize
+	Md5Retry = AppConfig.Dump.Md5Retry
+	Md5CountLength = AppConfig.Dump.Md5CountLength
 
-	GisKey = tools.GetConfigString("gis.key")
-	SqlDebug, _ = strconv.ParseBool(tools.GetConfigString("basic.SqlDebug"))
+	StartPathBak = AppConfig.Bak.StartPathBak
+	BakStatEnable = AppConfig.Bak.BakStatEnable
 
-	IDInsertBatchSize, _ = strconv.Atoi(tools.GetConfigString("batch.IDInsertBatchSize"))
-	IDDeleteBatchSize, _ = strconv.Atoi(tools.GetConfigString("batch.IDDeleteBatchSize"))
-	GDUpdateBatchSize, _ = strconv.Atoi(tools.GetConfigString("batch.GDUpdateBatchSize"))
+	GisKey = AppConfig.Gis.Key
+	SqlDebug = AppConfig.Basic.SqlDebug
+
+	IDInsertBatchSize = AppConfig.Batch.IDInsertBatchSize
+	IDDeleteBatchSize = AppConfig.Batch.IDDeleteBatchSize
+	GDUpdateBatchSize = AppConfig.Batch.GDUpdateBatchSize
+	tools.SetColorOutput(AppConfig.Basic.ColorOutput)
 
 	logConfig("DbUsername", DbUsername)
 	logConfig("DbPassword", "[REDACTED]")
@@ -129,6 +188,10 @@ func InitConst() {
 
 	fmt.Println()
 
+}
+
+func GetConfig() Config {
+	return AppConfig
 }
 
 func logConfig(key string, value any) {

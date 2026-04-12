@@ -36,6 +36,16 @@ func InitViper() error {
 }
 
 func GetConfigString(key string) string {
+	if VP == nil {
+		return ""
+	}
 	ret := VP.GetString(key)
 	return ret
+}
+
+func UnmarshalConfig(rawVal any) error {
+	if VP == nil {
+		return fmt.Errorf("viper is not initialized")
+	}
+	return VP.Unmarshal(rawVal)
 }

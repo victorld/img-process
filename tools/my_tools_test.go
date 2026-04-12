@@ -53,3 +53,17 @@ func TestMoveFileFallsBackToCopyOnEXDEV(t *testing.T) {
 		t.Fatalf("dst should exist: %v", err)
 	}
 }
+
+func TestGetDirDateReturnsEmptyForInvalidParentDir(t *testing.T) {
+	file := filepath.Join("/tmp", "invalid-dir", "a.jpg")
+	if got := GetDirDate(file); got != "" {
+		t.Fatalf("GetDirDate() = %q, want empty", got)
+	}
+}
+
+func TestGetDirDateReturnsDateForValidParentDir(t *testing.T) {
+	file := filepath.Join("/tmp", "2024-01-02", "a.jpg")
+	if got := GetDirDate(file); got != "2024-01-02" {
+		t.Fatalf("GetDirDate() = %q, want %q", got, "2024-01-02")
+	}
+}

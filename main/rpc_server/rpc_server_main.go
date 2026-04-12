@@ -1,8 +1,7 @@
 package main
 
 import (
-	"img_process/cons"
-	"img_process/plugin/orm"
+	"img_process/bootstrap"
 	img_rpc "img_process/rpc"
 	"img_process/tools"
 	"net"
@@ -12,15 +11,11 @@ import (
 
 // rpc服务端
 func main() {
-
-	tools.InitLogger()
-	if err := tools.InitViper(); err != nil {
-		tools.Logger.Fatal("init viper error : ", err)
+	closeFn, err := bootstrap.InitApp(true)
+	if err != nil {
+		tools.Logger.Fatal("bootstrap init error : ", err)
 	}
-	cons.InitConst()
-	if err := orm.InitMysql(); err != nil {
-		tools.Logger.Fatal("init mysql error : ", err)
-	}
+	defer closeFn()
 
 	img := new(img_rpc.Img)
 	rpc.Register(img) // 注册RPC服务

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"img_process/bootstrap"
 	"img_process/cons"
 	"img_process/service"
 	"img_process/tools"
@@ -9,11 +10,11 @@ import (
 
 // 删除重复文件
 func main() {
-	tools.InitLogger()
-	if err := tools.InitViper(); err != nil {
-		tools.Logger.Fatal("init viper error : ", err)
+	closeFn, err := bootstrap.InitApp(false)
+	if err != nil {
+		tools.Logger.Fatal("bootstrap init error : ", err)
 	}
-	cons.InitConst()
+	defer closeFn()
 
 	const scanUuidFinal = "2025-01-25-20-07-24_f0530738db1411ef97c02656"
 
