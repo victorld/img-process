@@ -71,12 +71,13 @@ func evaluateFileDecision(meta fileMetadata, basePath string) fileDecision {
 	}
 
 	ps := photoStruct{
-		photo:      meta.photo,
-		dirDate:    meta.dirDate,
-		modifyDate: meta.modifyDate,
-		shootDate:  meta.shootDate,
-		fileDate:   meta.fileDate,
-		minDate:    minDate,
+		photo:        meta.photo,
+		dirDate:      meta.dirDate,
+		modifyDate:   meta.modifyDate,
+		shootDate:    meta.shootDate,
+		shootDateRaw: meta.shootDateOrigin,
+		fileDate:     meta.fileDate,
+		minDate:      minDate,
 	}
 	ret := fileDecision{
 		photo:           ps,
@@ -211,7 +212,13 @@ func (s *Scanner) applyFileDecision(decision fileDecision) {
 				ReasonCode: "dir_date_mismatch",
 				ReasonText: "目录日期与最小日期不一致，需要移动",
 				MetadataJSON: tools.MarshalJsonToString(ginH(
+					"fileName", filepath.Base(decision.photo.photo),
+					"currentPath", decision.photo.photo,
+					"targetPath", decision.photo.targetPhoto,
 					"dirDate", decision.photo.dirDate,
+					"fileNameDate", decision.photo.fileDate,
+					"shootDate", decision.photo.shootDate,
+					"shootDateRaw", decision.photo.shootDateRaw,
 					"minDate", decision.photo.minDate,
 				)),
 			})
@@ -224,16 +231,33 @@ func (s *Scanner) applyFileDecision(decision fileDecision) {
 				TargetPath: decision.photo.targetPhoto,
 				ReasonCode: "name_metadata_mismatch",
 				ReasonText: "文件名中的时间地点信息与识别结果不一致，需要重命名",
+				MetadataJSON: tools.MarshalJsonToString(ginH(
+					"fileName", filepath.Base(decision.photo.photo),
+					"targetFileName", filepath.Base(decision.photo.targetPhoto),
+					"currentPath", decision.photo.photo,
+					"targetPath", decision.photo.targetPhoto,
+					"shootDate", decision.photo.shootDate,
+					"shootDateRaw", decision.photo.shootDateRaw,
+				)),
 			})
 		}
 		if decision.shouldModify {
 			decision.photo.modifyActionID = s.recorder.RecordCandidateAction(model.ScanActionItemDB{
-				ActionType:   model.ActionTypeModifyTime,
-				ObjectType:   model.ActionObjectFile,
-				SourcePath:   decision.photo.photo,
-				ReasonCode:   "modify_time_mismatch",
-				ReasonText:   "修改时间与最小日期不一致，需要修正",
-				MetadataJSON: tools.MarshalJsonToString(ginH("targetDate", decision.photo.minDate)),
+				ActionType: model.ActionTypeModifyTime,
+				ObjectType: model.ActionObjectFile,
+				SourcePath: decision.photo.photo,
+				ReasonCode: "modify_time_mismatch",
+				ReasonText: "修改时间与最小日期不一致，需要修正",
+				MetadataJSON: tools.MarshalJsonToString(ginH(
+					"fileName", filepath.Base(decision.photo.photo),
+					"currentPath", decision.photo.photo,
+					"dirDate", decision.photo.dirDate,
+					"fileNameDate", decision.photo.fileDate,
+					"shootDate", decision.photo.shootDate,
+					"shootDateRaw", decision.photo.shootDateRaw,
+					"minDate", decision.photo.minDate,
+					"targetDate", decision.photo.minDate,
+				)),
 			})
 		}
 		s.processFileMu.Lock()

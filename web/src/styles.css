@@ -81,3 +81,13 @@ body {
   line-height: 1.6;
   font-size: 12px;
 }
+
+.action-preview {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #eef2ef;
+}
+
+.action-preview .ant-image-img {
+  object-fit: cover;
+}

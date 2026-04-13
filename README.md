@@ -83,6 +83,24 @@ Web 管理台支持：
 8. `GET /api/schedules`
 9. `POST /api/schedules`
 
+## 运行约定
+
+默认以 Docker 作为项目的运行、验收和交付方式。除非只是做纯静态分析，或用户明确要求使用本机开发模式，否则所有会影响页面、接口、配置的修改，在完成后都必须同步到 Docker 服务并立即生效。
+
+每次修改后的标准收口步骤：
+
+```bash
+docker compose up -d --build app
+docker compose ps
+curl -I http://127.0.0.1:8081/
+```
+
+最低要求：
+
+1. 容器处于 `running` 状态
+2. `http://127.0.0.1:8081/` 可访问
+3. 如果修改了前端，需要确认首页资源哈希或页面行为已更新，而不是继续命中旧容器里的旧资源
+
 ## 本地开发
 
 后端：
@@ -106,12 +124,23 @@ npm run dev
 项目已提供 `docker-compose.yml` 和多阶段构建镜像：
 
 ```bash
-docker compose up --build
+docker compose -f /Users/ld/my-file/workspace/cestc/public/docker-compose.yml up -d
+docker compose up -d --build app
 ```
 
-默认会启动：
-
-1. `mysql:8.0`
-2. `img-process` Web 服务
+默认会复用 `cestc/public` 提供的公共 MySQL（`127.0.0.1:33060` / `root:root`），当前仓库只启动 `img-process` Web 服务。
 
 建议通过挂载外部配置文件和照片目录运行，尤其是生产环境不要直接使用仓库里的默认 `config.yaml`。
+
+如果已经有 `img-process-app-1` 在运行，修改代码后不要只执行本地 `go test` 或前端 `npm run build` 就结束，必须至少再执行一次下面命令，让容器里的实际服务更新：
+
+```bash
+docker compose up -d --build app
+```
+
+更新后建议追加验证：
+
+```bash
+docker compose ps
+curl -s http://127.0.0.1:8081/ | head
+```

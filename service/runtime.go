@@ -200,10 +200,6 @@ func (r *AppRuntime) ListJobs(search model.ScanJobSearch) ([]model.ScanJobDB, in
 	return r.jobService.List(search)
 }
 
-func (r *AppRuntime) ListActionItems(search model.ScanActionItemSearch) ([]model.ScanActionItemDB, int64, error) {
-	return r.actionItemService.List(search)
-}
-
 func (r *AppRuntime) ListEvents(search model.ScanEventSearch) ([]model.ScanEventDB, int64, error) {
 	return r.eventService.List(search)
 }

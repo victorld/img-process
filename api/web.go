@@ -3,7 +3,9 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -156,12 +158,38 @@ func (api *WebAPI) ListJobActionItems(c *gin.Context) {
 	search.Status = c.Query("status")
 	search.Keyword = c.Query("keyword")
 	bindPageQuery(c, &search.PageInfo)
-	list, total, err := service.Runtime.ListActionItems(search)
+	list, counts, total, err := service.Runtime.ListActionItems(search)
 	if err != nil {
 		tools.Fail(c, "查询动作明细失败", gin.H{"error": err.Error()})
 		return
 	}
-	tools.Success(c, gin.H{"list": list, "total": total}, "ok")
+	tools.Success(c, gin.H{"list": list, "total": total, "counts": counts}, "ok")
+}
+
+func (api *WebAPI) PreviewJobAction(c *gin.Context) {
+	jobID, err := parseUintParam(c, "id")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "任务ID错误", gin.H{"error": err.Error()})
+		return
+	}
+	itemID, err := parseUintQuery(c, "itemId")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "动作ID错误", gin.H{"error": err.Error()})
+		return
+	}
+	slot := c.DefaultQuery("slot", "source")
+	path, err := service.Runtime.ResolveActionPreview(jobID, itemID, slot)
+	if err != nil {
+		status := http.StatusBadRequest
+		if errors.Is(err, fs.ErrNotExist) {
+			status = http.StatusNotFound
+		}
+		tools.FailWithStatus(c, status, "图片预览失败", gin.H{"error": err.Error()})
+		return
+	}
+	c.Header("Cache-Control", "private, max-age=60")
+	c.Header("Content-Disposition", "inline; filename=\""+filepath.Base(path)+"\"")
+	c.File(path)
 }
 
 func (api *WebAPI) StreamJob(c *gin.Context) {
@@ -360,6 +388,15 @@ func parseUintParam(c *gin.Context, key string) (uint, error) {
 	raw := c.Param(key)
 	if raw == "" {
 		return 0, errors.New("missing id")
+	}
+	id, err := strconv.ParseUint(raw, 10, 64)
+	return uint(id), err
+}
+
+func parseUintQuery(c *gin.Context, key string) (uint, error) {
+	raw := c.Query(key)
+	if raw == "" {
+		return 0, errors.New("missing query")
 	}
 	id, err := strconv.ParseUint(raw, 10, 64)
 	return uint(id), err

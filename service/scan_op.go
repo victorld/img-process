@@ -43,6 +43,7 @@ type photoStruct struct { //照片打印需要的结构体
 	dirDate          string
 	modifyDate       string
 	shootDate        string
+	shootDateRaw     string
 	fileDate         string
 	minDate          string
 	isDeleteFile     bool
@@ -535,6 +536,10 @@ func (s *Scanner) walkPrimaryPath(p *ants.Pool) error {
 				SourcePath: file,
 				ReasonCode: "invalid_name",
 				ReasonText: "文件名命中删除规则",
+				MetadataJSON: tools.MarshalJsonToString(ginH(
+					"fileName", filepath.Base(file),
+					"currentPath", file,
+				)),
 			})
 			s.processFileMu.Lock()
 			s.processFileList = append(s.processFileList, ps)
@@ -1084,10 +1089,17 @@ func (s *Scanner) dumpFileProcess() map[string][]string {
 						ActionType:     model.ActionTypeDeleteDup,
 						ObjectType:     model.ActionObjectFile,
 						SourcePath:     photo,
+						TargetPath:     minPhoto,
 						ReasonCode:     "duplicate_md5",
 						ReasonText:     "重复文件候选删除",
 						DuplicateGroup: md5,
-						MetadataJSON:   tools.MarshalJsonToString(ginH("keepPath", minPhoto, "sizeMatch", sizeMatch)),
+						MetadataJSON: tools.MarshalJsonToString(ginH(
+							"fileName", filepath.Base(photo),
+							"currentPath", photo,
+							"keepPath", minPhoto,
+							"keepFileName", filepath.Base(minPhoto),
+							"sizeMatch", sizeMatch,
+						)),
 					})
 					tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"), " SIZE: ", tools.GetFileSize(photo))
 				} else {

@@ -42,6 +42,41 @@ export type ScanActionItem = {
   errorMessage?: string
   metadataJson?: string
   duplicateGroup?: string
+  detail?: ScanActionDetail
+  pair?: ScanActionPair
+}
+
+export type ScanActionCounts = {
+  delete: number
+  move: number
+  modifyTime: number
+  deleteDuplicate: number
+  rename: number
+  total: number
+}
+
+export type ScanActionDetail = {
+  fileName?: string
+  currentPath?: string
+  targetPath?: string
+  targetFileName?: string
+  dirDate?: string
+  fileNameDate?: string
+  shootDate?: string
+  shootDateRaw?: string
+  minDate?: string
+  previewSlot?: string
+}
+
+export type ScanActionPhoto = {
+  fileName: string
+  path: string
+  previewSlot?: string
+}
+
+export type ScanActionPair = {
+  photoA: ScanActionPhoto
+  photoB: ScanActionPhoto
 }
 
 export type ScanEvent = {

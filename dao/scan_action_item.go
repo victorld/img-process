@@ -67,3 +67,38 @@ func (s *ScanActionItemService) ListByJobAndType(jobID uint, actionType string) 
 	err := orm.ImgMysqlDB.Where("job_id = ? AND action_type = ?", jobID, actionType).Find(&list).Error
 	return list, err
 }
+
+func (s *ScanActionItemService) CountPendingByJob(jobID uint) (model.ScanActionCounts, error) {
+	type actionCountRow struct {
+		ActionType string
+		Total      int64
+	}
+
+	var rows []actionCountRow
+	err := orm.ImgMysqlDB.Model(&model.ScanActionItemDB{}).
+		Select("action_type, count(*) as total").
+		Where("job_id = ? AND stage = ? AND status = ?", jobID, model.ActionStageCandidate, model.ActionStatusPending).
+		Group("action_type").
+		Scan(&rows).Error
+	if err != nil {
+		return model.ScanActionCounts{}, err
+	}
+
+	counts := model.ScanActionCounts{}
+	for _, row := range rows {
+		switch row.ActionType {
+		case model.ActionTypeDelete, model.ActionTypeDeleteEmptyDir:
+			counts.Delete += row.Total
+		case model.ActionTypeMove:
+			counts.Move += row.Total
+		case model.ActionTypeModifyTime:
+			counts.ModifyTime += row.Total
+		case model.ActionTypeDeleteDup:
+			counts.DeleteDuplicate += row.Total
+		case model.ActionTypeRename:
+			counts.Rename += row.Total
+		}
+	}
+	counts.Total = counts.Delete + counts.Move + counts.ModifyTime + counts.DeleteDuplicate + counts.Rename
+	return counts, nil
+}

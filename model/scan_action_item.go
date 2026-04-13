@@ -52,3 +52,55 @@ type ScanActionItemSearch struct {
 	Status     string `json:"status" form:"status"`
 	Keyword    string `json:"keyword" form:"keyword"`
 }
+
+type ScanActionCounts struct {
+	Delete          int64 `json:"delete"`
+	Move            int64 `json:"move"`
+	ModifyTime      int64 `json:"modifyTime"`
+	DeleteDuplicate int64 `json:"deleteDuplicate"`
+	Rename          int64 `json:"rename"`
+	Total           int64 `json:"total"`
+}
+
+type ScanActionPreview struct {
+	FileName    string `json:"fileName"`
+	Path        string `json:"path"`
+	PreviewSlot string `json:"previewSlot,omitempty"`
+}
+
+type ScanActionDetail struct {
+	FileName       string `json:"fileName,omitempty"`
+	CurrentPath    string `json:"currentPath,omitempty"`
+	TargetPath     string `json:"targetPath,omitempty"`
+	TargetFileName string `json:"targetFileName,omitempty"`
+	DirDate        string `json:"dirDate,omitempty"`
+	FileNameDate   string `json:"fileNameDate,omitempty"`
+	ShootDate      string `json:"shootDate,omitempty"`
+	ShootDateRaw   string `json:"shootDateRaw,omitempty"`
+	MinDate        string `json:"minDate,omitempty"`
+	PreviewSlot    string `json:"previewSlot,omitempty"`
+}
+
+type ScanActionPair struct {
+	PhotoA ScanActionPreview `json:"photoA"`
+	PhotoB ScanActionPreview `json:"photoB"`
+}
+
+type ScanActionItemView struct {
+	ID             uint              `json:"id"`
+	ActionType     string            `json:"actionType"`
+	ObjectType     string            `json:"objectType"`
+	SourcePath     string            `json:"sourcePath"`
+	TargetPath     string            `json:"targetPath,omitempty"`
+	ReasonCode     string            `json:"reasonCode,omitempty"`
+	ReasonText     string            `json:"reasonText,omitempty"`
+	Stage          string            `json:"stage"`
+	Status         string            `json:"status"`
+	DiscoveredAt   *time.Time        `json:"discoveredAt,omitempty"`
+	ExecutedAt     *time.Time        `json:"executedAt,omitempty"`
+	ErrorMessage   string            `json:"errorMessage,omitempty"`
+	MetadataJSON   string            `json:"metadataJson,omitempty"`
+	DuplicateGroup string            `json:"duplicateGroup,omitempty"`
+	Detail         *ScanActionDetail `json:"detail,omitempty"`
+	Pair           *ScanActionPair   `json:"pair,omitempty"`
+}
