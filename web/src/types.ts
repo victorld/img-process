@@ -56,6 +56,16 @@ export type ScanEvent = {
   createdAt: string
 }
 
+export type ScanJobLog = {
+  id: number
+  jobId: number
+  level: string
+  phase: string
+  message: string
+  payloadJson?: string
+  createdAt: string
+}
+
 export type Schedule = {
   id: number
   name: string

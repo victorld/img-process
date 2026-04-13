@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Col, Descriptions, Row, Space, Statistic, Table, Tabs, Tag, Timeline, Typography, message } from 'antd'
+import { Alert, Button, Card, Col, Descriptions, Row, Space, Statistic, Table, Tabs, Tag, Timeline, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../api'
-import type { Job, ScanActionItem, ScanEvent } from '../types'
+import type { Job, ScanActionItem, ScanEvent, ScanJobLog } from '../types'
 
 const actionColumns: ColumnsType<ScanActionItem> = [
   { title: '动作类型', dataIndex: 'actionType', width: 140 },
@@ -23,6 +23,7 @@ export function JobDetailPage() {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState('pending')
   const [actionPage, setActionPage] = useState({ current: 1, pageSize: 20 })
+  const actionTabs = ['pending', 'executed', 'error', 'duplicate']
 
   const jobQuery = useQuery({
     queryKey: ['job', id],
@@ -35,6 +36,7 @@ export function JobDetailPage() {
 
   const actionQuery = useQuery({
     queryKey: ['job-actions', id, activeTab, actionPage],
+    enabled: actionTabs.includes(activeTab),
     queryFn: () =>
       api.getJobActionItems(
         id,
@@ -52,6 +54,15 @@ export function JobDetailPage() {
     refetchInterval: 3000,
   })
 
+  const logQuery = useQuery({
+    queryKey: ['job-logs', id],
+    queryFn: () => api.getJobLogs(id, new URLSearchParams({ page: '1', pageSize: '200' })),
+    refetchInterval: (query) => {
+      const status = (queryClient.getQueryData<{ job: Job }>(['job', id])?.job.status ?? '') as string
+      return status === 'running' || status === 'pending' ? 2000 : false
+    },
+  })
+
   useEffect(() => {
     if (!id) return
     const source = new EventSource(`/api/jobs/${id}/stream`, { withCredentials: true })
@@ -61,6 +72,7 @@ export function JobDetailPage() {
     source.addEventListener('event', () => {
       queryClient.invalidateQueries({ queryKey: ['job-events', id] })
       queryClient.invalidateQueries({ queryKey: ['job-actions', id] })
+      queryClient.invalidateQueries({ queryKey: ['job-logs', id] })
     })
     return () => source.close()
   }, [id, queryClient])
@@ -80,6 +92,7 @@ export function JobDetailPage() {
   const job = jobQuery.data?.job
   const summary = job?.summary as Record<string, number | string> | undefined
   const events = eventQuery.data?.list ?? []
+  const logs = logQuery.data?.list ?? []
   const tabItems = useMemo(
     () => [
       { key: 'pending', label: '待执行动作' },
@@ -87,6 +100,7 @@ export function JobDetailPage() {
       { key: 'error', label: '错误' },
       { key: 'duplicate', label: '重复文件' },
       { key: 'events', label: '实时事件' },
+      { key: 'logs', label: '运行日志' },
       { key: 'stats', label: '统计' },
       { key: 'raw', label: '原始参数' },
     ],
@@ -104,6 +118,15 @@ export function JobDetailPage() {
           </Button>
         </Col>
       </Row>
+
+      {job?.errorMessage ? (
+        <Alert
+          type="error"
+          showIcon
+          message="任务失败"
+          description={job.errorMessage}
+        />
+      ) : null}
 
       <Card>
         <Descriptions column={3}>
@@ -131,6 +154,7 @@ export function JobDetailPage() {
           job,
           summary,
           events,
+          logs,
           actions: actionQuery.data?.list ?? [],
           actionTotal: actionQuery.data?.total ?? 0,
           actionPage,
@@ -147,6 +171,7 @@ function renderTab(
     job?: Job
     summary?: Record<string, number | string>
     events: ScanEvent[]
+    logs: ScanJobLog[]
     actions: ScanActionItem[]
     actionTotal: number
     actionPage: { current: number; pageSize: number }
@@ -165,6 +190,21 @@ function renderTab(
 
   if (key === 'stats') {
     return <pre className="json-block">{JSON.stringify(context.summary ?? {}, null, 2)}</pre>
+  }
+
+  if (key === 'logs') {
+    return (
+      <pre className="json-block log-block">
+        {context.logs.length === 0
+          ? '暂无日志'
+          : context.logs
+              .map((log) => {
+                const payload = log.payloadJson ? ` ${log.payloadJson}` : ''
+                return `[${log.createdAt}] [${log.level.toUpperCase()}] [${log.phase || 'runtime'}] ${log.message}${payload}`
+              })
+              .join('\n')}
+      </pre>
+    )
   }
 
   if (key === 'raw') {

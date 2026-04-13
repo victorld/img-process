@@ -103,8 +103,10 @@ export function JobsPage() {
         <Col>
           <Button
             type="primary"
-            onClick={() => {
-              const defaults = systemStatusQuery.data?.server.scanDefaults as ScanFormValues | undefined
+            onClick={async () => {
+              const result = await systemStatusQuery.refetch()
+              const defaults = result.data?.server.scanDefaults as ScanFormValues | undefined
+              form.resetFields()
               form.setFieldsValue(defaults ?? {})
               setDrawerOpen(true)
             }}

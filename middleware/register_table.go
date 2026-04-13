@@ -11,6 +11,7 @@ var gisDatabaseService = dao.GisDatabaseService{}
 var scanJobService = dao.ScanJobService{}
 var scanActionItemService = dao.ScanActionItemService{}
 var scanEventService = dao.ScanEventService{}
+var scanJobLogService = dao.ScanJobLogService{}
 var scanScheduleService = dao.ScanScheduleService{}
 
 // RegisterTable 根据gorm配置同步表结构
@@ -42,6 +43,11 @@ func RegisterTable() error {
 
 	var scanEventDB model.ScanEventDB
 	if err := scanEventService.RegisterScanEvent(&scanEventDB); err != nil {
+		return err
+	}
+
+	var scanJobLogDB model.ScanJobLogDB
+	if err := scanJobLogService.RegisterScanJobLog(&scanJobLogDB); err != nil {
 		return err
 	}
 

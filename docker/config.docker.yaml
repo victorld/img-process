@@ -10,7 +10,7 @@ server:
   HttpUsername: root
   HttpPassword: root@123
 scanArgs:
-  StartPath: /data/scan
+  StartPath: /data/pic-lab
   StartPathBak: ""
   DeleteShow: true
   MoveFileShow: true

@@ -1,4 +1,4 @@
-import type { ApiEnvelope, Job, ScanActionItem, ScanEvent, Schedule, SystemStatus } from './types'
+import type { ApiEnvelope, Job, ScanActionItem, ScanEvent, ScanJobLog, Schedule, SystemStatus } from './types'
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -36,6 +36,8 @@ export const api = {
   getJob: (id: string | number) => request<{ job: Job }>(`/api/jobs/${id}`),
   getJobEvents: (id: string | number, params: URLSearchParams) =>
     request<{ list: ScanEvent[]; total: number }>(`/api/jobs/${id}/events?${params.toString()}`),
+  getJobLogs: (id: string | number, params: URLSearchParams) =>
+    request<{ list: ScanJobLog[]; total: number }>(`/api/jobs/${id}/logs?${params.toString()}`),
   getJobActionItems: (id: string | number, params: URLSearchParams) =>
     request<{ list: ScanActionItem[]; total: number }>(`/api/jobs/${id}/action-items?${params.toString()}`),
   executeDuplicateDelete: (id: string | number) =>

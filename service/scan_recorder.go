@@ -16,6 +16,7 @@ type ScanRecorder interface {
 	SetPhase(phase string, payload map[string]any)
 	SetTotalCount(total int64)
 	Heartbeat(phase string, processed int64, payload map[string]any)
+	Log(level string, phase string, message string, payload map[string]any)
 	RecordCandidateAction(item model.ScanActionItemDB) uint
 	RecordActionResult(id uint, success bool, err error, payload map[string]any)
 	RecordError(phase string, relatedPath string, err error, payload map[string]any)
@@ -31,6 +32,7 @@ func (noopScanRecorder) SetScanUUID(string)                                   {}
 func (noopScanRecorder) SetPhase(string, map[string]any)                      {}
 func (noopScanRecorder) SetTotalCount(int64)                                  {}
 func (noopScanRecorder) Heartbeat(string, int64, map[string]any)              {}
+func (noopScanRecorder) Log(string, string, string, map[string]any)           {}
 func (noopScanRecorder) RecordCandidateAction(model.ScanActionItemDB) uint    { return 0 }
 func (noopScanRecorder) RecordActionResult(uint, bool, error, map[string]any) {}
 func (noopScanRecorder) RecordError(string, string, error, map[string]any)    {}
@@ -44,6 +46,7 @@ type DBScanRecorder struct {
 	jobService        dao.ScanJobService
 	actionItemService dao.ScanActionItemService
 	eventService      dao.ScanEventService
+	jobLogService     dao.ScanJobLogService
 }
 
 func NewDBScanRecorder(jobID uint) *DBScanRecorder {
@@ -58,6 +61,7 @@ func (r *DBScanRecorder) SetScanUUID(scanUUID string) {
 	job.ScanUUID = scanUUID
 	job.ArtifactPath = cons.WorkDir + "/log/dump_delete_file/" + scanUUID
 	_ = r.jobService.Update(&job)
+	r.Log("info", "initializing", "scan uuid assigned", ginH("scanUUID", scanUUID))
 }
 
 func (r *DBScanRecorder) SetPhase(phase string, payload map[string]any) {
@@ -77,6 +81,7 @@ func (r *DBScanRecorder) SetPhase(phase string, payload map[string]any) {
 		Message:     phase,
 		PayloadJSON: marshalPayload(payload),
 	})
+	r.Log("info", phase, "phase changed", payload)
 }
 
 func (r *DBScanRecorder) SetTotalCount(total int64) {
@@ -106,6 +111,21 @@ func (r *DBScanRecorder) Heartbeat(phase string, processed int64, payload map[st
 		Message:     fmt.Sprintf("processed %d items", processed),
 		PayloadJSON: marshalPayload(payload),
 	})
+	logPayload := ginH("processed", processed)
+	for key, value := range payload {
+		logPayload[key] = value
+	}
+	r.Log("info", phase, fmt.Sprintf("processed %d items", processed), logPayload)
+}
+
+func (r *DBScanRecorder) Log(level string, phase string, message string, payload map[string]any) {
+	_ = r.jobLogService.Create(&model.ScanJobLogDB{
+		JobID:       r.jobID,
+		Level:       level,
+		Phase:       phase,
+		Message:     message,
+		PayloadJSON: marshalPayload(payload),
+	})
 }
 
 func (r *DBScanRecorder) RecordCandidateAction(item model.ScanActionItemDB) uint {
@@ -122,6 +142,12 @@ func (r *DBScanRecorder) RecordCandidateAction(item model.ScanActionItemDB) uint
 		tools.Logger.Error("create action item error : ", err)
 		return 0
 	}
+	r.Log("info", item.Stage, "candidate action recorded", ginH(
+		"actionType", item.ActionType,
+		"sourcePath", item.SourcePath,
+		"targetPath", item.TargetPath,
+		"reasonText", item.ReasonText,
+	))
 	return item.ID
 }
 
@@ -147,6 +173,20 @@ func (r *DBScanRecorder) RecordActionResult(id uint, success bool, err error, pa
 		}
 	}
 	_ = r.actionItemService.Update(&item)
+	logPayload := ginH(
+		"actionType", item.ActionType,
+		"sourcePath", item.SourcePath,
+		"targetPath", item.TargetPath,
+	)
+	for key, value := range payload {
+		logPayload[key] = value
+	}
+	if success {
+		r.Log("info", item.Stage, "action executed successfully", logPayload)
+		return
+	}
+	logPayload["error"] = errString(err)
+	r.Log("error", item.Stage, "action execution failed", logPayload)
 }
 
 func (r *DBScanRecorder) RecordError(phase string, relatedPath string, err error, payload map[string]any) {
@@ -163,6 +203,12 @@ func (r *DBScanRecorder) RecordError(phase string, relatedPath string, err error
 		RelatedPath: relatedPath,
 		PayloadJSON: marshalPayload(payload),
 	})
+	logPayload := ginH("relatedPath", relatedPath)
+	for key, value := range payload {
+		logPayload[key] = value
+	}
+	logPayload["error"] = err.Error()
+	r.Log("error", phase, err.Error(), logPayload)
 }
 
 func (r *DBScanRecorder) RecordArtifact(title string, relatedPath string, payload map[string]any) {
@@ -176,6 +222,11 @@ func (r *DBScanRecorder) RecordArtifact(title string, relatedPath string, payloa
 		RelatedPath: relatedPath,
 		PayloadJSON: marshalPayload(payload),
 	})
+	logPayload := ginH("relatedPath", relatedPath)
+	for key, value := range payload {
+		logPayload[key] = value
+	}
+	r.Log("info", "artifact", title, logPayload)
 }
 
 func (r *DBScanRecorder) RecordLifecycle(title string, message string, payload map[string]any) {
@@ -188,6 +239,7 @@ func (r *DBScanRecorder) RecordLifecycle(title string, message string, payload m
 		Message:     message,
 		PayloadJSON: marshalPayload(payload),
 	})
+	r.Log("info", "lifecycle", message, payload)
 }
 
 func (r *DBScanRecorder) Finish(summary ImgRecord, artifactPath string) {
@@ -214,6 +266,7 @@ func (r *DBScanRecorder) Finish(summary ImgRecord, artifactPath string) {
 		Title:     "job completed",
 		Message:   "任务执行完成",
 	})
+	r.Log("info", "completed", "job completed", ginH("artifactPath", artifactPath))
 	if job.ScheduleID != nil {
 		updateScheduleJobStatus(*job.ScheduleID, job.ID, job.Status)
 	}
@@ -234,6 +287,7 @@ func (r *DBScanRecorder) FinishWithError(err error) {
 	_ = r.jobService.Update(&job)
 	r.RecordError(job.CurrentPhase, "", err, nil)
 	r.RecordLifecycle("job failed", "任务执行失败", ginH("error", errString(err)))
+	r.Log("error", job.CurrentPhase, "job failed", ginH("error", errString(err)))
 	if job.ScheduleID != nil {
 		updateScheduleJobStatus(*job.ScheduleID, job.ID, job.Status)
 	}

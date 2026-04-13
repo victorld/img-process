@@ -75,3 +75,9 @@ body {
   border-radius: 12px;
   overflow: auto;
 }
+
+.log-block {
+  max-height: 520px;
+  line-height: 1.6;
+  font-size: 12px;
+}

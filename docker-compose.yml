@@ -31,7 +31,7 @@ services:
     volumes:
       - ./docker/config.docker.yaml:/app/docker-config.yaml:ro
       - ./log:/app/log
-      - ${IMG_PROCESS_SCAN_PATH:-./sample-data}:/data/scan
+      - ${IMG_PROCESS_SCAN_PATH:-/Users/ld/my-file/pic-lab}:/data/pic-lab
 
 volumes:
   mysql-data:

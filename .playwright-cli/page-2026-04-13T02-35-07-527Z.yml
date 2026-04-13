@@ -1,0 +1,15 @@
+- generic [ref=e4]:
+  - heading "img-process 管理台" [level=1] [ref=e5]
+  - paragraph [ref=e6]: 扫描历史、实时过程、计划任务统一查看与控制。
+  - generic [ref=e7]:
+    - generic [ref=e9]:
+      - generic "用户名" [ref=e11]: "* 用户名"
+      - textbox "* 用户名" [ref=e15]
+    - generic [ref=e17]:
+      - generic "密码" [ref=e19]: "* 密码"
+      - generic [ref=e23]:
+        - textbox "* 密码" [ref=e24]
+        - img "eye-invisible" [ref=e26] [cursor=pointer]:
+          - img [ref=e27]
+    - button "登 录" [ref=e30] [cursor=pointer]:
+      - generic [ref=e31]: 登 录

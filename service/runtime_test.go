@@ -1,6 +1,8 @@
 package service
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"img_process/cons"
@@ -47,5 +49,29 @@ func TestBuildCronExpr(t *testing.T) {
 	}
 	if expr != "15 3 * * 1,5" {
 		t.Fatalf("weekly expr = %s", expr)
+	}
+}
+
+func TestValidateScanArgsRejectsMissingStartPath(t *testing.T) {
+	startPath := filepath.Join(t.TempDir(), "missing")
+	err := validateScanArgs(model.DoScanImgArg{StartPath: &startPath})
+	if err == nil {
+		t.Fatal("validateScanArgs should reject missing path")
+	}
+}
+
+func TestValidateScanArgsAcceptsExistingDirectories(t *testing.T) {
+	root := t.TempDir()
+	backup := filepath.Join(root, "backup")
+	if err := os.MkdirAll(backup, 0o755); err != nil {
+		t.Fatalf("mkdir backup: %v", err)
+	}
+
+	err := validateScanArgs(model.DoScanImgArg{
+		StartPath:    &root,
+		StartPathBak: &backup,
+	})
+	if err != nil {
+		t.Fatalf("validateScanArgs returned error: %v", err)
 	}
 }

@@ -1,0 +1,65 @@
+- generic [ref=e33]:
+  - complementary [ref=e34]:
+    - generic [ref=e35]:
+      - generic [ref=e36]: img-process
+      - menu [ref=e37]:
+        - menuitem "仪表盘" [ref=e38] [cursor=pointer]:
+          - link "仪表盘" [ref=e40]:
+            - /url: /
+        - menuitem "扫描历史" [ref=e41] [cursor=pointer]:
+          - link "扫描历史" [ref=e43]:
+            - /url: /jobs
+        - menuitem "计划任务" [ref=e44] [cursor=pointer]:
+          - link "计划任务" [ref=e46]:
+            - /url: /schedules
+        - menuitem "系统设置" [ref=e47] [cursor=pointer]:
+          - link "系统设置" [ref=e49]:
+            - /url: /settings
+  - generic [ref=e50]:
+    - banner [ref=e51]:
+      - generic [ref=e52]: 当前用户：root
+      - generic [ref=e53]:
+        - button "刷新会话" [ref=e54] [cursor=pointer]:
+          - generic [ref=e55]: 刷新会话
+        - button "退 出" [ref=e56] [cursor=pointer]:
+          - generic [ref=e57]: 退 出
+    - main [ref=e58]:
+      - generic [ref=e59]:
+        - heading "仪表盘" [level=3] [ref=e61]
+        - generic [ref=e63]:
+          - generic [ref=e67]:
+            - generic [ref=e68]: 最近任务数
+            - generic [ref=e70]: "2"
+          - generic [ref=e74]:
+            - generic [ref=e75]: 运行中任务
+            - generic [ref=e77]: "0"
+          - generic [ref=e81]:
+            - generic [ref=e82]: 最近失败任务
+            - generic [ref=e84]: "1"
+        - generic [ref=e86]:
+          - generic [ref=e88]:
+            - generic [ref=e91]: 最近任务
+            - list [ref=e96]:
+              - listitem [ref=e97]:
+                - generic [ref=e99]:
+                  - heading "02387d24-0987-47f3-a9b9-56388dbc70c9" [level=4] [ref=e100]
+                  - generic [ref=e101]: completed
+                - generic [ref=e102]: succeeded
+                - list [ref=e103]:
+                  - listitem [ref=e104]:
+                    - link "查看详情" [ref=e105] [cursor=pointer]:
+                      - /url: /jobs/2
+              - listitem [ref=e106]:
+                - generic [ref=e108]:
+                  - heading "81ff6111-f572-49cb-9d70-dfaabfcfe4c2" [level=4] [ref=e109]
+                  - generic [ref=e110]: starting
+                - generic [ref=e111]: failed
+                - list [ref=e112]:
+                  - listitem [ref=e113]:
+                    - link "查看详情" [ref=e114] [cursor=pointer]:
+                      - /url: /jobs/1
+          - generic [ref=e116]:
+            - generic [ref=e119]: 最近计划任务
+            - generic [ref=e125]:
+              - img "No data" [ref=e127]
+              - generic [ref=e133]: No data

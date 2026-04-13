@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -81,6 +82,10 @@ func (api *WebAPI) CreateJob(c *gin.Context) {
 	}
 	job, err := service.Runtime.CreateJob(req.Source, req.ScheduleID, req.ScanArgs)
 	if err != nil {
+		if isBadRequestError(err) {
+			tools.FailWithStatus(c, http.StatusBadRequest, "创建任务失败", gin.H{"error": err.Error()})
+			return
+		}
 		tools.Fail(c, "创建任务失败", gin.H{"error": err.Error()})
 		return
 	}
@@ -113,6 +118,26 @@ func (api *WebAPI) ListJobEvents(c *gin.Context) {
 	list, total, err := service.Runtime.ListEvents(search)
 	if err != nil {
 		tools.Fail(c, "查询事件失败", gin.H{"error": err.Error()})
+		return
+	}
+	tools.Success(c, gin.H{"list": list, "total": total}, "ok")
+}
+
+func (api *WebAPI) ListJobLogs(c *gin.Context) {
+	jobID, err := parseUintParam(c, "id")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "任务ID错误", gin.H{"error": err.Error()})
+		return
+	}
+	var search model.ScanJobLogSearch
+	search.JobID = jobID
+	bindPageQuery(c, &search.PageInfo)
+	if search.PageSize == 20 {
+		search.PageSize = 200
+	}
+	list, total, err := service.Runtime.ListLogs(search)
+	if err != nil {
+		tools.Fail(c, "查询日志失败", gin.H{"error": err.Error()})
 		return
 	}
 	tools.Success(c, gin.H{"list": list, "total": total}, "ok")
@@ -222,6 +247,10 @@ func (api *WebAPI) CreateSchedule(c *gin.Context) {
 	}
 	schedule, err := service.Runtime.CreateSchedule(req)
 	if err != nil {
+		if isBadRequestError(err) {
+			tools.FailWithStatus(c, http.StatusBadRequest, "创建计划失败", gin.H{"error": err.Error()})
+			return
+		}
 		tools.Fail(c, "创建计划失败", gin.H{"error": err.Error()})
 		return
 	}
@@ -241,6 +270,10 @@ func (api *WebAPI) UpdateSchedule(c *gin.Context) {
 	}
 	schedule, err := service.Runtime.UpdateSchedule(id, req)
 	if err != nil {
+		if isBadRequestError(err) {
+			tools.FailWithStatus(c, http.StatusBadRequest, "更新计划失败", gin.H{"error": err.Error()})
+			return
+		}
 		tools.Fail(c, "更新计划失败", gin.H{"error": err.Error()})
 		return
 	}
@@ -397,4 +430,12 @@ func parseJSON(raw string) any {
 
 func isFinishedStatus(status string) bool {
 	return status == model.JobStatusSucceeded || status == model.JobStatusFailed || status == model.JobStatusInterrupted || status == model.JobStatusSkipped
+}
+
+func isBadRequestError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "startPath") || strings.Contains(msg, "cron expression")
 }

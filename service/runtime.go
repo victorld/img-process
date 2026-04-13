@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -27,10 +28,19 @@ type scheduleConfig struct {
 	DayOfMonth int   `json:"dayOfMonth"`
 }
 
+type scanArgValidationError struct {
+	message string
+}
+
+func (e *scanArgValidationError) Error() string {
+	return e.message
+}
+
 type AppRuntime struct {
 	jobService        dao.ScanJobService
 	actionItemService dao.ScanActionItemService
 	eventService      dao.ScanEventService
+	jobLogService     dao.ScanJobLogService
 	scheduleService   dao.ScanScheduleService
 
 	notifyCh chan struct{}
@@ -138,6 +148,9 @@ func (r *AppRuntime) CreateJob(source string, scheduleID *uint, scanArgs model.D
 		source = model.JobSourceManual
 	}
 	scanArgs = NormalizeScanArgs(scanArgs)
+	if err := validateScanArgs(scanArgs); err != nil {
+		return model.ScanJobDB{}, err
+	}
 	scanArgsJSON := tools.MarshalJsonToString(scanArgs)
 	hasAction := hasActionEnabled(scanArgs)
 	now := time.Now()
@@ -197,6 +210,10 @@ func (r *AppRuntime) ListEvents(search model.ScanEventSearch) ([]model.ScanEvent
 
 func (r *AppRuntime) ListEventsAfter(jobID uint, afterID uint) ([]model.ScanEventDB, error) {
 	return r.eventService.ListAfterID(jobID, afterID)
+}
+
+func (r *AppRuntime) ListLogs(search model.ScanJobLogSearch) ([]model.ScanJobLogDB, int64, error) {
+	return r.jobLogService.List(search)
 }
 
 func (r *AppRuntime) DeleteDuplicateFiles(jobID uint) error {
@@ -444,6 +461,9 @@ func buildScheduleModel(req model.UpsertScheduleReq) (model.ScanScheduleDB, erro
 	if cronExpr == "" {
 		return model.ScanScheduleDB{}, errors.New("cron expression is required")
 	}
+	if err := validateScanArgs(scanArgs); err != nil {
+		return model.ScanScheduleDB{}, err
+	}
 	return model.ScanScheduleDB{
 		Name:           req.Name,
 		Enabled:        req.Enabled,
@@ -504,6 +524,36 @@ func hasActionEnabled(scanArgs model.DoScanImgArg) bool {
 		boolValue(scanArgs.MoveFileAction) ||
 		boolValue(scanArgs.ModifyDateAction) ||
 		boolValue(scanArgs.RenameFileAction)
+}
+
+func validateScanArgs(scanArgs model.DoScanImgArg) error {
+	startPath := ""
+	if scanArgs.StartPath != nil {
+		startPath = strings.TrimSpace(*scanArgs.StartPath)
+	}
+	if startPath == "" {
+		return &scanArgValidationError{message: "startPath is empty"}
+	}
+	info, err := os.Stat(startPath)
+	if err != nil {
+		return &scanArgValidationError{message: fmt.Sprintf("startPath invalid: %v", err)}
+	}
+	if !info.IsDir() {
+		return &scanArgValidationError{message: "startPath is not a directory"}
+	}
+
+	if scanArgs.StartPathBak != nil && strings.TrimSpace(*scanArgs.StartPathBak) != "" {
+		backupPath := strings.TrimSpace(*scanArgs.StartPathBak)
+		backupInfo, backupErr := os.Stat(backupPath)
+		if backupErr != nil {
+			return &scanArgValidationError{message: fmt.Sprintf("startPathBak invalid: %v", backupErr)}
+		}
+		if !backupInfo.IsDir() {
+			return &scanArgValidationError{message: "startPathBak is not a directory"}
+		}
+	}
+
+	return nil
 }
 
 func NormalizeScanArgs(scanArgs model.DoScanImgArg) model.DoScanImgArg {
