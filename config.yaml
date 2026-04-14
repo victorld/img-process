@@ -7,8 +7,8 @@ database:   #数据库参数
   DbConfig: charset=utf8&parseTime=True&loc=Local
 server:  #web服务参数
   HttpPort: 8081
-  HttpUsername: root
-  HttpPassword: root@123
+  HttpUsername: admin
+  HttpPassword: admin
 scanArgs:  #扫描参数
   StartPath: /Users/ld/my-file/pic-lab
   DeleteShow: true
@@ -40,7 +40,6 @@ batch:
   IDInsertBatchSize: 1000   #img_database的查询批次
   IDDeleteBatchSize: 300    #img_database的删除批次
   GDUpdateBatchSize: 1000   #更新gis_database的批次
-
 
 
 

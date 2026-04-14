@@ -1,28 +1,9 @@
 services:
-  mysql:
-    image: mysql:8.0
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: img
-    ports:
-      - "${IMG_PROCESS_MYSQL_PORT:-33061}:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
   app:
     build:
       context: .
       dockerfile: docker/Dockerfile
     restart: unless-stopped
-    depends_on:
-      mysql:
-        condition: service_healthy
     environment:
       IMG_PROCESS_CONFIG: /app/docker-config.yaml
       TZ: Asia/Shanghai
@@ -32,6 +13,3 @@ services:
       - ./docker/config.docker.yaml:/app/docker-config.yaml:ro
       - ./log:/app/log
       - ${IMG_PROCESS_SCAN_PATH:-/Users/ld/my-file/pic-lab}:/data/pic-lab
-
-volumes:
-  mysql-data:
