@@ -8,3 +8,5 @@ main/scan_main/__*
 web/node_modules/
 web/dist/
 web/*.tsbuildinfo
+.playwright-cli/
+output/*.db

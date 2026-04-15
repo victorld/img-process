@@ -62,6 +62,12 @@ type ScanActionCounts struct {
 	Total           int64 `json:"total"`
 }
 
+type ScanActionGroupedCounts struct {
+	Pending  ScanActionCounts `json:"pending"`
+	Executed ScanActionCounts `json:"executed"`
+	Error    ScanActionCounts `json:"error"`
+}
+
 type ScanActionPreview struct {
 	FileName    string `json:"fileName"`
 	Path        string `json:"path"`
@@ -74,6 +80,7 @@ type ScanActionDetail struct {
 	TargetPath     string `json:"targetPath,omitempty"`
 	TargetFileName string `json:"targetFileName,omitempty"`
 	DirDate        string `json:"dirDate,omitempty"`
+	ModifyDate     string `json:"modifyDate,omitempty"`
 	FileNameDate   string `json:"fileNameDate,omitempty"`
 	ShootDate      string `json:"shootDate,omitempty"`
 	ShootDateRaw   string `json:"shootDateRaw,omitempty"`

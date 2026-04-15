@@ -7,6 +7,14 @@ import (
 
 type ScanActionItemService struct{}
 
+type actionCountRow struct {
+	JobID      uint
+	Stage      string
+	Status     string
+	ActionType string
+	Total      int64
+}
+
 func (s *ScanActionItemService) RegisterScanActionItem(item *model.ScanActionItemDB) error {
 	return orm.ImgMysqlDB.AutoMigrate(&item)
 }
@@ -43,7 +51,11 @@ func (s *ScanActionItemService) List(search model.ScanActionItemSearch) ([]model
 		db = db.Where("action_type = ?", model.ActionTypeDeleteDup)
 	}
 	if search.ActionType != "" {
-		db = db.Where("action_type = ?", search.ActionType)
+		if search.ActionType == model.ActionTypeDelete {
+			db = db.Where("action_type in ?", []string{model.ActionTypeDelete, model.ActionTypeDeleteEmptyDir})
+		} else {
+			db = db.Where("action_type = ?", search.ActionType)
+		}
 	}
 	if search.Status != "" {
 		db = db.Where("status = ?", search.Status)
@@ -68,12 +80,53 @@ func (s *ScanActionItemService) ListByJobAndType(jobID uint, actionType string) 
 	return list, err
 }
 
-func (s *ScanActionItemService) CountPendingByJob(jobID uint) (model.ScanActionCounts, error) {
-	type actionCountRow struct {
-		ActionType string
-		Total      int64
-	}
+func (s *ScanActionItemService) ListPendingDeleteByJob(jobID uint) ([]model.ScanActionItemDB, error) {
+	var list []model.ScanActionItemDB
+	err := orm.ImgMysqlDB.
+		Where(
+			"job_id = ? AND stage = ? AND status = ? AND action_type in ?",
+			jobID,
+			model.ActionStageCandidate,
+			model.ActionStatusPending,
+			[]string{model.ActionTypeDelete, model.ActionTypeDeleteEmptyDir},
+		).
+		Order("id desc").
+		Find(&list).Error
+	return list, err
+}
 
+func (s *ScanActionItemService) ListPendingDuplicateByJob(jobID uint) ([]model.ScanActionItemDB, error) {
+	var list []model.ScanActionItemDB
+	err := orm.ImgMysqlDB.
+		Where(
+			"job_id = ? AND stage = ? AND status = ? AND action_type = ?",
+			jobID,
+			model.ActionStageCandidate,
+			model.ActionStatusPending,
+			model.ActionTypeDeleteDup,
+		).
+		Order("id desc").
+		Find(&list).Error
+	return list, err
+}
+
+func (s *ScanActionItemService) ListPendingByJobAndSourceAndTypes(jobID uint, sourcePath string, actionTypes []string) ([]model.ScanActionItemDB, error) {
+	var list []model.ScanActionItemDB
+	err := orm.ImgMysqlDB.
+		Where(
+			"job_id = ? AND source_path = ? AND stage = ? AND status = ? AND action_type in ?",
+			jobID,
+			sourcePath,
+			model.ActionStageCandidate,
+			model.ActionStatusPending,
+			actionTypes,
+		).
+		Order("id desc").
+		Find(&list).Error
+	return list, err
+}
+
+func (s *ScanActionItemService) CountPendingByJob(jobID uint) (model.ScanActionCounts, error) {
 	var rows []actionCountRow
 	err := orm.ImgMysqlDB.Model(&model.ScanActionItemDB{}).
 		Select("action_type, count(*) as total").
@@ -84,21 +137,93 @@ func (s *ScanActionItemService) CountPendingByJob(jobID uint) (model.ScanActionC
 		return model.ScanActionCounts{}, err
 	}
 
-	counts := model.ScanActionCounts{}
+	return countRowsByType(rows), nil
+}
+
+func (s *ScanActionItemService) CountGroupedByJob(jobID uint) (model.ScanActionGroupedCounts, error) {
+	var rows []actionCountRow
+	err := orm.ImgMysqlDB.Model(&model.ScanActionItemDB{}).
+		Select("stage, status, action_type, count(*) as total").
+		Where("job_id = ?", jobID).
+		Group("stage, status, action_type").
+		Scan(&rows).Error
+	if err != nil {
+		return model.ScanActionGroupedCounts{}, err
+	}
+
+	grouped := model.ScanActionGroupedCounts{}
 	for _, row := range rows {
-		switch row.ActionType {
-		case model.ActionTypeDelete, model.ActionTypeDeleteEmptyDir:
-			counts.Delete += row.Total
-		case model.ActionTypeMove:
-			counts.Move += row.Total
-		case model.ActionTypeModifyTime:
-			counts.ModifyTime += row.Total
-		case model.ActionTypeDeleteDup:
-			counts.DeleteDuplicate += row.Total
-		case model.ActionTypeRename:
-			counts.Rename += row.Total
+		if row.Stage == model.ActionStageCandidate && row.Status == model.ActionStatusPending {
+			addActionCount(&grouped.Pending, row.ActionType, row.Total)
+		}
+		if row.Stage == model.ActionStageExecuted {
+			addActionCount(&grouped.Executed, row.ActionType, row.Total)
+		}
+		if row.Status == model.ActionStatusFailed {
+			addActionCount(&grouped.Error, row.ActionType, row.Total)
 		}
 	}
+	return grouped, nil
+}
+
+func (s *ScanActionItemService) CountGroupedByJobs(jobIDs []uint) (map[uint]model.ScanActionGroupedCounts, error) {
+	groupedByJob := make(map[uint]model.ScanActionGroupedCounts, len(jobIDs))
+	if len(jobIDs) == 0 {
+		return groupedByJob, nil
+	}
+
+	var rows []actionCountRow
+	err := orm.ImgMysqlDB.Model(&model.ScanActionItemDB{}).
+		Select("job_id, stage, status, action_type, count(*) as total").
+		Where("job_id in ?", jobIDs).
+		Group("job_id, stage, status, action_type").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	for _, jobID := range jobIDs {
+		groupedByJob[jobID] = model.ScanActionGroupedCounts{}
+	}
+	for _, row := range rows {
+		grouped := groupedByJob[row.JobID]
+		if row.Stage == model.ActionStageCandidate && row.Status == model.ActionStatusPending {
+			addActionCount(&grouped.Pending, row.ActionType, row.Total)
+		}
+		if row.Stage == model.ActionStageExecuted {
+			addActionCount(&grouped.Executed, row.ActionType, row.Total)
+		}
+		if row.Status == model.ActionStatusFailed {
+			addActionCount(&grouped.Error, row.ActionType, row.Total)
+		}
+		groupedByJob[row.JobID] = grouped
+	}
+
+	return groupedByJob, nil
+}
+
+func countRowsByType(rows []actionCountRow) model.ScanActionCounts {
+	counts := model.ScanActionCounts{}
+	for _, row := range rows {
+		addActionCount(&counts, row.ActionType, row.Total)
+	}
+	return counts
+}
+
+func addActionCount(counts *model.ScanActionCounts, actionType string, total int64) {
+	switch actionType {
+	case model.ActionTypeDelete, model.ActionTypeDeleteEmptyDir:
+		counts.Delete += total
+	case model.ActionTypeMove:
+		counts.Move += total
+	case model.ActionTypeModifyTime:
+		counts.ModifyTime += total
+	case model.ActionTypeDeleteDup:
+		counts.DeleteDuplicate += total
+	case model.ActionTypeRename:
+		counts.Rename += total
+	default:
+		return
+	}
 	counts.Total = counts.Delete + counts.Move + counts.ModifyTime + counts.DeleteDuplicate + counts.Rename
-	return counts, nil
 }

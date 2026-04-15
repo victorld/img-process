@@ -1,9 +1,9 @@
 FROM node:20-alpine AS web-builder
 
 WORKDIR /app/web
-COPY web/package.json web/tsconfig.json web/tsconfig.app.json web/vite.config.ts web/index.html ./
+COPY web/package.json web/package-lock.json web/tsconfig.json web/tsconfig.app.json web/vite.config.ts web/index.html ./
 COPY web/src ./src
-RUN npm install
+RUN npm ci --no-audit --no-fund
 RUN npm run build
 
 FROM golang:1.20.11-alpine3.18 AS go-builder

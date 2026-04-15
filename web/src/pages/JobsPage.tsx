@@ -20,6 +20,9 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import type { Job } from '../types'
+import { formatDateTime } from '../utils/dateTime'
+import { formatJobSource, formatJobStatus } from '../utils/displayText'
+import { NO_SCROLL_TABLE_CLASS } from '../utils/table'
 
 type ScanFormValues = {
   startPath?: string
@@ -75,18 +78,19 @@ export function JobsPage() {
 
   const columns: ColumnsType<Job> = useMemo(
     () => [
-      { title: '任务ID', dataIndex: 'id', width: 90 },
-      { title: '任务UUID', dataIndex: 'jobUuid', ellipsis: true },
-      { title: '状态', dataIndex: 'status', render: (value) => <Tag>{value}</Tag> },
-      { title: '来源', dataIndex: 'source', width: 100 },
-      { title: '当前阶段', dataIndex: 'currentPhase', width: 160 },
-      { title: '已处理', dataIndex: 'processedCount', width: 100 },
-      { title: '是否执行动作', dataIndex: 'hasAction', width: 120, render: (value) => (value ? '是' : '否') },
-      { title: '开始时间', dataIndex: 'startAt', width: 180 },
+      { title: '任务ID', dataIndex: 'id', width: 76 },
+      { title: '任务UUID', dataIndex: 'jobUuid', width: 180 },
+      { title: '状态', dataIndex: 'status', width: 88, render: (value) => <Tag>{formatJobStatus(String(value ?? ''))}</Tag> },
+      { title: '来源', dataIndex: 'source', width: 72, render: (value) => formatJobSource(String(value ?? '')) },
+      { title: '总文件夹数', dataIndex: 'totalFolderCount', width: 96, render: (value) => Number(value ?? 0) },
+      { title: '总文件数', dataIndex: 'totalCount', width: 88, render: (value) => Number(value ?? 0) },
+      { title: '待执行动作', dataIndex: 'pendingActionCount', width: 96, render: (value) => Number(value ?? 0) },
+      { title: '已执行动作', dataIndex: 'executedActionCount', width: 96, render: (value) => Number(value ?? 0) },
+      { title: '开始时间', dataIndex: 'startAt', width: 132, render: (value) => formatDateTime(value) },
       {
         title: '操作',
         dataIndex: 'id',
-        width: 120,
+        width: 84,
         render: (_, record) => <Link to={`/jobs/${record.id}`}>查看详情</Link>,
       },
     ],
@@ -124,7 +128,7 @@ export function JobsPage() {
               allowClear
               style={{ width: '100%' }}
               onChange={(value) => setFilters((prev) => ({ ...prev, status: value ?? '', page: 1 }))}
-              options={['pending', 'running', 'succeeded', 'failed', 'interrupted'].map((value) => ({ label: value, value }))}
+              options={['pending', 'running', 'succeeded', 'failed', 'interrupted', 'skipped'].map((value) => ({ label: formatJobStatus(value), value }))}
             />
           </Col>
           <Col span={6}>
@@ -133,7 +137,7 @@ export function JobsPage() {
               allowClear
               style={{ width: '100%' }}
               onChange={(value) => setFilters((prev) => ({ ...prev, source: value ?? '', page: 1 }))}
-              options={['manual', 'schedule'].map((value) => ({ label: value, value }))}
+              options={['manual', 'schedule'].map((value) => ({ label: formatJobSource(value), value }))}
             />
           </Col>
           <Col span={8}>
@@ -146,18 +150,21 @@ export function JobsPage() {
         </Row>
       </Card>
 
-      <Table
-        rowKey="id"
-        loading={jobsQuery.isLoading}
-        columns={columns}
-        dataSource={jobsQuery.data?.list ?? []}
-        pagination={{
-          total: jobsQuery.data?.total ?? 0,
-          current: filters.page,
-          pageSize: filters.pageSize,
-          onChange: (page, pageSize) => setFilters((prev) => ({ ...prev, page, pageSize })),
-        }}
-      />
+      <div className={NO_SCROLL_TABLE_CLASS}>
+        <Table
+          rowKey="id"
+          loading={jobsQuery.isLoading}
+          tableLayout="fixed"
+          columns={columns}
+          dataSource={jobsQuery.data?.list ?? []}
+          pagination={{
+            total: jobsQuery.data?.total ?? 0,
+            current: filters.page,
+            pageSize: filters.pageSize,
+            onChange: (page, pageSize) => setFilters((prev) => ({ ...prev, page, pageSize })),
+          }}
+        />
+      </div>
 
       <Drawer
         title="新建扫描"

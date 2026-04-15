@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -27,13 +28,15 @@ func TestApplyFileDecisionWritesStructuredMetadata(t *testing.T) {
 		shouldRename: true,
 		shouldModify: true,
 		photo: photoStruct{
-			photo:        filepath.Join("/photos", "2024", "2024-01", "2024-01-03", "IMG_0001.JPG"),
-			targetPhoto:  filepath.Join("/photos", "2024", "2024-01", "2024-01-02", "2024-01-02_10-11-12^Road.JPG"),
-			dirDate:      "2024-01-03",
-			fileDate:     "2024-01-02",
-			shootDate:    "2024-01-02",
-			shootDateRaw: "2024:01:02 10:11:12",
-			minDate:      "2024-01-02",
+			photo:            filepath.Join("/photos", "2024", "2024-01", "2024-01-03", "IMG_0001.JPG"),
+			moveTargetPath:   filepath.Join("/photos", "2024", "2024-01", "2024-01-02", "IMG_0001.JPG"),
+			renameTargetPath: filepath.Join("/photos", "2024", "2024-01", "2024-01-02", "IMG_0001[2024-01-02_10-11-12^Road].JPG"),
+			dirDate:          "2024-01-03",
+			modifyDate:       "2024-01-03",
+			fileDate:         "2024-01-02",
+			shootDate:        "2024-01-02",
+			shootDateRaw:     "2024:01:02 10:11:12",
+			minDate:          "2024-01-02",
 		},
 	}
 
@@ -54,15 +57,30 @@ func TestApplyFileDecisionWritesStructuredMetadata(t *testing.T) {
 	if moveMeta["shootDateRaw"] != "2024:01:02 10:11:12" {
 		t.Fatalf("move metadata shootDateRaw = %v", moveMeta["shootDateRaw"])
 	}
+	if moveItem.TargetPath != decision.photo.moveTargetPath {
+		t.Fatalf("move target path = %q", moveItem.TargetPath)
+	}
+	if moveMeta["targetPath"] != decision.photo.moveTargetPath {
+		t.Fatalf("move metadata targetPath = %v", moveMeta["targetPath"])
+	}
 
 	renameItem := recorder.items[1]
 	renameMeta := parseTestMetadata(t, renameItem.MetadataJSON)
 	if renameMeta["targetFileName"] == "" {
 		t.Fatal("rename metadata targetFileName should not be empty")
 	}
+	if renameItem.TargetPath != decision.photo.renameTargetPath {
+		t.Fatalf("rename target path = %q", renameItem.TargetPath)
+	}
+	if renameMeta["targetPath"] != decision.photo.renameTargetPath {
+		t.Fatalf("rename metadata targetPath = %v", renameMeta["targetPath"])
+	}
 
 	modifyItem := recorder.items[2]
 	modifyMeta := parseTestMetadata(t, modifyItem.MetadataJSON)
+	if modifyMeta["modifyDate"] != "2024-01-03" {
+		t.Fatalf("modify metadata modifyDate = %v", modifyMeta["modifyDate"])
+	}
 	if modifyMeta["minDate"] != "2024-01-02" {
 		t.Fatalf("modify metadata minDate = %v", modifyMeta["minDate"])
 	}
@@ -87,6 +105,47 @@ func TestBuildActionItemViewBuildsDuplicatePair(t *testing.T) {
 	}
 	if view.Pair.PhotoB.Path != "/photos/b.jpg" {
 		t.Fatalf("photoB path = %q", view.Pair.PhotoB.Path)
+	}
+}
+
+func TestBuildActionItemViewIncludesModifyDate(t *testing.T) {
+	item := model.ScanActionItemDB{
+		CommonModel:  model.CommonModel{ID: 8},
+		ActionType:   model.ActionTypeModifyTime,
+		ObjectType:   model.ActionObjectFile,
+		SourcePath:   "/photos/a.jpg",
+		MetadataJSON: `{"fileName":"a.jpg","currentPath":"/photos/a.jpg","dirDate":"2024-01-03","modifyDate":"2024-01-05","minDate":"2024-01-02"}`,
+	}
+
+	view := buildActionItemView(item)
+	if view.Detail == nil {
+		t.Fatal("view.Detail should not be nil")
+	}
+	if view.Detail.ModifyDate != "2024-01-05" {
+		t.Fatalf("detail modifyDate = %q", view.Detail.ModifyDate)
+	}
+}
+
+func TestBuildActionItemViewFallsBackToSourceModifyDate(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "legacy.jpg")
+	if err := os.WriteFile(file, []byte("legacy"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	item := model.ScanActionItemDB{
+		CommonModel:  model.CommonModel{ID: 9},
+		ActionType:   model.ActionTypeModifyTime,
+		ObjectType:   model.ActionObjectFile,
+		SourcePath:   file,
+		MetadataJSON: `{"fileName":"legacy.jpg","currentPath":"` + file + `"}`,
+	}
+
+	view := buildActionItemView(item)
+	if view.Detail == nil {
+		t.Fatal("view.Detail should not be nil")
+	}
+	if view.Detail.ModifyDate == "" {
+		t.Fatal("detail modifyDate should fall back to source file modify date")
 	}
 }
 

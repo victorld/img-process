@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Card, Col, List, Row, Space, Statistic, Tag, Typography } from 'antd'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { formatJobStatus, formatPhase, formatScheduleMode } from '../utils/displayText'
 
 export function DashboardPage() {
   const jobsQuery = useQuery({
@@ -39,8 +40,8 @@ export function DashboardPage() {
               dataSource={jobs}
               renderItem={(item) => (
                 <List.Item actions={[<Link key="view" to={`/jobs/${item.id}`}>查看详情</Link>]}>
-                  <List.Item.Meta title={item.jobUuid} description={item.currentPhase || 'queued'} />
-                  <Tag>{item.status}</Tag>
+                  <List.Item.Meta title={item.jobUuid} description={formatPhase(item.currentPhase || 'queued')} />
+                  <Tag>{formatJobStatus(item.status)}</Tag>
                 </List.Item>
               )}
             />
@@ -54,7 +55,7 @@ export function DashboardPage() {
                 <List.Item>
                   <List.Item.Meta
                     title={item.name}
-                    description={`${item.mode} / ${item.cronExpr}`}
+                    description={`${formatScheduleMode(item.mode)} / ${item.cronExpr}`}
                   />
                   <Tag color={item.enabled ? 'green' : 'default'}>{item.enabled ? '启用' : '停用'}</Tag>
                 </List.Item>

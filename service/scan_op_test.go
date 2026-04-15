@@ -17,6 +17,29 @@ import (
 	"go.uber.org/zap"
 )
 
+type actionResultRecorder struct {
+	noopScanRecorder
+	results []recordedActionResult
+}
+
+type recordedActionResult struct {
+	id      uint
+	success bool
+	payload map[string]any
+}
+
+func (r *actionResultRecorder) RecordActionResult(id uint, success bool, err error, payload map[string]any) {
+	copied := map[string]any{}
+	for key, value := range payload {
+		copied[key] = value
+	}
+	r.results = append(r.results, recordedActionResult{
+		id:      id,
+		success: success,
+		payload: copied,
+	})
+}
+
 func ensureTestLogger() {
 	if tools.Logger == nil {
 		tools.Logger = zap.NewNop().Sugar()
@@ -138,6 +161,71 @@ func TestRunReturnsStartupErrorWhenCacheLoadFails(t *testing.T) {
 
 	if _, err := scanner.Run(); err == nil {
 		t.Fatalf("Run should return startup error")
+	}
+}
+
+func TestMoveThenRenameUsesMovedPath(t *testing.T) {
+	ensureTestLogger()
+	root := t.TempDir()
+	currentDir := filepath.Join(root, "2024", "2024-01", "2024-01-03")
+	targetDir := filepath.Join(root, "2024", "2024-01", "2024-01-02")
+	if err := os.MkdirAll(currentDir, 0o755); err != nil {
+		t.Fatalf("mkdir currentDir: %v", err)
+	}
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		t.Fatalf("mkdir targetDir: %v", err)
+	}
+
+	original := filepath.Join(currentDir, "IMG_0001.JPG")
+	moved := filepath.Join(targetDir, "IMG_0001.JPG")
+	renamed := filepath.Join(targetDir, "IMG_0001[2024-01-02_10-11-12^Road].JPG")
+	if err := os.WriteFile(original, []byte("content"), 0o644); err != nil {
+		t.Fatalf("write original file: %v", err)
+	}
+
+	recorder := &actionResultRecorder{}
+	scanner := newScannerWithRecorder(model.DoScanImgArg{}, recorder)
+	scanner.moveFileAction = true
+	scanner.renameFileAction = true
+
+	ps := photoStruct{
+		photo:            original,
+		isMoveFile:       true,
+		moveTargetPath:   moved,
+		isRenameFile:     true,
+		renameTargetPath: renamed,
+		moveActionID:     1,
+		renameActionID:   2,
+	}
+
+	printFileFlag := false
+	printDateFlag := false
+	ps = scanner.moveFileProcess(ps, &printFileFlag, &printDateFlag)
+	ps = scanner.renameFileProcess(ps, &printFileFlag, &printDateFlag)
+
+	if _, err := os.Stat(renamed); err != nil {
+		t.Fatalf("expected renamed file to exist: %v", err)
+	}
+	if _, err := os.Stat(original); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected original file to be gone, got: %v", err)
+	}
+	if _, err := os.Stat(moved); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected intermediate moved file to be gone after rename, got: %v", err)
+	}
+	if len(recorder.results) != 2 {
+		t.Fatalf("recorded results = %d, want 2", len(recorder.results))
+	}
+	if recorder.results[0].payload["targetPath"] != moved {
+		t.Fatalf("move targetPath payload = %v", recorder.results[0].payload["targetPath"])
+	}
+	if recorder.results[1].payload["path"] != moved {
+		t.Fatalf("rename source path payload = %v", recorder.results[1].payload["path"])
+	}
+	if recorder.results[1].payload["targetPath"] != renamed {
+		t.Fatalf("rename targetPath payload = %v", recorder.results[1].payload["targetPath"])
+	}
+	if ps.photo != renamed {
+		t.Fatalf("final photo path = %q", ps.photo)
 	}
 }
 

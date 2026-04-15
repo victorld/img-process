@@ -126,7 +126,7 @@ func (r *AppRuntime) runJob(job model.ScanJobDB) {
 	}
 
 	recorder := NewDBScanRecorder(job.ID)
-	recorder.RecordLifecycle("job running", "任务开始执行", map[string]any{
+	recorder.RecordLifecycle("任务开始执行", "任务开始执行", map[string]any{
 		"jobId": job.ID,
 	})
 
@@ -171,7 +171,7 @@ func (r *AppRuntime) CreateJob(source string, scheduleID *uint, scanArgs model.D
 		EventType: model.EventTypeLifecycle,
 		Phase:     "queued",
 		Level:     "info",
-		Title:     "job queued",
+		Title:     "任务入队",
 		Message:   "任务已创建并进入队列",
 		PayloadJSON: tools.MarshalJsonToString(ginH(
 			"source", source,
@@ -200,6 +200,10 @@ func (r *AppRuntime) ListJobs(search model.ScanJobSearch) ([]model.ScanJobDB, in
 	return r.jobService.List(search)
 }
 
+func (r *AppRuntime) CountActionItemsGroupedByJobs(jobIDs []uint) (map[uint]model.ScanActionGroupedCounts, error) {
+	return r.actionItemService.CountGroupedByJobs(jobIDs)
+}
+
 func (r *AppRuntime) ListEvents(search model.ScanEventSearch) ([]model.ScanEventDB, int64, error) {
 	return r.eventService.List(search)
 }
@@ -226,7 +230,7 @@ func (r *AppRuntime) DeleteDuplicateFiles(jobID uint) error {
 		return err
 	}
 
-	items, err := r.actionItemService.ListByJobAndType(job.ID, model.ActionTypeDeleteDup)
+	items, err := r.actionItemService.ListPendingDuplicateByJob(job.ID)
 	if err != nil {
 		return err
 	}
@@ -241,20 +245,17 @@ func (r *AppRuntime) DeleteDuplicateFiles(jobID uint) error {
 	}
 	for _, photo := range shouldDeleteFiles {
 		item := itemByPath[photo]
-		now := time.Now()
-		if err = tools.DeleteFile(photo); err != nil {
-			item.Stage = model.ActionStageExecuted
-			item.Status = model.ActionStatusFailed
-			item.ExecutedAt = &now
-			item.ErrorMessage = err.Error()
-		} else {
-			item.Stage = model.ActionStageExecuted
-			item.Status = model.ActionStatusSucceeded
-			item.ExecutedAt = &now
-			item.ErrorMessage = ""
+		if item.ID == 0 {
+			continue
 		}
-		if item.ID != 0 {
-			_ = r.actionItemService.Update(&item)
+		if err = tools.DeleteFile(photo); err != nil {
+			if saveErr := r.completeDuplicateDeleteAction(&item, "A", photo, item.SourcePath, err); saveErr != nil {
+				return saveErr
+			}
+			continue
+		}
+		if saveErr := r.completeDuplicateDeleteAction(&item, "A", photo, item.SourcePath, nil); saveErr != nil {
+			return saveErr
 		}
 	}
 
@@ -263,7 +264,7 @@ func (r *AppRuntime) DeleteDuplicateFiles(jobID uint) error {
 		EventType: model.EventTypeLifecycle,
 		Phase:     "post_action",
 		Level:     "info",
-		Title:     "duplicate delete executed",
+		Title:     "重复文件删除已执行",
 		Message:   "重复文件删除任务已执行",
 	})
 	return nil
@@ -455,7 +456,7 @@ func buildScheduleModel(req model.UpsertScheduleReq) (model.ScanScheduleDB, erro
 		}
 	}
 	if cronExpr == "" {
-		return model.ScanScheduleDB{}, errors.New("cron expression is required")
+		return model.ScanScheduleDB{}, errors.New("Cron 表达式不能为空")
 	}
 	if err := validateScanArgs(scanArgs); err != nil {
 		return model.ScanScheduleDB{}, err
@@ -486,7 +487,7 @@ func buildCronExpr(mode string, cfg scheduleConfig) (string, error) {
 		return fmt.Sprintf("%d %d * * *", cfg.Minute, cfg.Hour), nil
 	case model.ScheduleModeWeekly:
 		if len(cfg.Weekdays) == 0 {
-			return "", errors.New("weekly schedule requires weekdays")
+			return "", errors.New("每周模式必须选择星期")
 		}
 		parts := make([]string, 0, len(cfg.Weekdays))
 		for _, weekday := range cfg.Weekdays {
@@ -501,13 +502,13 @@ func buildCronExpr(mode string, cfg scheduleConfig) (string, error) {
 	case model.ScheduleModeCustom:
 		return "", nil
 	default:
-		return "", errors.New("unsupported schedule mode")
+		return "", errors.New("不支持的计划模式")
 	}
 }
 
 func buildCronSpec(schedule model.ScanScheduleDB) (string, error) {
 	if schedule.CronExpr == "" {
-		return "", errors.New("cron expression is empty")
+		return "", errors.New("Cron 表达式不能为空")
 	}
 	if schedule.Timezone == "" {
 		return schedule.CronExpr, nil
@@ -622,7 +623,7 @@ func nextScheduleTime(schedule model.ScanScheduleDB, from time.Time) (time.Time,
 	if strings.HasPrefix(spec, "CRON_TZ=") {
 		parts := strings.SplitN(spec, " ", 2)
 		if len(parts) != 2 {
-			return time.Time{}, errors.New("invalid cron spec")
+			return time.Time{}, errors.New("Cron 表达式不合法")
 		}
 		locationName := strings.TrimPrefix(parts[0], "CRON_TZ=")
 		location, err = time.LoadLocation(locationName)
@@ -634,7 +635,7 @@ func nextScheduleTime(schedule model.ScanScheduleDB, from time.Time) (time.Time,
 
 	fields := strings.Fields(expr)
 	if len(fields) != 5 {
-		return time.Time{}, errors.New("cron expression must have 5 fields")
+		return time.Time{}, errors.New("Cron 表达式必须包含 5 段")
 	}
 
 	next := from.In(location).Truncate(time.Minute).Add(time.Minute)

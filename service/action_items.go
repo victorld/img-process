@@ -13,28 +13,31 @@ import (
 )
 
 type actionItemMetadata struct {
-	FileName       string `json:"fileName"`
-	CurrentPath    string `json:"currentPath"`
-	TargetPath     string `json:"targetPath"`
-	TargetFileName string `json:"targetFileName"`
-	DirDate        string `json:"dirDate"`
-	FileNameDate   string `json:"fileNameDate"`
-	ShootDate      string `json:"shootDate"`
-	ShootDateRaw   string `json:"shootDateRaw"`
-	MinDate        string `json:"minDate"`
-	KeepPath       string `json:"keepPath"`
-	KeepFileName   string `json:"keepFileName"`
+	FileName          string `json:"fileName"`
+	CurrentPath       string `json:"currentPath"`
+	TargetPath        string `json:"targetPath"`
+	TargetFileName    string `json:"targetFileName"`
+	DirDate           string `json:"dirDate"`
+	ModifyDate        string `json:"modifyDate"`
+	FileNameDate      string `json:"fileNameDate"`
+	ShootDate         string `json:"shootDate"`
+	ShootDateRaw      string `json:"shootDateRaw"`
+	MinDate           string `json:"minDate"`
+	TargetDate        string `json:"targetDate"`
+	ExecutedShootDate string `json:"executedShootDate"`
+	KeepPath          string `json:"keepPath"`
+	KeepFileName      string `json:"keepFileName"`
 }
 
-func (r *AppRuntime) ListActionItems(search model.ScanActionItemSearch) ([]model.ScanActionItemView, model.ScanActionCounts, int64, error) {
+func (r *AppRuntime) ListActionItems(search model.ScanActionItemSearch) ([]model.ScanActionItemView, model.ScanActionCounts, model.ScanActionGroupedCounts, int64, error) {
 	list, total, err := r.actionItemService.List(search)
 	if err != nil {
-		return nil, model.ScanActionCounts{}, 0, err
+		return nil, model.ScanActionCounts{}, model.ScanActionGroupedCounts{}, 0, err
 	}
 
-	counts, err := r.actionItemService.CountPendingByJob(search.JobID)
+	groupedCounts, err := r.actionItemService.CountGroupedByJob(search.JobID)
 	if err != nil {
-		return nil, model.ScanActionCounts{}, 0, err
+		return nil, model.ScanActionCounts{}, model.ScanActionGroupedCounts{}, 0, err
 	}
 
 	views := make([]model.ScanActionItemView, 0, len(list))
@@ -42,7 +45,7 @@ func (r *AppRuntime) ListActionItems(search model.ScanActionItemSearch) ([]model
 		views = append(views, buildActionItemView(item))
 	}
 
-	return views, counts, total, nil
+	return views, groupedCounts.Pending, groupedCounts, total, nil
 }
 
 func (r *AppRuntime) ResolveActionPreview(jobID uint, itemID uint, slot string) (string, error) {
@@ -82,12 +85,14 @@ func (r *AppRuntime) ResolveActionPreview(jobID uint, itemID uint, slot string) 
 
 func buildActionItemView(item model.ScanActionItemDB) model.ScanActionItemView {
 	metadata := parseActionItemMetadata(item)
+	sourcePath := strings.TrimSpace(item.SourcePath)
+	targetPath := strings.TrimSpace(item.TargetPath)
 	view := model.ScanActionItemView{
 		ID:             item.ID,
 		ActionType:     item.ActionType,
 		ObjectType:     item.ObjectType,
-		SourcePath:     item.SourcePath,
-		TargetPath:     item.TargetPath,
+		SourcePath:     sourcePath,
+		TargetPath:     targetPath,
 		ReasonCode:     item.ReasonCode,
 		ReasonText:     item.ReasonText,
 		Stage:          item.Stage,
@@ -107,8 +112,8 @@ func buildActionItemView(item model.ScanActionItemDB) model.ScanActionItemView {
 		}
 		view.Pair = &model.ScanActionPair{
 			PhotoA: model.ScanActionPreview{
-				FileName:    firstNonEmpty(metadata.FileName, filepath.Base(item.SourcePath)),
-				Path:        firstNonEmpty(metadata.CurrentPath, item.SourcePath),
+				FileName:    firstNonEmpty(metadata.FileName, filepath.Base(sourcePath)),
+				Path:        firstNonEmpty(metadata.CurrentPath, sourcePath),
 				PreviewSlot: "pair_a",
 			},
 			PhotoB: model.ScanActionPreview{
@@ -119,11 +124,12 @@ func buildActionItemView(item model.ScanActionItemDB) model.ScanActionItemView {
 		}
 	default:
 		view.Detail = &model.ScanActionDetail{
-			FileName:       firstNonEmpty(metadata.FileName, filepath.Base(item.SourcePath)),
-			CurrentPath:    firstNonEmpty(metadata.CurrentPath, item.SourcePath),
-			TargetPath:     firstNonEmpty(metadata.TargetPath, item.TargetPath),
-			TargetFileName: firstNonEmpty(metadata.TargetFileName, fileNameOrEmpty(metadata.TargetPath), fileNameOrEmpty(item.TargetPath)),
+			FileName:       firstNonEmpty(metadata.FileName, filepath.Base(sourcePath)),
+			CurrentPath:    firstNonEmpty(metadata.CurrentPath, sourcePath),
+			TargetPath:     firstNonEmpty(metadata.TargetPath, targetPath),
+			TargetFileName: firstNonEmpty(metadata.TargetFileName, fileNameOrEmpty(metadata.TargetPath), fileNameOrEmpty(targetPath)),
 			DirDate:        metadata.DirDate,
+			ModifyDate:     metadata.ModifyDate,
 			FileNameDate:   metadata.FileNameDate,
 			ShootDate:      metadata.ShootDate,
 			ShootDateRaw:   metadata.ShootDateRaw,
@@ -137,26 +143,31 @@ func buildActionItemView(item model.ScanActionItemDB) model.ScanActionItemView {
 
 func parseActionItemMetadata(item model.ScanActionItemDB) actionItemMetadata {
 	metadata := actionItemMetadata{}
+	sourcePath := strings.TrimSpace(item.SourcePath)
+	targetPath := strings.TrimSpace(item.TargetPath)
 	if item.MetadataJSON != "" {
 		_ = json.Unmarshal([]byte(item.MetadataJSON), &metadata)
 	}
 	if metadata.FileName == "" {
-		metadata.FileName = filepath.Base(item.SourcePath)
+		metadata.FileName = filepath.Base(sourcePath)
 	}
 	if metadata.CurrentPath == "" {
-		metadata.CurrentPath = item.SourcePath
+		metadata.CurrentPath = sourcePath
 	}
 	if metadata.TargetPath == "" {
-		metadata.TargetPath = item.TargetPath
+		metadata.TargetPath = targetPath
 	}
 	if metadata.TargetFileName == "" {
 		metadata.TargetFileName = fileNameOrEmpty(metadata.TargetPath)
 	}
 	if metadata.DirDate == "" {
-		metadata.DirDate = firstNonEmpty(metadata.DirDate, toolsDirDate(item.SourcePath))
+		metadata.DirDate = firstNonEmpty(metadata.DirDate, toolsDirDate(sourcePath))
 	}
 	if metadata.FileNameDate == "" {
-		metadata.FileNameDate = firstNonEmpty(metadata.FileNameDate, toolsFileDate(item.SourcePath))
+		metadata.FileNameDate = firstNonEmpty(metadata.FileNameDate, toolsFileDate(sourcePath))
+	}
+	if metadata.ModifyDate == "" {
+		metadata.ModifyDate = tools.GetModifyDate(sourcePath)
 	}
 	if metadata.KeepFileName == "" && metadata.KeepPath != "" {
 		metadata.KeepFileName = filepath.Base(metadata.KeepPath)

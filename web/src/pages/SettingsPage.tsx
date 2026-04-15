@@ -21,7 +21,7 @@ export function SettingsPage() {
           <Descriptions.Item label="备份统计">{server?.bakStatEnable ? '启用' : '停用'}</Descriptions.Item>
           <Descriptions.Item label="并发数">{server?.poolSize}</Descriptions.Item>
           <Descriptions.Item label="图片缓存">{server?.imgCache ? '启用' : '停用'}</Descriptions.Item>
-          <Descriptions.Item label="SQL Debug">{server?.sqlDebug ? '启用' : '停用'}</Descriptions.Item>
+          <Descriptions.Item label="SQL 调试">{server?.sqlDebug ? '启用' : '停用'}</Descriptions.Item>
         </Descriptions>
       </Card>
     </Space>

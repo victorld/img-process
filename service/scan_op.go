@@ -48,9 +48,10 @@ type photoStruct struct { //照片打印需要的结构体
 	minDate          string
 	isDeleteFile     bool
 	isMoveFile       bool
-	targetPhoto      string
+	moveTargetPath   string
 	isModifyDateFile bool
 	isRenameFile     bool
+	renameTargetPath string
 	deleteActionID   uint
 	moveActionID     uint
 	modifyActionID   uint
@@ -902,10 +903,10 @@ func (s *Scanner) processFileProcess() {
 			s.modifyDateProcess(ps, &printFileFlag, &printDateFlag)
 		}
 		if ps.isMoveFile {
-			s.moveFileProcess(ps, &printFileFlag, &printDateFlag)
+			ps = s.moveFileProcess(ps, &printFileFlag, &printDateFlag)
 		}
 		if ps.isRenameFile {
-			s.renameFileProcess(ps, &printFileFlag, &printDateFlag)
+			ps = s.renameFileProcess(ps, &printFileFlag, &printDateFlag)
 		}
 	}
 }
@@ -964,7 +965,7 @@ func (s *Scanner) modifyDateProcess(ps photoStruct, printFileFlag *bool, printDa
 }
 
 // 待移动文件处理逻辑
-func (s *Scanner) moveFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
+func (s *Scanner) moveFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) photoStruct {
 	if s.moveFileShow || s.moveFileAction {
 		if !*printFileFlag {
 			tools.Logger.Info()
@@ -975,46 +976,51 @@ func (s *Scanner) moveFileProcess(ps photoStruct, printFileFlag *bool, printDate
 			ps.psDatePrint()
 			*printDateFlag = true
 		}
-		tools.Logger.Info(tools.StrWithColor("should move file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
+		tools.Logger.Info(tools.StrWithColor("should move file ", "yellow"), ps.photo, " to ", ps.moveTargetPath)
 	}
 
 	if s.moveFileAction {
-		if err := tools.MoveFile(ps.photo, ps.targetPhoto); err != nil {
+		if err := tools.MoveFile(ps.photo, ps.moveTargetPath); err != nil {
 			s.recordActionError("move file", ps.photo, err)
-			tools.Logger.Error("move file failed: ", ps.photo, " to ", ps.targetPhoto, " err: ", err)
-			s.recorder.RecordActionResult(ps.moveActionID, false, err, ginH("path", ps.photo, "targetPath", ps.targetPhoto))
+			tools.Logger.Error("move file failed: ", ps.photo, " to ", ps.moveTargetPath, " err: ", err)
+			s.recorder.RecordActionResult(ps.moveActionID, false, err, ginH("path", ps.photo, "targetPath", ps.moveTargetPath))
 		} else {
-			tools.Logger.Info(tools.StrWithColor("move file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
-			s.recorder.RecordActionResult(ps.moveActionID, true, nil, ginH("path", ps.photo, "targetPath", ps.targetPhoto))
+			tools.Logger.Info(tools.StrWithColor("move file ", "yellow"), ps.photo, " to ", ps.moveTargetPath)
+			s.recorder.RecordActionResult(ps.moveActionID, true, nil, ginH("path", ps.photo, "targetPath", ps.moveTargetPath))
+			ps.photo = ps.moveTargetPath
 		}
 	}
+	return ps
 }
 
 // 重命名文件处理逻辑
-func (s *Scanner) renameFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) {
+func (s *Scanner) renameFileProcess(ps photoStruct, printFileFlag *bool, printDateFlag *bool) photoStruct {
+	sourcePath := ps.photo
 	if s.renameFileShow || s.renameFileAction {
 		if !*printFileFlag {
 			tools.Logger.Info()
-			tools.Logger.Info("file : ", tools.StrWithColor(ps.photo, "blue"))
+			tools.Logger.Info("file : ", tools.StrWithColor(sourcePath, "blue"))
 			*printFileFlag = true
 		}
 		if !*printDateFlag {
 			ps.psDatePrint()
 			*printDateFlag = true
 		}
-		tools.Logger.Info(tools.StrWithColor("should rename file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
+		tools.Logger.Info(tools.StrWithColor("should rename file ", "yellow"), sourcePath, " to ", ps.renameTargetPath)
 	}
 
 	if s.renameFileAction {
-		if err := tools.MoveFile(ps.photo, ps.targetPhoto); err != nil {
-			s.recordActionError("rename file", ps.photo, err)
-			tools.Logger.Error("rename file failed: ", ps.photo, " to ", ps.targetPhoto, " err: ", err)
-			s.recorder.RecordActionResult(ps.renameActionID, false, err, ginH("path", ps.photo, "targetPath", ps.targetPhoto))
+		if err := tools.MoveFile(sourcePath, ps.renameTargetPath); err != nil {
+			s.recordActionError("rename file", sourcePath, err)
+			tools.Logger.Error("rename file failed: ", sourcePath, " to ", ps.renameTargetPath, " err: ", err)
+			s.recorder.RecordActionResult(ps.renameActionID, false, err, ginH("path", sourcePath, "targetPath", ps.renameTargetPath))
 		} else {
-			tools.Logger.Info(tools.StrWithColor("rename file ", "yellow"), ps.photo, " to ", ps.targetPhoto)
-			s.recorder.RecordActionResult(ps.renameActionID, true, nil, ginH("path", ps.photo, "targetPath", ps.targetPhoto))
+			tools.Logger.Info(tools.StrWithColor("rename file ", "yellow"), sourcePath, " to ", ps.renameTargetPath)
+			s.recorder.RecordActionResult(ps.renameActionID, true, nil, ginH("path", sourcePath, "targetPath", ps.renameTargetPath))
+			ps.photo = ps.renameTargetPath
 		}
 	}
+	return ps
 }
 
 // 空目录处理

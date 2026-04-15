@@ -21,3 +21,7 @@ type UpsertScheduleReq struct {
 	ScheduleConfig string       `json:"scheduleConfig"`
 	ScanArgs       DoScanImgArg `json:"scanArgs"`
 }
+
+type ExecuteDuplicateDeleteReq struct {
+	Side string `json:"side" binding:"required"`
+}

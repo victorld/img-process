@@ -20,6 +20,15 @@ import (
 
 type WebAPI struct{}
 
+var listJobsFunc = service.Runtime.ListJobs
+var countGroupedActionItemsByJobsFunc = service.Runtime.CountActionItemsGroupedByJobs
+var listActionItemsFunc = func(search model.ScanActionItemSearch) ([]model.ScanActionItemView, model.ScanActionCounts, model.ScanActionGroupedCounts, int64, error) {
+	return service.Runtime.ListActionItems(search)
+}
+var executeModifyShootTimeActionItemFunc = service.Runtime.ExecuteModifyShootTimeActionItem
+var executeMoveActionItemFunc = service.Runtime.ExecuteMoveActionItem
+var executeRenameActionItemFunc = service.Runtime.ExecuteRenameActionItem
+
 func (api *WebAPI) Login(c *gin.Context) {
 	var req model.LoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -64,14 +73,23 @@ func (api *WebAPI) ListJobs(c *gin.Context) {
 		search.EndCreated = end
 	}
 
-	list, total, err := service.Runtime.ListJobs(search)
+	list, total, err := listJobsFunc(search)
 	if err != nil {
 		tools.Fail(c, "查询任务失败", gin.H{"error": err.Error()})
 		return
 	}
+	jobIDs := make([]uint, 0, len(list))
+	for _, item := range list {
+		jobIDs = append(jobIDs, item.ID)
+	}
+	groupedCountsByJob, err := countGroupedActionItemsByJobsFunc(jobIDs)
+	if err != nil {
+		tools.Fail(c, "查询任务动作统计失败", gin.H{"error": err.Error()})
+		return
+	}
 	ret := make([]gin.H, 0, len(list))
 	for _, item := range list {
-		ret = append(ret, serializeJob(item))
+		ret = append(ret, serializeJob(item, groupedCountsByJob[item.ID]))
 	}
 	tools.Success(c, gin.H{"list": ret, "total": total}, "ok")
 }
@@ -91,7 +109,7 @@ func (api *WebAPI) CreateJob(c *gin.Context) {
 		tools.Fail(c, "创建任务失败", gin.H{"error": err.Error()})
 		return
 	}
-	tools.SuccessWithStatus(c, http.StatusCreated, gin.H{"job": serializeJob(job)}, "任务已创建")
+	tools.SuccessWithStatus(c, http.StatusCreated, gin.H{"job": serializeJob(job, model.ScanActionGroupedCounts{})}, "任务已创建")
 }
 
 func (api *WebAPI) GetJob(c *gin.Context) {
@@ -105,7 +123,7 @@ func (api *WebAPI) GetJob(c *gin.Context) {
 		tools.FailWithStatus(c, http.StatusNotFound, "任务不存在", gin.H{"error": err.Error()})
 		return
 	}
-	tools.Success(c, gin.H{"job": serializeJob(job)}, "ok")
+	tools.Success(c, gin.H{"job": serializeJob(job, model.ScanActionGroupedCounts{})}, "ok")
 }
 
 func (api *WebAPI) ListJobEvents(c *gin.Context) {
@@ -158,12 +176,12 @@ func (api *WebAPI) ListJobActionItems(c *gin.Context) {
 	search.Status = c.Query("status")
 	search.Keyword = c.Query("keyword")
 	bindPageQuery(c, &search.PageInfo)
-	list, counts, total, err := service.Runtime.ListActionItems(search)
+	list, counts, groupedCounts, total, err := listActionItemsFunc(search)
 	if err != nil {
 		tools.Fail(c, "查询动作明细失败", gin.H{"error": err.Error()})
 		return
 	}
-	tools.Success(c, gin.H{"list": list, "total": total, "counts": counts}, "ok")
+	tools.Success(c, gin.H{"list": list, "total": total, "counts": counts, "groupedCounts": groupedCounts}, "ok")
 }
 
 func (api *WebAPI) PreviewJobAction(c *gin.Context) {
@@ -222,7 +240,7 @@ func (api *WebAPI) StreamJob(c *gin.Context) {
 			}
 			if job.Status != lastStatus {
 				lastStatus = job.Status
-				c.SSEvent("job", serializeJob(job))
+				c.SSEvent("job", serializeJob(job, model.ScanActionGroupedCounts{}))
 			}
 			events, err := service.Runtime.ListEventsAfter(jobID, lastEventID)
 			if err == nil {
@@ -250,6 +268,158 @@ func (api *WebAPI) DeleteJobDuplicates(c *gin.Context) {
 		return
 	}
 	tools.Success(c, gin.H{"jobId": jobID}, "重复文件删除已执行")
+}
+
+func (api *WebAPI) DeleteJobActionItem(c *gin.Context) {
+	jobID, err := parseUintParam(c, "id")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "任务ID错误", gin.H{"error": err.Error()})
+		return
+	}
+	itemID, err := parseUintParam(c, "itemId")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "动作ID错误", gin.H{"error": err.Error()})
+		return
+	}
+	if err := service.Runtime.ExecuteDeleteActionItem(jobID, itemID); err != nil {
+		if isBadRequestError(err) || strings.Contains(err.Error(), "does not belong") || strings.Contains(err.Error(), "not a pending delete action") {
+			tools.FailWithStatus(c, http.StatusBadRequest, "执行删除失败", gin.H{"error": err.Error()})
+			return
+		}
+		tools.Fail(c, "执行删除失败", gin.H{"error": err.Error()})
+		return
+	}
+	tools.Success(c, gin.H{"jobId": jobID, "itemId": itemID}, "删除动作已执行")
+}
+
+func (api *WebAPI) DeleteDuplicateActionItem(c *gin.Context) {
+	jobID, err := parseUintParam(c, "id")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "任务ID错误", gin.H{"error": err.Error()})
+		return
+	}
+	itemID, err := parseUintParam(c, "itemId")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "动作ID错误", gin.H{"error": err.Error()})
+		return
+	}
+
+	var req model.ExecuteDuplicateDeleteReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "参数错误", gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := service.Runtime.ExecuteDuplicateActionItem(jobID, itemID, req.Side); err != nil {
+		if isBadRequestError(err) ||
+			strings.Contains(err.Error(), "does not belong") ||
+			strings.Contains(err.Error(), "not a pending duplicate delete action") ||
+			strings.Contains(err.Error(), "invalid duplicate side") ||
+			strings.Contains(err.Error(), "duplicate delete path is empty") {
+			tools.FailWithStatus(c, http.StatusBadRequest, "执行重复项删除失败", gin.H{"error": err.Error()})
+			return
+		}
+		tools.Fail(c, "执行重复项删除失败", gin.H{"error": err.Error()})
+		return
+	}
+
+	tools.Success(c, gin.H{"jobId": jobID, "itemId": itemID, "side": strings.ToUpper(strings.TrimSpace(req.Side))}, "重复项删除已执行")
+}
+
+func (api *WebAPI) ModifyJobShootTimeActionItem(c *gin.Context) {
+	jobID, err := parseUintParam(c, "id")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "任务ID错误", gin.H{"error": err.Error()})
+		return
+	}
+	itemID, err := parseUintParam(c, "itemId")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "动作ID错误", gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := executeModifyShootTimeActionItemFunc(jobID, itemID); err != nil {
+		if isBadRequestError(err) ||
+			strings.Contains(err.Error(), "does not belong") ||
+			strings.Contains(err.Error(), "not a pending modify_time action") ||
+			strings.Contains(err.Error(), "target date is empty") ||
+			strings.Contains(err.Error(), "target date format is invalid") {
+			tools.FailWithStatus(c, http.StatusBadRequest, "执行拍摄时间变更失败", gin.H{"error": err.Error()})
+			return
+		}
+		tools.Fail(c, "执行拍摄时间变更失败", gin.H{"error": err.Error()})
+		return
+	}
+
+	tools.Success(c, gin.H{"jobId": jobID, "itemId": itemID}, "拍摄时间已变更")
+}
+
+func (api *WebAPI) MoveJobActionItem(c *gin.Context) {
+	jobID, err := parseUintParam(c, "id")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "任务ID错误", gin.H{"error": err.Error()})
+		return
+	}
+	itemID, err := parseUintParam(c, "itemId")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "动作ID错误", gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := executeMoveActionItemFunc(jobID, itemID); err != nil {
+		if isBadRequestError(err) ||
+			strings.Contains(err.Error(), "does not belong") ||
+			strings.Contains(err.Error(), "not a pending move action") ||
+			strings.Contains(err.Error(), "move target path is empty") {
+			tools.FailWithStatus(c, http.StatusBadRequest, "执行位置变更失败", gin.H{"error": err.Error()})
+			return
+		}
+		tools.Fail(c, "执行位置变更失败", gin.H{"error": err.Error()})
+		return
+	}
+
+	tools.Success(c, gin.H{"jobId": jobID, "itemId": itemID}, "位置已变更")
+}
+
+func (api *WebAPI) RenameJobActionItem(c *gin.Context) {
+	jobID, err := parseUintParam(c, "id")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "任务ID错误", gin.H{"error": err.Error()})
+		return
+	}
+	itemID, err := parseUintParam(c, "itemId")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "动作ID错误", gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := executeRenameActionItemFunc(jobID, itemID); err != nil {
+		if isBadRequestError(err) ||
+			strings.Contains(err.Error(), "does not belong") ||
+			strings.Contains(err.Error(), "not a pending rename action") ||
+			strings.Contains(err.Error(), "rename target path is empty") {
+			tools.FailWithStatus(c, http.StatusBadRequest, "执行重命名失败", gin.H{"error": err.Error()})
+			return
+		}
+		tools.Fail(c, "执行重命名失败", gin.H{"error": err.Error()})
+		return
+	}
+
+	tools.Success(c, gin.H{"jobId": jobID, "itemId": itemID}, "文件名已变更")
+}
+
+func (api *WebAPI) DeleteAllJobActionItems(c *gin.Context) {
+	jobID, err := parseUintParam(c, "id")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "任务ID错误", gin.H{"error": err.Error()})
+		return
+	}
+	count, err := service.Runtime.ExecuteAllDeleteActionItems(jobID)
+	if err != nil {
+		tools.Fail(c, "批量执行删除失败", gin.H{"error": err.Error()})
+		return
+	}
+	tools.Success(c, gin.H{"jobId": jobID, "count": count}, "删除类动作已全部执行")
 }
 
 func (api *WebAPI) ListSchedules(c *gin.Context) {
@@ -340,7 +510,7 @@ func (api *WebAPI) RunSchedule(c *gin.Context) {
 		tools.Fail(c, "计划执行失败", gin.H{"error": err.Error()})
 		return
 	}
-	tools.Success(c, gin.H{"job": serializeJob(job)}, "计划已触发")
+	tools.Success(c, gin.H{"job": serializeJob(job, model.ScanActionGroupedCounts{})}, "计划已触发")
 }
 
 func (api *WebAPI) GetSystemStatus(c *gin.Context) {
@@ -429,28 +599,32 @@ func parseTimeRange(startRaw string, endRaw string) (*time.Time, *time.Time) {
 	return &start, &end
 }
 
-func serializeJob(job model.ScanJobDB) gin.H {
+func serializeJob(job model.ScanJobDB, groupedCounts model.ScanActionGroupedCounts) gin.H {
+	summary := parseJSON(job.SummaryJSON)
 	return gin.H{
-		"id":              job.ID,
-		"jobUuid":         job.JobUUID,
-		"scanUuid":        job.ScanUUID,
-		"source":          job.Source,
-		"status":          job.Status,
-		"scheduleId":      job.ScheduleID,
-		"queueAt":         job.QueueAt,
-		"startAt":         job.StartAt,
-		"endAt":           job.EndAt,
-		"currentPhase":    job.CurrentPhase,
-		"lastHeartbeatAt": job.LastHeartbeatAt,
-		"processedCount":  job.ProcessedCount,
-		"totalCount":      job.TotalCount,
-		"hasAction":       job.HasAction,
-		"scanArgs":        parseJSON(job.ScanArgs),
-		"summary":         parseJSON(job.SummaryJSON),
-		"artifactPath":    job.ArtifactPath,
-		"errorMessage":    job.ErrorMessage,
-		"createdAt":       job.CreatedAt,
-		"updatedAt":       job.UpdatedAt,
+		"id":                  job.ID,
+		"jobUuid":             job.JobUUID,
+		"scanUuid":            job.ScanUUID,
+		"source":              job.Source,
+		"status":              job.Status,
+		"scheduleId":          job.ScheduleID,
+		"queueAt":             job.QueueAt,
+		"startAt":             job.StartAt,
+		"endAt":               job.EndAt,
+		"currentPhase":        job.CurrentPhase,
+		"lastHeartbeatAt":     job.LastHeartbeatAt,
+		"processedCount":      job.ProcessedCount,
+		"totalCount":          job.TotalCount,
+		"totalFolderCount":    summaryInt(summary, "dirTotal", "DirTotal"),
+		"hasAction":           job.HasAction,
+		"scanArgs":            parseJSON(job.ScanArgs),
+		"summary":             summary,
+		"pendingActionCount":  groupedCounts.Pending.Total,
+		"executedActionCount": groupedCounts.Executed.Total,
+		"artifactPath":        job.ArtifactPath,
+		"errorMessage":        job.ErrorMessage,
+		"createdAt":           job.CreatedAt,
+		"updatedAt":           job.UpdatedAt,
 	}
 }
 
@@ -465,6 +639,54 @@ func parseJSON(raw string) any {
 	return ret
 }
 
+func summaryInt(summary any, keys ...string) int64 {
+	obj, ok := summary.(map[string]any)
+	if !ok {
+		return 0
+	}
+	for _, key := range keys {
+		if value, exists := obj[key]; exists {
+			return numberFromAny(value)
+		}
+	}
+	return 0
+}
+
+func numberFromAny(value any) int64 {
+	switch current := value.(type) {
+	case int:
+		return int64(current)
+	case int8:
+		return int64(current)
+	case int16:
+		return int64(current)
+	case int32:
+		return int64(current)
+	case int64:
+		return current
+	case uint:
+		return int64(current)
+	case uint8:
+		return int64(current)
+	case uint16:
+		return int64(current)
+	case uint32:
+		return int64(current)
+	case uint64:
+		return int64(current)
+	case float32:
+		return int64(current)
+	case float64:
+		return int64(current)
+	case string:
+		parsed, err := strconv.ParseInt(current, 10, 64)
+		if err == nil {
+			return parsed
+		}
+	}
+	return 0
+}
+
 func isFinishedStatus(status string) bool {
 	return status == model.JobStatusSucceeded || status == model.JobStatusFailed || status == model.JobStatusInterrupted || status == model.JobStatusSkipped
 }
@@ -474,5 +696,6 @@ func isBadRequestError(err error) bool {
 		return false
 	}
 	msg := err.Error()
-	return strings.Contains(msg, "startPath") || strings.Contains(msg, "cron expression")
+	// Keep this check resilient to localized error messages.
+	return strings.Contains(msg, "startPath") || strings.Contains(strings.ToLower(msg), "cron") || strings.Contains(msg, "Cron")
 }

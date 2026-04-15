@@ -4,6 +4,9 @@ import type { ColumnsType } from 'antd/es/table'
 import { useState } from 'react'
 import { api } from '../api'
 import type { Schedule } from '../types'
+import { formatDateTime } from '../utils/dateTime'
+import { formatJobStatus, formatScheduleMode } from '../utils/displayText'
+import { NO_SCROLL_TABLE_CLASS, TABLE_ACTIONS_CLASS } from '../utils/table'
 
 type ScheduleFormValues = {
   name: string
@@ -69,18 +72,18 @@ export function SchedulesPage() {
   })
 
   const columns: ColumnsType<Schedule> = [
-    { title: '名称', dataIndex: 'name' },
-    { title: '模式', dataIndex: 'mode', width: 120 },
-    { title: 'Cron', dataIndex: 'cronExpr' },
-    { title: '时区', dataIndex: 'timezone', width: 140 },
-    { title: '启用', dataIndex: 'enabled', width: 90, render: (value) => (value ? '是' : '否') },
-    { title: '下次执行', dataIndex: 'nextRunAt', width: 180 },
-    { title: '最近状态', dataIndex: 'lastJobStatus', width: 120 },
+    { title: '名称', dataIndex: 'name', width: 120 },
+    { title: '模式', dataIndex: 'mode', width: 96, render: (value) => formatScheduleMode(String(value ?? '')) },
+    { title: 'Cron', dataIndex: 'cronExpr', width: 160 },
+    { title: '时区', dataIndex: 'timezone', width: 104 },
+    { title: '启用', dataIndex: 'enabled', width: 64, render: (value) => (value ? '是' : '否') },
+    { title: '下次执行', dataIndex: 'nextRunAt', width: 132, render: (value) => formatDateTime(value) },
+    { title: '最近状态', dataIndex: 'lastJobStatus', width: 84, render: (value) => formatJobStatus(String(value ?? '')) },
     {
       title: '操作',
-      width: 280,
+      width: 144,
       render: (_, record) => (
-        <Space>
+        <div className={TABLE_ACTIONS_CLASS}>
           <Button size="small" onClick={() => openEdit(record)}>编辑</Button>
           <Button size="small" onClick={() => api.runSchedule(record.id).then(() => queryClient.invalidateQueries({ queryKey: ['schedules'] }))}>立即执行</Button>
           <Button
@@ -94,7 +97,7 @@ export function SchedulesPage() {
             {record.enabled ? '停用' : '启用'}
           </Button>
           <Button danger size="small" onClick={() => api.deleteSchedule(record.id).then(() => queryClient.invalidateQueries({ queryKey: ['schedules'] }))}>删除</Button>
-        </Space>
+        </div>
       ),
     },
   ]
@@ -125,7 +128,9 @@ export function SchedulesPage() {
           新建计划
         </Button>
       </Row>
-      <Table rowKey="id" columns={columns} dataSource={schedulesQuery.data?.list ?? []} />
+      <div className={NO_SCROLL_TABLE_CLASS}>
+        <Table rowKey="id" tableLayout="fixed" columns={columns} dataSource={schedulesQuery.data?.list ?? []} />
+      </div>
       <Drawer
         title={editing ? '编辑计划' : '新建计划'}
         width={520}
@@ -157,7 +162,7 @@ export function SchedulesPage() {
             { label: '周五', value: 5 },
             { label: '周六', value: 6 },
           ]} /></Form.Item>
-          <Form.Item name="cronExpr" label="高级 Cron"><Input placeholder="custom 模式时生效" /></Form.Item>
+          <Form.Item name="cronExpr" label="高级 Cron"><Input placeholder="仅自定义 Cron 模式生效" /></Form.Item>
           <Form.Item name="startPath" label="扫描目录"><Input /></Form.Item>
           <Form.Item name="startPathBak" label="备份目录"><Input /></Form.Item>
           <Form.Item name="md5Show" label="计算重复文件" valuePropName="checked"><Switch /></Form.Item>

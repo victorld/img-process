@@ -18,6 +18,9 @@ export type Job = {
   lastHeartbeatAt?: string
   processedCount: number
   totalCount: number
+  totalFolderCount?: number
+  pendingActionCount?: number
+  executedActionCount?: number
   hasAction: boolean
   scanArgs?: Record<string, unknown>
   summary?: Record<string, unknown>
@@ -55,12 +58,19 @@ export type ScanActionCounts = {
   total: number
 }
 
+export type ScanActionGroupedCounts = {
+  pending: ScanActionCounts
+  executed: ScanActionCounts
+  error: ScanActionCounts
+}
+
 export type ScanActionDetail = {
   fileName?: string
   currentPath?: string
   targetPath?: string
   targetFileName?: string
   dirDate?: string
+  modifyDate?: string
   fileNameDate?: string
   shootDate?: string
   shootDateRaw?: string

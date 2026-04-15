@@ -43,6 +43,7 @@ body {
 
 .app-content {
   padding: 24px;
+  min-width: 0;
 }
 
 .login-shell {
@@ -90,4 +91,97 @@ body {
 
 .action-preview .ant-image-img {
   object-fit: cover;
+}
+
+.duplicate-pair-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.duplicate-pair-item {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f7faf8;
+}
+
+.duplicate-pair-item-photo {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.duplicate-pair-grid-photo .action-preview {
+  display: block;
+}
+
+.duplicate-pair-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5f6f67;
+  letter-spacing: 0.08em;
+}
+
+.duplicate-side-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef5f1;
+  font-weight: 700;
+  color: #466456;
+}
+
+.duplicate-line-row-a td {
+  border-bottom: 0 !important;
+}
+
+.duplicate-line-row-b td {
+  border-top: 0 !important;
+}
+
+.app-table {
+  width: 100%;
+}
+
+.app-table .ant-table-wrapper,
+.app-table .ant-spin-nested-loading,
+.app-table .ant-spin-container,
+.app-table .ant-table,
+.app-table .ant-table-container {
+  width: 100%;
+  min-width: 0;
+}
+
+.app-table .ant-table-content {
+  overflow: visible !important;
+}
+
+.app-table .ant-table-cell {
+  vertical-align: top;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.app-table .ant-table-cell::before {
+  display: none !important;
+}
+
+.app-table .ant-table-pagination {
+  row-gap: 8px;
+}
+
+.app-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.app-table-actions .ant-btn,
+.app-table-actions .ant-btn-link {
+  margin-inline-start: 0 !important;
 }

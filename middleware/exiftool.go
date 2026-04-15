@@ -103,6 +103,11 @@ func parseExiftoolOutput(output string) (string, string, []string) {
 func ModifyShootDate(path string, shootDate string) error {
 	output, err := runExiftoolFunc("-DateTimeOriginal="+shootDate, path)
 	if err != nil {
+		if !IsExiftoolAvailable() {
+			output, err = runExiftoolWriteViaPerl(shootDate, path)
+		}
+	}
+	if err != nil {
 		tools.FancyHandleError(err)
 		return err
 	}
@@ -120,6 +125,22 @@ func buildExiftoolCommand(args ...string) *exec.Cmd {
 
 func runExiftool(args ...string) (string, error) {
 	cmd := buildExiftoolCommand(args...)
+	bytes, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(bytes)))
+	}
+	return string(bytes), nil
+}
+
+func runExiftoolWriteViaPerl(shootDate string, path string) (string, error) {
+	cmd := exec.Command(
+		"perl",
+		"-MImage::ExifTool",
+		"-e",
+		`my $et = Image::ExifTool->new; $et->SetNewValue("DateTimeOriginal" => $ARGV[0]); my $ok = $et->WriteInfo($ARGV[1]); if ($ok) { print "1 image files updated\n"; exit 0; } print "failed to update DateTimeOriginal\n"; exit 1;`,
+		shootDate,
+		path,
+	)
 	bytes, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(string(bytes)))

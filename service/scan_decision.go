@@ -105,16 +105,20 @@ func evaluateFileDecision(meta fileMetadata, basePath string) fileDecision {
 				targetPath = realPath
 			}
 			ret.photo.isMoveFile = true
-			ret.photo.targetPhoto = filepath.Join(targetPath, filepath.Base(meta.photo))
+			ret.photo.moveTargetPath = filepath.Join(targetPath, filepath.Base(meta.photo))
 			ret.shouldMove = true
 			ret.hasChanges = true
 		}
 	}
 
-	targetPhoto := getRenameNewPhoto(meta.photo, meta.shootDateOrigin, meta.locStreet)
-	if meta.photo != targetPhoto {
+	renameSourcePath := meta.photo
+	if ret.photo.moveTargetPath != "" {
+		renameSourcePath = ret.photo.moveTargetPath
+	}
+	renameTargetPath := getRenameNewPhoto(renameSourcePath, meta.shootDateOrigin, meta.locStreet)
+	if renameSourcePath != renameTargetPath {
 		ret.photo.isRenameFile = true
-		ret.photo.targetPhoto = targetPhoto
+		ret.photo.renameTargetPath = renameTargetPath
 		ret.shouldRename = true
 		ret.hasChanges = true
 	}
@@ -208,13 +212,13 @@ func (s *Scanner) applyFileDecision(decision fileDecision) {
 				ActionType: model.ActionTypeMove,
 				ObjectType: model.ActionObjectFile,
 				SourcePath: decision.photo.photo,
-				TargetPath: decision.photo.targetPhoto,
+				TargetPath: decision.photo.moveTargetPath,
 				ReasonCode: "dir_date_mismatch",
 				ReasonText: "目录日期与最小日期不一致，需要移动",
 				MetadataJSON: tools.MarshalJsonToString(ginH(
 					"fileName", filepath.Base(decision.photo.photo),
 					"currentPath", decision.photo.photo,
-					"targetPath", decision.photo.targetPhoto,
+					"targetPath", decision.photo.moveTargetPath,
 					"dirDate", decision.photo.dirDate,
 					"fileNameDate", decision.photo.fileDate,
 					"shootDate", decision.photo.shootDate,
@@ -228,14 +232,14 @@ func (s *Scanner) applyFileDecision(decision fileDecision) {
 				ActionType: model.ActionTypeRename,
 				ObjectType: model.ActionObjectFile,
 				SourcePath: decision.photo.photo,
-				TargetPath: decision.photo.targetPhoto,
+				TargetPath: decision.photo.renameTargetPath,
 				ReasonCode: "name_metadata_mismatch",
 				ReasonText: "文件名中的时间地点信息与识别结果不一致，需要重命名",
 				MetadataJSON: tools.MarshalJsonToString(ginH(
 					"fileName", filepath.Base(decision.photo.photo),
-					"targetFileName", filepath.Base(decision.photo.targetPhoto),
+					"targetFileName", filepath.Base(decision.photo.renameTargetPath),
 					"currentPath", decision.photo.photo,
-					"targetPath", decision.photo.targetPhoto,
+					"targetPath", decision.photo.renameTargetPath,
 					"shootDate", decision.photo.shootDate,
 					"shootDateRaw", decision.photo.shootDateRaw,
 				)),
@@ -252,6 +256,7 @@ func (s *Scanner) applyFileDecision(decision fileDecision) {
 					"fileName", filepath.Base(decision.photo.photo),
 					"currentPath", decision.photo.photo,
 					"dirDate", decision.photo.dirDate,
+					"modifyDate", decision.photo.modifyDate,
 					"fileNameDate", decision.photo.fileDate,
 					"shootDate", decision.photo.shootDate,
 					"shootDateRaw", decision.photo.shootDateRaw,
