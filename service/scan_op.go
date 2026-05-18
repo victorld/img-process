@@ -61,9 +61,9 @@ type photoStruct struct { //照片打印需要的结构体
 type ImgRecord struct {
 	ScanArgs                 string         //扫描参数
 	FileTotal                int            //文件总数
-	FileTotalBak             int            //文件总数
+	FileTotalBak             *int           //文件总数
 	DirTotal                 int            //目录总数
-	DirTotalBak              int            //目录总数
+	DirTotalBak              *int           //目录总数
 	StartDate                time.Time      //记录时间
 	UseTime                  int            //用时
 	BakNewFileCnt            int            //用时
@@ -260,9 +260,9 @@ func ScanAndSaveWithRecorder(scanArgs model.DoScanImgArg, recorder ScanRecorder)
 	imgRecordDB := model.ImgRecordDB{
 		ScanArgs:                 imgRecord.ScanArgs,
 		FileTotal:                intPtr(imgRecord.FileTotal),
-		FileTotalBak:             intPtr(imgRecord.FileTotalBak),
+		FileTotalBak:             imgRecord.FileTotalBak,
 		DirTotal:                 intPtr(imgRecord.DirTotal),
-		DirTotalBak:              intPtr(imgRecord.DirTotalBak),
+		DirTotalBak:              imgRecord.DirTotalBak,
 		StartDate:                timePtr(imgRecord.StartDate),
 		UseTime:                  intPtr(imgRecord.UseTime),
 		BasePath:                 imgRecord.BasePath,
@@ -302,6 +302,10 @@ func ScanAndSaveWithRecorder(scanArgs model.DoScanImgArg, recorder ScanRecorder)
 
 func intPtr(v int) *int {
 	return &v
+}
+
+func backupStatEnabled(startPathBak string) bool {
+	return strings.TrimSpace(startPathBak) != ""
 }
 
 func timePtr(v time.Time) *time.Time {
@@ -463,7 +467,7 @@ func (s *Scanner) Run() (string, error) {
 	start4 := time.Now()
 	basePathBak := ""
 
-	if cons.BakStatEnable {
+	if backupStatEnabled(s.startPathBak) {
 		s.setPhase("scan_backup", ginH("startPathBak", s.startPathBak))
 		basePathBak, err = resolveBasePath(s.startPathBak)
 		if err != nil {
@@ -632,7 +636,7 @@ func (s *Scanner) walkBackupPath(p *ants.Pool) error {
 func (s *Scanner) buildResult(start1 time.Time, basePathBak string, dumpMap map[string][]string, elapsed2, elapsed3, elapsed4 time.Duration, start5 time.Time) (string, error) {
 	var bakNewFile []string
 	var bakDeleteFile []string
-	if cons.BakStatEnable {
+	if backupStatEnabled(s.startPathBak) {
 		for imgKey, flag := range s.diffMap {
 			if flag == 0 {
 				bakNewFile = append(bakNewFile, imgKey)
@@ -743,9 +747,7 @@ func (s *Scanner) buildResult(start1 time.Time, basePathBak string, dumpMap map[
 
 	imgRecord := ImgRecord{
 		FileTotal:                int(s.fileTotalCnt.Load()),
-		FileTotalBak:             int(s.fileTotalCntBak.Load()),
 		DirTotal:                 s.dirTotalCnt,
-		DirTotalBak:              s.dirTotalCntBak,
 		StartDate:                start1,
 		UseTime:                  int(math.Ceil(elapsed2.Seconds() + elapsed3.Seconds() + elapsed4.Seconds() + elapsed5.Seconds())),
 		BasePath:                 s.basePath,
@@ -772,6 +774,10 @@ func (s *Scanner) buildResult(start1 time.Time, basePathBak string, dumpMap map[
 		ExifErrCnt:               s.getExifInfoErrorSet.Cardinality(),
 		ScanArgs:                 tools.MarshalJsonToString(s.scanArgs),
 		IsComplete:               s.isComplete,
+	}
+	if backupStatEnabled(s.startPathBak) {
+		imgRecord.FileTotalBak = intPtr(int(s.fileTotalCntBak.Load()))
+		imgRecord.DirTotalBak = intPtr(s.dirTotalCntBak)
 	}
 
 	if s.firstErr != nil {

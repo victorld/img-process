@@ -6,6 +6,7 @@ services:
     restart: unless-stopped
     environment:
       IMG_PROCESS_CONFIG: /app/docker-config.yaml
+      IMG_PROCESS_GIS_KEY: ${IMG_PROCESS_GIS_KEY:-}
       TZ: Asia/Shanghai
     ports:
       - "8081:8081"

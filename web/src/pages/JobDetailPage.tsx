@@ -42,6 +42,7 @@ import { formatParentDirectory } from "../utils/path";
 import { NO_SCROLL_TABLE_CLASS } from "../utils/table";
 
 type ActionTabKey = "pending" | "executed" | "error";
+type SummaryRecord = Record<string, unknown>;
 
 type DuplicatePairLine = {
   key: string;
@@ -55,6 +56,30 @@ type DuplicatePairLine = {
   status: string;
   executedAt?: string;
   errorMessage?: string;
+};
+
+type StatsField = {
+  key: string;
+  label: string;
+  aliases: string[];
+};
+
+type StatsTableRow = {
+  key: string;
+  label: string;
+  value: unknown;
+};
+
+type RawArgField = {
+  key: string;
+  description: string;
+};
+
+type RawArgTableRow = {
+  key: string;
+  name: string;
+  value: unknown;
+  description: string;
 };
 
 const actionTypeOptions = [
@@ -75,6 +100,149 @@ const EMPTY_COUNTS: ScanActionCounts = {
 };
 
 const actionTabs: ActionTabKey[] = ["pending", "executed", "error"];
+
+const statsFields: StatsField[] = [
+  { key: "FileTotal", label: "文件总数", aliases: ["fileTotal"] },
+  {
+    key: "FileTotalBak",
+    label: "备份目录文件总数",
+    aliases: ["fileTotalBak"],
+  },
+  { key: "DirTotal", label: "目录总数", aliases: ["dirTotal"] },
+  {
+    key: "DirTotalBak",
+    label: "备份目录总数",
+    aliases: ["dirTotalBak"],
+  },
+  { key: "StartDate", label: "开始时间", aliases: ["startDate"] },
+  { key: "UseTime", label: "扫描用时（秒）", aliases: ["useTime"] },
+  { key: "BasePath", label: "主目录", aliases: ["basePath"] },
+  { key: "BasePathBak", label: "备份目录", aliases: ["basePathBak"] },
+  { key: "SuffixMap", label: "文件后缀统计", aliases: ["suffixMap"] },
+  {
+    key: "SuffixMapBak",
+    label: "备份目录文件后缀统计",
+    aliases: ["suffixMapBak"],
+  },
+  { key: "YearMap", label: "年份统计", aliases: ["yearMap"] },
+  {
+    key: "YearMapBak",
+    label: "备份目录年份统计",
+    aliases: ["yearMapBak"],
+  },
+  {
+    key: "BakNewFileCnt",
+    label: "备份新增文件数",
+    aliases: ["bakNewFileCnt"],
+  },
+  {
+    key: "BakDeleteFileCnt",
+    label: "备份删除文件数",
+    aliases: ["bakDeleteFileCnt"],
+  },
+  { key: "BakNewFile", label: "备份新增文件明细", aliases: ["bakNewFile"] },
+  {
+    key: "BakDeleteFile",
+    label: "备份删除文件明细",
+    aliases: ["bakDeleteFile"],
+  },
+  { key: "FileDateCnt", label: "有时间信息文件数", aliases: ["fileDateCnt"] },
+  {
+    key: "DeleteFileCnt",
+    label: "待删除文件数",
+    aliases: ["deleteFileCnt"],
+  },
+  {
+    key: "ModifyDateFileCnt",
+    label: "待修改文件时间数",
+    aliases: ["modifyDateFileCnt"],
+  },
+  { key: "MoveFileCnt", label: "待移动文件数", aliases: ["moveFileCnt"] },
+  {
+    key: "RenameFileCnt",
+    label: "待重命名文件数",
+    aliases: ["renameFileCnt"],
+  },
+  {
+    key: "ShootDateMismatchFileCnt",
+    label: "拍摄日期不一致文件数",
+    aliases: ["shootDateMismatchFileCnt"],
+  },
+  {
+    key: "ShootDateNullFileCnt",
+    label: "拍摄日期为空文件数",
+    aliases: ["shootDateNullFileCnt"],
+  },
+  {
+    key: "ShootDateEarlierFileCnt",
+    label: "拍摄日期更早文件数",
+    aliases: ["shootDateEarlierFileCnt"],
+  },
+  { key: "EmptyDirCnt", label: "空目录数", aliases: ["emptyDirCnt"] },
+  { key: "DumpFileCnt", label: "重复文件数", aliases: ["dumpFileCnt"] },
+  { key: "ExifErrCnt", label: "EXIF 解析错误数", aliases: ["exifErrCnt"] },
+  {
+    key: "ExifDateNameSet",
+    label: "EXIF 相关异常统计",
+    aliases: ["exifDateNameSet"],
+  },
+  { key: "IsComplete", label: "是否完整", aliases: ["isComplete"] },
+  { key: "Remark", label: "备注", aliases: ["remark"] },
+];
+
+const statsColumns: ColumnsType<StatsTableRow> = [
+  {
+    title: "英文 key",
+    dataIndex: "key",
+    width: 220,
+  },
+  {
+    title: "中文含义",
+    dataIndex: "label",
+    width: 220,
+  },
+  {
+    title: "值",
+    dataIndex: "value",
+    render: (value) => renderStatsValue(value),
+  },
+];
+
+const rawArgFields: RawArgField[] = [
+  { key: "deleteShow", description: "是否展示删除候选" },
+  { key: "moveFileShow", description: "是否展示移动候选" },
+  { key: "modifyDateShow", description: "是否展示修改拍摄时间候选" },
+  { key: "renameFileShow", description: "是否展示重命名候选" },
+  { key: "md5Show", description: "是否展示重复文件候选" },
+  { key: "deleteAction", description: "是否直接执行删除动作" },
+  { key: "moveFileAction", description: "是否直接执行移动动作" },
+  { key: "modifyDateAction", description: "是否直接执行修改拍摄时间动作" },
+  { key: "renameFileAction", description: "是否直接执行重命名动作" },
+  { key: "startPath", description: "扫描根目录" },
+  { key: "startPathBak", description: "备份目录" },
+];
+
+const rawArgDescriptions = new Map(
+  rawArgFields.map((field) => [field.key, field.description]),
+);
+
+const rawArgColumns: ColumnsType<RawArgTableRow> = [
+  {
+    title: "参数名",
+    dataIndex: "name",
+    width: 220,
+  },
+  {
+    title: "参数值",
+    dataIndex: "value",
+    width: 260,
+    render: (value) => renderRawArgValue(value),
+  },
+  {
+    title: "中文描述",
+    dataIndex: "description",
+  },
+];
 
 export function JobDetailPage() {
   const { id = "" } = useParams();
@@ -245,12 +413,22 @@ export function JobDetailPage() {
   });
 
   const job = jobQuery.data?.job;
-  const summary = job?.summary as Record<string, number | string> | undefined;
+  const summary = job?.summary as SummaryRecord | undefined;
   const totalDirectoryCount = numberFromSummaryKey(
     summary,
-    "dirTotal",
     "DirTotal",
-  );
+    "dirTotal",
+  ) ?? 0;
+  const totalBackupDirectoryCount = numberFromSummaryKey(
+    summary,
+    "DirTotalBak",
+    "dirTotalBak",
+  ) ?? "-";
+  const totalBackupFileCount = numberFromSummaryKey(
+    summary,
+    "FileTotalBak",
+    "fileTotalBak",
+  ) ?? "-";
   const events = eventQuery.data?.list ?? [];
   const logs = logQuery.data?.list ?? [];
   const groupedCounts =
@@ -313,15 +491,28 @@ export function JobDetailPage() {
         </Descriptions>
       </Card>
 
-      <Row gutter={16}>
-        <Col span={12}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} xl={6}>
           <Card>
             <Statistic title="总文件夹数" value={totalDirectoryCount} />
           </Card>
         </Col>
-        <Col span={12}>
+        <Col xs={24} sm={12} xl={6}>
+          <Card>
+            <Statistic
+              title="备份总文件夹数"
+              value={totalBackupDirectoryCount}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} xl={6}>
           <Card>
             <Statistic title="总文件数" value={job?.totalCount ?? 0} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} xl={6}>
+          <Card>
+            <Statistic title="备份总文件数" value={totalBackupFileCount} />
           </Card>
         </Col>
       </Row>
@@ -386,7 +577,7 @@ function renderTab(
   context: {
     id: string;
     job?: Job;
-    summary?: Record<string, number | string>;
+    summary?: SummaryRecord;
     events: ScanEvent[];
     logs: ScanJobLog[];
     actions: ScanActionItem[];
@@ -425,11 +616,7 @@ function renderTab(
   }
 
   if (key === "stats") {
-    return (
-      <pre className="json-block">
-        {JSON.stringify(context.summary ?? {}, null, 2)}
-      </pre>
-    );
+    return renderStatsTab(context.summary);
   }
 
   if (key === "logs") {
@@ -448,11 +635,7 @@ function renderTab(
   }
 
   if (key === "raw") {
-    return (
-      <pre className="json-block">
-        {JSON.stringify(context.job?.scanArgs ?? {}, null, 2)}
-      </pre>
-    );
+    return renderRawArgsTab(context.job?.scanArgs);
   }
 
   if (isActionTab(key)) {
@@ -1136,30 +1319,165 @@ function getActionEmptyState(
   );
 }
 
+function renderStatsTab(summary?: SummaryRecord) {
+  return (
+    <div className={NO_SCROLL_TABLE_CLASS}>
+      <Table
+        rowKey="key"
+        tableLayout="fixed"
+        columns={statsColumns}
+        dataSource={buildStatsRows(summary)}
+        pagination={false}
+      />
+    </div>
+  );
+}
+
+function renderRawArgsTab(scanArgs?: Record<string, unknown>) {
+  return (
+    <div className={NO_SCROLL_TABLE_CLASS}>
+      <Table
+        rowKey="key"
+        tableLayout="fixed"
+        columns={rawArgColumns}
+        dataSource={buildRawArgRows(scanArgs)}
+        pagination={false}
+      />
+    </div>
+  );
+}
+
+function buildRawArgRows(scanArgs?: Record<string, unknown>): RawArgTableRow[] {
+  const args = scanArgs ?? {};
+  const rows = rawArgFields.map((field) => ({
+    key: field.key,
+    name: field.key,
+    value: args[field.key],
+    description: field.description,
+  }));
+  const knownKeys = new Set(rawArgFields.map((field) => field.key));
+  Object.entries(args).forEach(([key, value]) => {
+    if (knownKeys.has(key)) {
+      return;
+    }
+    rows.push({
+      key,
+      name: key,
+      value,
+      description: rawArgDescriptions.get(key) ?? "未登记参数",
+    });
+  });
+  return rows;
+}
+
+function renderRawArgValue(value: unknown) {
+  const text = formatRawArgValue(value);
+  if (text === "-") {
+    return <Typography.Text type="secondary">-</Typography.Text>;
+  }
+  return <Typography.Text style={{ whiteSpace: "pre-wrap" }}>{text}</Typography.Text>;
+}
+
+function formatRawArgValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return String(value);
+  }
+  return formatJsonValue(value);
+}
+
+function buildStatsRows(summary?: SummaryRecord): StatsTableRow[] {
+  return statsFields.map((field) => ({
+    key: field.key,
+    label: field.label,
+    value: valueFromSummaryKey(summary, field.key, ...field.aliases),
+  }));
+}
+
+function valueFromSummaryKey(summary: SummaryRecord | undefined, ...keys: string[]) {
+  for (const key of keys) {
+    if (summary && Object.prototype.hasOwnProperty.call(summary, key)) {
+      return summary[key];
+    }
+  }
+  return undefined;
+}
+
+function renderStatsValue(value: unknown) {
+  const text = formatStatsValue(value);
+  if (text === "-") {
+    return <Typography.Text type="secondary">-</Typography.Text>;
+  }
+  return <Typography.Text style={{ whiteSpace: "pre-wrap" }}>{text}</Typography.Text>;
+}
+
+function formatStatsValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === "null") {
+      return "-";
+    }
+    const parsed = parseJsonString(trimmed);
+    if (parsed !== undefined) {
+      return formatJsonValue(parsed);
+    }
+    return value;
+  }
+  return formatJsonValue(value);
+}
+
+function parseJsonString(value: string) {
+  if (!value.startsWith("{") && !value.startsWith("[")) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function formatJsonValue(value: unknown) {
+  return JSON.stringify(value, null, 2) ?? "-";
+}
+
 function summaryToCounts(
-  summary?: Record<string, number | string>,
+  summary?: SummaryRecord,
 ): ScanActionCounts {
   const deleteCount = numberFromSummaryKey(
     summary,
-    "deleteFileCnt",
     "DeleteFileCnt",
-  );
-  const moveCount = numberFromSummaryKey(summary, "moveFileCnt", "MoveFileCnt");
+    "deleteFileCnt",
+  ) ?? 0;
+  const moveCount =
+    numberFromSummaryKey(summary, "MoveFileCnt", "moveFileCnt") ?? 0;
   const modifyCount = numberFromSummaryKey(
     summary,
-    "modifyDateFileCnt",
     "ModifyDateFileCnt",
-  );
+    "modifyDateFileCnt",
+  ) ?? 0;
   const duplicateCount = numberFromSummaryKey(
     summary,
-    "dumpFileCnt",
     "DumpFileCnt",
-  );
+    "dumpFileCnt",
+  ) ?? 0;
   const renameCount = numberFromSummaryKey(
     summary,
-    "renameFileCnt",
     "RenameFileCnt",
-  );
+    "renameFileCnt",
+  ) ?? 0;
   return {
     delete: deleteCount,
     move: moveCount,
@@ -1171,7 +1489,7 @@ function summaryToCounts(
 }
 
 function summaryToGroupedCounts(
-  summary?: Record<string, number | string>,
+  summary?: SummaryRecord,
 ): ScanActionGroupedCounts {
   return {
     pending: summaryToCounts(summary),
@@ -1181,20 +1499,20 @@ function summaryToGroupedCounts(
 }
 
 function numberFromSummaryKey(
-  summary: Record<string, number | string> | undefined,
+  summary: SummaryRecord | undefined,
   ...keys: string[]
 ) {
   for (const key of keys) {
-    const value = summary?.[key];
+    const value = valueFromSummaryKey(summary, key);
     const count = numberFromSummary(value);
     if (count > 0 || value === 0 || value === "0") {
       return count;
     }
   }
-  return 0;
+  return undefined;
 }
 
-function numberFromSummary(value: number | string | undefined) {
+function numberFromSummary(value: unknown) {
   if (typeof value === "number") return value;
   if (typeof value === "string") {
     const parsed = Number(value);

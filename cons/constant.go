@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"img_process/tools"
 	"os"
+	"strings"
 )
 
 type Config struct {
@@ -38,8 +39,7 @@ type Config struct {
 		TruncateTable bool
 	}
 	Bak struct {
-		StartPathBak  string
-		BakStatEnable bool
+		StartPathBak string
 	}
 	Gis struct {
 		Key string
@@ -85,7 +85,6 @@ var (
 	ImgCache          bool
 	SyncTable         bool
 	TruncateTable     bool
-	BakStatEnable     bool
 	SqlDebug          bool
 	WorkDir           string
 	PoolSize          int
@@ -134,9 +133,11 @@ func InitConst() {
 	Md5CountLength = AppConfig.Dump.Md5CountLength
 
 	StartPathBak = AppConfig.Bak.StartPathBak
-	BakStatEnable = AppConfig.Bak.BakStatEnable
 
-	GisKey = AppConfig.Gis.Key
+	GisKey = strings.TrimSpace(os.Getenv("IMG_PROCESS_GIS_KEY"))
+	if GisKey == "" {
+		GisKey = AppConfig.Gis.Key
+	}
 	SqlDebug = AppConfig.Basic.SqlDebug
 
 	IDInsertBatchSize = AppConfig.Batch.IDInsertBatchSize
@@ -171,7 +172,6 @@ func InitConst() {
 	logConfig("SqlDebug", SqlDebug)
 
 	logConfig("StartPathBak", StartPathBak)
-	logConfig("BakStatEnable", BakStatEnable)
 
 	logConfig("PoolSize", PoolSize)
 	logConfig("Md5Retry", Md5Retry)

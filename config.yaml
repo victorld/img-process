@@ -32,7 +32,6 @@ dump:
   Md5Retry: 3   #获取哈希值的重试次数
   Md5CountLength: 65536    # 1024 * 64
 bak:
-  BakStatEnable: false   #是否启用备份目录的统计
   StartPathBak: /Users/ld/Downloads/save/pic-lib-bak/pic-new
 gis:
   key : abc   #amap的key
@@ -40,6 +39,5 @@ batch:
   IDInsertBatchSize: 1000   #img_database的查询批次
   IDDeleteBatchSize: 300    #img_database的删除批次
   GDUpdateBatchSize: 1000   #更新gis_database的批次
-
 
 

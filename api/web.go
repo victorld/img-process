@@ -516,13 +516,12 @@ func (api *WebAPI) RunSchedule(c *gin.Context) {
 func (api *WebAPI) GetSystemStatus(c *gin.Context) {
 	tools.Success(c, gin.H{
 		"server": gin.H{
-			"httpPort":      cons.HttpPort,
-			"startPath":     cons.StartPath,
-			"startPathBak":  cons.StartPathBak,
-			"bakStatEnable": cons.BakStatEnable,
-			"poolSize":      cons.PoolSize,
-			"imgCache":      cons.ImgCache,
-			"sqlDebug":      cons.SqlDebug,
+			"httpPort":     cons.HttpPort,
+			"startPath":    cons.StartPath,
+			"startPathBak": cons.StartPathBak,
+			"poolSize":     cons.PoolSize,
+			"imgCache":     cons.ImgCache,
+			"sqlDebug":     cons.SqlDebug,
 			"scanDefaults": gin.H{
 				"startPath":        cons.StartPath,
 				"startPathBak":     cons.StartPathBak,

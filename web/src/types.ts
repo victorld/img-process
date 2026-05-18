@@ -131,7 +131,6 @@ export type SystemStatus = {
     httpPort: string
     startPath: string
     startPathBak: string
-    bakStatEnable: boolean
     poolSize: number
     imgCache: boolean
     sqlDebug: boolean

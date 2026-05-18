@@ -33,7 +33,6 @@ dump:
   Md5Retry: 3
   Md5CountLength: 65536
 bak:
-  BakStatEnable: false
   StartPathBak: ""
 gis:
   key: abc

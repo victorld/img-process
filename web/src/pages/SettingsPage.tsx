@@ -18,7 +18,6 @@ export function SettingsPage() {
           <Descriptions.Item label="HTTP 端口">{server?.httpPort}</Descriptions.Item>
           <Descriptions.Item label="扫描目录">{server?.startPath}</Descriptions.Item>
           <Descriptions.Item label="备份目录">{server?.startPathBak}</Descriptions.Item>
-          <Descriptions.Item label="备份统计">{server?.bakStatEnable ? '启用' : '停用'}</Descriptions.Item>
           <Descriptions.Item label="并发数">{server?.poolSize}</Descriptions.Item>
           <Descriptions.Item label="图片缓存">{server?.imgCache ? '启用' : '停用'}</Descriptions.Item>
           <Descriptions.Item label="SQL 调试">{server?.sqlDebug ? '启用' : '停用'}</Descriptions.Item>
