@@ -193,7 +193,7 @@
 
 ### 5. `scan_schedule`
 
-用途：定时计划表，用于“每天/每周/每月/自定义 Cron”自动发起扫描任务。
+用途：定时计划表，用于“每小时/每天/每周/每月/高级 Cron”自动发起扫描任务。
 
 索引：
 
@@ -209,8 +209,8 @@
 | `updated_at` | `datetime` | 是 |  | 更新时间 |
 | `name` | `varchar(128)` | 是 |  | 计划名称 |
 | `enabled` | `tinyint(1)` | 是 | 普通 | 是否启用，0/1 |
-| `timezone` | `varchar(64)` | 是 |  | 时区，默认 `Asia/Shanghai` |
-| `mode` | `varchar(32)` | 是 |  | 计划模式：`daily`、`weekly`、`monthly`、`custom` |
+| `timezone` | `varchar(64)` | 是 |  | 时区，默认从服务运行环境读取；为空时使用本地时间 |
+| `mode` | `varchar(32)` | 是 |  | 计划模式：`hourly`、`daily`、`weekly`、`monthly`、`custom` |
 | `cron_expr` | `varchar(128)` | 是 |  | Cron 表达式 |
 | `schedule_config` | `longtext` | 是 |  | 计划配置 JSON，非自定义模式用它生成 Cron |
 | `scan_args` | `longtext` | 是 |  | 扫描参数 JSON |
@@ -233,16 +233,18 @@
 字段含义：
 
 - `hour`：小时
-- `minute`：分钟
-- `weekdays`：每周模式使用，1-7 语义由前端约定
+- `minute`：分钟，每小时模式使用它表示每小时第几分钟执行
+- `weekdays`：每周模式使用，0-6 表示周日到周六
 - `dayOfMonth`：每月模式使用，默认最小按 1 处理
 
 代码中的 Cron 生成规则：
 
+- `hourly` -> `minute * * * *`
 - `daily` -> `minute hour * * *`
 - `weekly` -> `minute hour * * weekday_csv`
 - `monthly` -> `minute hour dayOfMonth * *`
 - `custom` -> 直接使用 `cron_expr`
+- 前端会按当前表单值实时展示对应的 5 段 Cron 预览
 
 ### 6. `img_record`
 
@@ -398,6 +400,7 @@
 
 ### 计划模式 `scan_schedule.mode`
 
+- `hourly`
 - `daily`
 - `weekly`
 - `monthly`

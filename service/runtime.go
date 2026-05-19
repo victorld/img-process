@@ -441,7 +441,7 @@ func (r *AppRuntime) syncSchedules(now time.Time) error {
 func buildScheduleModel(req model.UpsertScheduleReq) (model.ScanScheduleDB, error) {
 	timezone := req.Timezone
 	if timezone == "" {
-		timezone = "Asia/Shanghai"
+		timezone = defaultScheduleTimezone()
 	}
 	scanArgs := NormalizeScanArgs(req.ScanArgs)
 	cronExpr := req.CronExpr
@@ -472,6 +472,21 @@ func buildScheduleModel(req model.UpsertScheduleReq) (model.ScanScheduleDB, erro
 	}, nil
 }
 
+func defaultScheduleTimezone() string {
+	locationName := time.Local.String()
+	if locationName != "" && locationName != "Local" {
+		if _, err := time.LoadLocation(locationName); err == nil {
+			return locationName
+		}
+	}
+	if timezone := os.Getenv("TZ"); timezone != "" {
+		if _, err := time.LoadLocation(timezone); err == nil {
+			return timezone
+		}
+	}
+	return ""
+}
+
 func parseScheduleConfig(raw string) (scheduleConfig, error) {
 	if raw == "" {
 		return scheduleConfig{}, nil
@@ -483,6 +498,8 @@ func parseScheduleConfig(raw string) (scheduleConfig, error) {
 
 func buildCronExpr(mode string, cfg scheduleConfig) (string, error) {
 	switch mode {
+	case model.ScheduleModeHourly:
+		return fmt.Sprintf("%d * * * *", cfg.Minute), nil
 	case model.ScheduleModeDaily:
 		return fmt.Sprintf("%d %d * * *", cfg.Minute, cfg.Hour), nil
 	case model.ScheduleModeWeekly:

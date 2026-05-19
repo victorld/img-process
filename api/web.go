@@ -515,6 +515,59 @@ func (api *WebAPI) RunSchedule(c *gin.Context) {
 
 func (api *WebAPI) GetSystemStatus(c *gin.Context) {
 	tools.Success(c, gin.H{
+		"configFile": tools.ConfigFileUsed(),
+		"config": gin.H{
+			"database": gin.H{
+				"DbUsername": cons.DbUsername,
+				"DbPassword": maskConfigSecret(cons.DbPassword),
+				"DbHost":     cons.DbHost,
+				"DbPort":     cons.DbPort,
+				"DbName":     cons.DbName,
+				"DbConfig":   cons.DbConfig,
+			},
+			"server": gin.H{
+				"HttpPort":     cons.HttpPort,
+				"HttpUsername": cons.HttpUsername,
+				"HttpPassword": maskConfigSecret(cons.HttpPassword),
+			},
+			"scanArgs": gin.H{
+				"StartPath":        cons.StartPath,
+				"DeleteShow":       cons.DeleteShow,
+				"MoveFileShow":     cons.MoveFileShow,
+				"ModifyDateShow":   cons.ModifyDateShow,
+				"RenameFileShow":   cons.RenameFileShow,
+				"Md5Show":          cons.Md5Show,
+				"DeleteAction":     cons.DeleteAction,
+				"MoveFileAction":   cons.MoveFileAction,
+				"ModifyDateAction": cons.ModifyDateAction,
+				"RenameFileAction": cons.RenameFileAction,
+			},
+			"basic": gin.H{
+				"ColorOutput": cons.AppConfig.Basic.ColorOutput,
+				"SqlDebug":    cons.SqlDebug,
+			},
+			"cache": gin.H{
+				"ImgCache":      cons.ImgCache,
+				"SyncTable":     cons.SyncTable,
+				"TruncateTable": cons.TruncateTable,
+			},
+			"dump": gin.H{
+				"PoolSize":       cons.PoolSize,
+				"Md5Retry":       cons.Md5Retry,
+				"Md5CountLength": cons.Md5CountLength,
+			},
+			"bak": gin.H{
+				"StartPathBak": cons.StartPathBak,
+			},
+			"gis": gin.H{
+				"key": maskConfigSecret(cons.GisKey),
+			},
+			"batch": gin.H{
+				"IDInsertBatchSize": cons.IDInsertBatchSize,
+				"IDDeleteBatchSize": cons.IDDeleteBatchSize,
+				"GDUpdateBatchSize": cons.GDUpdateBatchSize,
+			},
+		},
 		"server": gin.H{
 			"httpPort":     cons.HttpPort,
 			"startPath":    cons.StartPath,
@@ -537,6 +590,17 @@ func (api *WebAPI) GetSystemStatus(c *gin.Context) {
 			},
 		},
 	}, "ok")
+}
+
+func maskConfigSecret(value string) string {
+	if value == "" {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) == 1 {
+		return string(runes[0])
+	}
+	return string(runes[0]) + strings.Repeat("*", len(runes)-1)
 }
 
 func (api *WebAPI) toggleSchedule(c *gin.Context, enabled bool) {

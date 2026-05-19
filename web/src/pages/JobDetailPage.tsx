@@ -499,15 +499,15 @@ export function JobDetailPage() {
         </Col>
         <Col xs={24} sm={12} xl={6}>
           <Card>
-            <Statistic
-              title="备份总文件夹数"
-              value={totalBackupDirectoryCount}
-            />
+            <Statistic title="总文件数" value={job?.totalCount ?? 0} />
           </Card>
         </Col>
         <Col xs={24} sm={12} xl={6}>
           <Card>
-            <Statistic title="总文件数" value={job?.totalCount ?? 0} />
+            <Statistic
+              title="备份总文件夹数"
+              value={totalBackupDirectoryCount}
+            />
           </Card>
         </Col>
         <Col xs={24} sm={12} xl={6}>

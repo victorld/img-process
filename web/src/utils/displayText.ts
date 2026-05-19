@@ -133,6 +133,8 @@ export function formatActionType(value?: string): string {
 
 export function formatScheduleMode(value?: string): string {
   switch (value) {
+    case 'hourly':
+      return '每小时'
     case 'daily':
       return '每天'
     case 'weekly':
@@ -140,7 +142,7 @@ export function formatScheduleMode(value?: string): string {
     case 'monthly':
       return '每月'
     case 'custom':
-      return '自定义 Cron'
+      return '高级 Cron'
     case '':
     case undefined:
     case null:

@@ -35,7 +35,15 @@ func TestNormalizeScanArgsUsesConfigDefaults(t *testing.T) {
 }
 
 func TestBuildCronExpr(t *testing.T) {
-	expr, err := buildCronExpr(model.ScheduleModeDaily, scheduleConfig{Hour: 2, Minute: 30})
+	expr, err := buildCronExpr(model.ScheduleModeHourly, scheduleConfig{Minute: 10})
+	if err != nil {
+		t.Fatalf("buildCronExpr hourly error: %v", err)
+	}
+	if expr != "10 * * * *" {
+		t.Fatalf("hourly expr = %s", expr)
+	}
+
+	expr, err = buildCronExpr(model.ScheduleModeDaily, scheduleConfig{Hour: 2, Minute: 30})
 	if err != nil {
 		t.Fatalf("buildCronExpr daily error: %v", err)
 	}
@@ -49,6 +57,30 @@ func TestBuildCronExpr(t *testing.T) {
 	}
 	if expr != "15 3 * * 1,5" {
 		t.Fatalf("weekly expr = %s", expr)
+	}
+}
+
+func TestBuildScheduleModelUsesEnvironmentTimezone(t *testing.T) {
+	t.Setenv("TZ", "Asia/Shanghai")
+	root := t.TempDir()
+	cons.StartPath = root
+	cons.StartPathBak = ""
+	req := model.UpsertScheduleReq{
+		Name:           "env timezone",
+		Enabled:        true,
+		Mode:           model.ScheduleModeHourly,
+		ScheduleConfig: `{"minute":5}`,
+		ScanArgs: model.DoScanImgArg{
+			StartPath: &root,
+		},
+	}
+
+	schedule, err := buildScheduleModel(req)
+	if err != nil {
+		t.Fatalf("buildScheduleModel error: %v", err)
+	}
+	if schedule.Timezone != "Asia/Shanghai" {
+		t.Fatalf("Timezone = %s, want Asia/Shanghai", schedule.Timezone)
 	}
 }
 

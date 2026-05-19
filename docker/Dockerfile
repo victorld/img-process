@@ -29,7 +29,7 @@ RUN CGO_ENABLED=0 go build -mod=vendor -o /bin/img-process ./main/webserver/webs
 FROM alpine:3.20
 
 WORKDIR /app
-RUN apk add --no-cache ca-certificates tzdata perl-image-exiftool
+RUN apk add --no-cache ca-certificates tzdata exiftool
 
 COPY --from=go-builder /bin/img-process /app/img-process
 COPY --from=web-builder /app/web/dist /app/web/dist

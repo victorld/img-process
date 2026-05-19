@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"img_process/cons"
 	"img_process/model"
 
 	"github.com/gin-gonic/gin"
@@ -311,6 +312,180 @@ func TestRenameJobActionItemBadRequest(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestGetSystemStatusReturnsGroupedMaskedConfig(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	oldDbUsername := cons.DbUsername
+	oldDbPassword := cons.DbPassword
+	oldDbHost := cons.DbHost
+	oldDbPort := cons.DbPort
+	oldDbName := cons.DbName
+	oldDbConfig := cons.DbConfig
+	oldHttpPort := cons.HttpPort
+	oldHttpUsername := cons.HttpUsername
+	oldHttpPassword := cons.HttpPassword
+	oldStartPath := cons.StartPath
+	oldStartPathBak := cons.StartPathBak
+	oldDeleteShow := cons.DeleteShow
+	oldMoveFileShow := cons.MoveFileShow
+	oldModifyDateShow := cons.ModifyDateShow
+	oldRenameFileShow := cons.RenameFileShow
+	oldMd5Show := cons.Md5Show
+	oldDeleteAction := cons.DeleteAction
+	oldMoveFileAction := cons.MoveFileAction
+	oldModifyDateAction := cons.ModifyDateAction
+	oldRenameFileAction := cons.RenameFileAction
+	oldImgCache := cons.ImgCache
+	oldSyncTable := cons.SyncTable
+	oldTruncateTable := cons.TruncateTable
+	oldSqlDebug := cons.SqlDebug
+	oldPoolSize := cons.PoolSize
+	oldMd5Retry := cons.Md5Retry
+	oldMd5CountLength := cons.Md5CountLength
+	oldGisKey := cons.GisKey
+	oldIDInsertBatchSize := cons.IDInsertBatchSize
+	oldIDDeleteBatchSize := cons.IDDeleteBatchSize
+	oldGDUpdateBatchSize := cons.GDUpdateBatchSize
+	oldAppConfig := cons.AppConfig
+	t.Cleanup(func() {
+		cons.DbUsername = oldDbUsername
+		cons.DbPassword = oldDbPassword
+		cons.DbHost = oldDbHost
+		cons.DbPort = oldDbPort
+		cons.DbName = oldDbName
+		cons.DbConfig = oldDbConfig
+		cons.HttpPort = oldHttpPort
+		cons.HttpUsername = oldHttpUsername
+		cons.HttpPassword = oldHttpPassword
+		cons.StartPath = oldStartPath
+		cons.StartPathBak = oldStartPathBak
+		cons.DeleteShow = oldDeleteShow
+		cons.MoveFileShow = oldMoveFileShow
+		cons.ModifyDateShow = oldModifyDateShow
+		cons.RenameFileShow = oldRenameFileShow
+		cons.Md5Show = oldMd5Show
+		cons.DeleteAction = oldDeleteAction
+		cons.MoveFileAction = oldMoveFileAction
+		cons.ModifyDateAction = oldModifyDateAction
+		cons.RenameFileAction = oldRenameFileAction
+		cons.ImgCache = oldImgCache
+		cons.SyncTable = oldSyncTable
+		cons.TruncateTable = oldTruncateTable
+		cons.SqlDebug = oldSqlDebug
+		cons.PoolSize = oldPoolSize
+		cons.Md5Retry = oldMd5Retry
+		cons.Md5CountLength = oldMd5CountLength
+		cons.GisKey = oldGisKey
+		cons.IDInsertBatchSize = oldIDInsertBatchSize
+		cons.IDDeleteBatchSize = oldIDDeleteBatchSize
+		cons.GDUpdateBatchSize = oldGDUpdateBatchSize
+		cons.AppConfig = oldAppConfig
+	})
+
+	cons.DbUsername = "root"
+	cons.DbPassword = "secret"
+	cons.DbHost = "db-host"
+	cons.DbPort = "3306"
+	cons.DbName = "img"
+	cons.DbConfig = "charset=utf8"
+	cons.HttpPort = "8081"
+	cons.HttpUsername = "admin"
+	cons.HttpPassword = "admin"
+	cons.StartPath = "/data/pic-lab"
+	cons.StartPathBak = "/data/bak"
+	cons.DeleteShow = true
+	cons.MoveFileShow = true
+	cons.ModifyDateShow = false
+	cons.RenameFileShow = true
+	cons.Md5Show = true
+	cons.DeleteAction = false
+	cons.MoveFileAction = true
+	cons.ModifyDateAction = false
+	cons.RenameFileAction = true
+	cons.ImgCache = false
+	cons.SyncTable = true
+	cons.TruncateTable = false
+	cons.SqlDebug = true
+	cons.PoolSize = 8
+	cons.Md5Retry = 3
+	cons.Md5CountLength = 65536
+	cons.GisKey = "abc"
+	cons.IDInsertBatchSize = 1000
+	cons.IDDeleteBatchSize = 300
+	cons.GDUpdateBatchSize = 2000
+	cons.AppConfig.Basic.ColorOutput = true
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/system/status", nil)
+
+	new(WebAPI).GetSystemStatus(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp struct {
+		Data struct {
+			ConfigFile string `json:"configFile"`
+			Config     struct {
+				Database map[string]any `json:"database"`
+				Server   map[string]any `json:"server"`
+				ScanArgs map[string]any `json:"scanArgs"`
+				Basic    map[string]any `json:"basic"`
+				Cache    map[string]any `json:"cache"`
+				Dump     map[string]any `json:"dump"`
+				Bak      map[string]any `json:"bak"`
+				Gis      map[string]any `json:"gis"`
+				Batch    map[string]any `json:"batch"`
+			} `json:"config"`
+			Server struct {
+				HttpPort  string `json:"httpPort"`
+				StartPath string `json:"startPath"`
+				PoolSize  int    `json:"poolSize"`
+				SqlDebug  bool   `json:"sqlDebug"`
+			} `json:"server"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if resp.Data.Config.Database["DbPassword"] != "s*****" {
+		t.Fatalf("DbPassword = %v, want s*****", resp.Data.Config.Database["DbPassword"])
+	}
+	if resp.Data.Config.Server["HttpPassword"] != "a****" {
+		t.Fatalf("HttpPassword = %v, want a****", resp.Data.Config.Server["HttpPassword"])
+	}
+	if resp.Data.Config.Gis["key"] != "a**" {
+		t.Fatalf("gis.key = %v, want a**", resp.Data.Config.Gis["key"])
+	}
+	if resp.Data.Config.Database["DbHost"] != "db-host" {
+		t.Fatalf("DbHost = %v, want db-host", resp.Data.Config.Database["DbHost"])
+	}
+	if resp.Data.Config.ScanArgs["StartPath"] != "/data/pic-lab" {
+		t.Fatalf("StartPath = %v, want /data/pic-lab", resp.Data.Config.ScanArgs["StartPath"])
+	}
+	if resp.Data.Config.Basic["ColorOutput"] != true {
+		t.Fatalf("ColorOutput = %v, want true", resp.Data.Config.Basic["ColorOutput"])
+	}
+	if resp.Data.Config.Cache["SyncTable"] != true {
+		t.Fatalf("SyncTable = %v, want true", resp.Data.Config.Cache["SyncTable"])
+	}
+	if resp.Data.Config.Dump["PoolSize"] != float64(8) {
+		t.Fatalf("PoolSize = %v, want 8", resp.Data.Config.Dump["PoolSize"])
+	}
+	if resp.Data.Config.Bak["StartPathBak"] != "/data/bak" {
+		t.Fatalf("StartPathBak = %v, want /data/bak", resp.Data.Config.Bak["StartPathBak"])
+	}
+	if resp.Data.Config.Batch["GDUpdateBatchSize"] != float64(2000) {
+		t.Fatalf("GDUpdateBatchSize = %v, want 2000", resp.Data.Config.Batch["GDUpdateBatchSize"])
+	}
+	if resp.Data.Server.HttpPort != "8081" || resp.Data.Server.StartPath != "/data/pic-lab" || resp.Data.Server.PoolSize != 8 || !resp.Data.Server.SqlDebug {
+		t.Fatalf("legacy server fields mismatch: %+v", resp.Data.Server)
 	}
 }
 

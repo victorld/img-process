@@ -51,10 +51,10 @@
 
 使用 HTTP Basic Auth。
 
-默认配置来自 `docker/config.docker.yaml`：
+默认配置来自根目录 `config.yaml`：
 
 - 用户名：`admin`
-- 密码：`admin`
+- 密码：`admin@123`
 
 ### 2. Web 管理台接口 `/api/*`
 
@@ -741,7 +741,6 @@
 {
   "name": "每日扫描",
   "enabled": true,
-  "timezone": "Asia/Shanghai",
   "mode": "daily",
   "cronExpr": "",
   "scheduleConfig": "{\"hour\":2,\"minute\":30}",
@@ -757,18 +756,20 @@
 | --- | --- | --- |
 | `name` | 是 | 计划名称 |
 | `enabled` | 否 | 是否启用 |
-| `timezone` | 否 | 时区，默认 `Asia/Shanghai` |
-| `mode` | 否 | `daily`、`weekly`、`monthly`、`custom` |
-| `cronExpr` | 否 | 自定义模式下直接使用 |
-| `scheduleConfig` | 否 | 非自定义模式用来生成 Cron 的 JSON 字符串 |
+| `timezone` | 否 | 兼容字段；为空时服务端从运行环境读取时区，前端默认不再传入 |
+| `mode` | 否 | `hourly`、`daily`、`weekly`、`monthly`、`custom` |
+| `cronExpr` | 否 | 高级 Cron 模式下直接使用 |
+| `scheduleConfig` | 否 | 非高级 Cron 模式用来生成 Cron 的 JSON 字符串 |
 | `scanArgs` | 是 | 扫描参数 |
 
 校验规则：
 
 - 非 `custom` 模式时，`cronExpr` 可为空，服务端会根据 `scheduleConfig` 生成
+- `hourly` 模式使用 `scheduleConfig.minute` 生成 `minute * * * *`
 - `weekly` 模式必须在 `scheduleConfig` 中提供 `weekdays`
 - `custom` 模式下最终 `cronExpr` 不能为空
 - `scanArgs.startPath` 必须有效
+- 管理台会按当前表单值实时展示对应的 5 段 Cron 预览，不额外包含 `CRON_TZ=`
 
 成功响应：
 

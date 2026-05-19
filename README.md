@@ -56,8 +56,8 @@
 
 配置说明：
 
-1. `config.yaml` 仅建议本地开发使用，数据库密码、HTTP 口令、GIS key 等敏感信息不要提交到共享环境配置中
-2. 生产或共享环境建议通过 `IMG_PROCESS_CONFIG` 或 `IMG_PROCESS_CONFIG_DIR` 指定外部配置文件
+1. Docker 默认直接挂载并读取根目录 `config.yaml`，该文件使用容器内可访问的路径和地址。
+2. 生产或共享环境如需独立配置，建议通过 `IMG_PROCESS_CONFIG` 或 `IMG_PROCESS_CONFIG_DIR` 指定外部配置文件。
 3. `basic.SqlDebug` 默认关闭，只有排查数据库问题时再临时开启
 
 ## Web 管理台
@@ -149,7 +149,7 @@ docker compose up -d --build app
 
 默认会复用 `cestc/public` 提供的公共 MySQL（`127.0.0.1:33060` / `root:root`），当前仓库只启动 `img-process` Web 服务。
 
-建议通过挂载外部配置文件和照片目录运行，尤其是生产环境不要直接使用仓库里的默认 `config.yaml`。
+默认 `config.yaml` 面向 Docker 运行；如果需要本机直接运行，可以通过 `IMG_PROCESS_CONFIG` 指向单独的本机配置文件。
 
 如果已经有 `img-process-app-1` 在运行，修改代码后不要只执行本地 `go test` 或前端 `npm run build` 就结束，必须至少再执行一次下面命令，让容器里的实际服务更新：
 

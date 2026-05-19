@@ -43,6 +43,13 @@ func GetConfigString(key string) string {
 	return ret
 }
 
+func ConfigFileUsed() string {
+	if VP == nil {
+		return ""
+	}
+	return VP.ConfigFileUsed()
+}
+
 func UnmarshalConfig(rawVal any) error {
 	if VP == nil {
 		return fmt.Errorf("viper is not initialized")

@@ -127,6 +127,18 @@ export type Schedule = {
 }
 
 export type SystemStatus = {
+  configFile?: string
+  config?: {
+    database: Record<string, unknown>
+    server: Record<string, unknown>
+    scanArgs: Record<string, unknown>
+    basic: Record<string, unknown>
+    cache: Record<string, unknown>
+    dump: Record<string, unknown>
+    bak: Record<string, unknown>
+    gis: Record<string, unknown>
+    batch: Record<string, unknown>
+  }
   server: {
     httpPort: string
     startPath: string

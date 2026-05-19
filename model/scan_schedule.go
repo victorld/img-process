@@ -3,6 +3,7 @@ package model
 import "time"
 
 const (
+	ScheduleModeHourly  = "hourly"
 	ScheduleModeDaily   = "daily"
 	ScheduleModeWeekly  = "weekly"
 	ScheduleModeMonthly = "monthly"
