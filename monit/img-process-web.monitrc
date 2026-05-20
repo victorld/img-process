@@ -1,0 +1,16 @@
+set daemon 30
+set logfile /Users/ld/my-file/workspace/personal/img-process/log/monit.log
+set pidfile /Users/ld/my-file/workspace/personal/img-process/log/monit.pid
+set idfile /Users/ld/my-file/workspace/personal/img-process/log/monit.id
+set statefile /Users/ld/my-file/workspace/personal/img-process/log/monit.state
+
+set httpd port 28181 and
+  use address 127.0.0.1
+  allow 127.0.0.1
+
+check process img-process-web with pidfile /Users/ld/my-file/workspace/personal/img-process/log/local-web.pid
+  start program = "/Users/ld/my-file/workspace/personal/img-process/scripts/start-local-web.sh daemon" with timeout 180 seconds
+  stop program = "/Users/ld/my-file/workspace/personal/img-process/scripts/stop-local-web.sh" with timeout 30 seconds
+  if does not exist then restart
+  if failed host 127.0.0.1 port 8081 protocol http request "/" for 6 cycles then restart
+  if 5 restarts within 10 cycles then timeout

@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +28,7 @@ import (
 
 const monthFilter = "xx" //月份过滤参数，打印使用
 const dayFilter = "xx"   //日期过滤参数，打印使用
+const backupDiffSummarySampleLimit = 20
 
 var imgDatabaseService = dao.ImgDatabaseService{}
 var imgRecordService = dao.ImgRecordService{}
@@ -90,6 +92,14 @@ type ImgRecord struct {
 	ExifErrCnt               int            //exif错误数
 	IsComplete               int            //是否完整
 	Remark                   string         //备注
+}
+
+type backupDiffSummary struct {
+	Count        int      `json:"count"`
+	Sample       []string `json:"sample"`
+	SampleLimit  int      `json:"sampleLimit"`
+	Truncated    bool     `json:"truncated"`
+	ArtifactPath string   `json:"artifactPath"`
 }
 
 type Scanner struct {
@@ -306,6 +316,29 @@ func intPtr(v int) *int {
 
 func backupStatEnabled(startPathBak string) bool {
 	return strings.TrimSpace(startPathBak) != ""
+}
+
+func buildBackupDiffSummary(items []string, artifactPath string) backupDiffSummary {
+	summary := backupDiffSummary{
+		Count:       len(items),
+		SampleLimit: backupDiffSummarySampleLimit,
+		Truncated:   len(items) > backupDiffSummarySampleLimit,
+	}
+	if len(items) > 0 {
+		limit := backupDiffSummarySampleLimit
+		if len(items) < limit {
+			limit = len(items)
+		}
+		summary.Sample = append([]string(nil), items[:limit]...)
+		summary.ArtifactPath = artifactPath
+	} else {
+		summary.Sample = []string{}
+	}
+	return summary
+}
+
+func backupDiffArtifactPath(scanUUID string, fileName string) string {
+	return filepath.Join(cons.WorkDir, "log", "dump_delete_file", scanUUID, fileName)
 }
 
 func timePtr(v time.Time) *time.Time {
@@ -645,8 +678,10 @@ func (s *Scanner) buildResult(start1 time.Time, basePathBak string, dumpMap map[
 				bakDeleteFile = append(bakDeleteFile, imgKey)
 			}
 		}
-		tools.Logger.Info("bakNewFile(新增文件待备份) : ", tools.MarshalJsonToString(bakNewFile))
-		tools.Logger.Info("bakDeleteFile(备份里删除文件) : ", tools.MarshalJsonToString(bakDeleteFile))
+		sort.Strings(bakNewFile)
+		sort.Strings(bakDeleteFile)
+		tools.Logger.Info("bakNewFile(新增文件待备份) count : ", len(bakNewFile))
+		tools.Logger.Info("bakDeleteFile(备份里删除文件) count : ", len(bakDeleteFile))
 	}
 
 	tools.Logger.Info(tools.StrWithColor("PRINT STAT TYPE0(comman info): ", "red"))
@@ -703,6 +738,7 @@ func (s *Scanner) buildResult(start1 time.Time, basePathBak string, dumpMap map[
 	if err := s.writeDumpArtifacts(dumpMap); err != nil {
 		tools.Logger.Error("write dump artifacts error : ", err)
 	}
+	bakNewFileSummary, bakDeleteFileSummary := s.writeBackupDiffArtifacts(bakNewFile, bakDeleteFile)
 
 	tools.Logger.Info("imageNumMap length（照片名数字顺序统计-照片key） : ", tools.StrWithColor(strconv.Itoa(len(s.imageNumMap)), "red"))
 	if len(s.imageNumMap) != 0 {
@@ -754,8 +790,8 @@ func (s *Scanner) buildResult(start1 time.Time, basePathBak string, dumpMap map[
 		BasePathBak:              basePathBak,
 		BakNewFileCnt:            len(bakNewFile),
 		BakDeleteFileCnt:         len(bakDeleteFile),
-		BakNewFile:               tools.MarshalJsonToString(bakNewFile),
-		BakDeleteFile:            tools.MarshalJsonToString(bakDeleteFile),
+		BakNewFile:               tools.MarshalJsonToString(bakNewFileSummary),
+		BakDeleteFile:            tools.MarshalJsonToString(bakDeleteFileSummary),
 		SuffixMap:                s.suffixMap,
 		SuffixMapBak:             s.suffixMapBak,
 		YearMap:                  s.yearMap,
@@ -1167,6 +1203,38 @@ func (s *Scanner) writeDumpArtifacts(dumpMap map[string][]string) error {
 	}
 
 	return nil
+}
+
+func (s *Scanner) writeBackupDiffArtifacts(bakNewFile []string, bakDeleteFile []string) (backupDiffSummary, backupDiffSummary) {
+	newPath := s.writeBackupDiffArtifact("backup new file list generated", "bak_new_file_list", bakNewFile)
+	deletePath := s.writeBackupDiffArtifact("backup delete file list generated", "bak_delete_file_list", bakDeleteFile)
+	return buildBackupDiffSummary(bakNewFile, newPath), buildBackupDiffSummary(bakDeleteFile, deletePath)
+}
+
+func (s *Scanner) writeBackupDiffArtifact(title string, fileName string, items []string) string {
+	if len(items) == 0 {
+		return ""
+	}
+
+	filePath := backupDiffArtifactPath(s.scanUUID, fileName)
+	if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
+		tools.Logger.Error("write backup diff artifact mkdir error : ", err)
+		s.recorder.RecordError("artifact", filePath, err, ginH("count", len(items)))
+		return ""
+	}
+	if err := tools.WriteStringToFile(strings.Join(items, "\n"), filePath); err != nil {
+		tools.Logger.Error("write backup diff artifact error : ", err)
+		s.recorder.RecordError("artifact", filePath, err, ginH("count", len(items)))
+		return ""
+	}
+
+	payload := ginH(
+		"count", len(items),
+		"sampleLimit", backupDiffSummarySampleLimit,
+		"truncated", len(items) > backupDiffSummarySampleLimit,
+	)
+	s.recorder.RecordArtifact(title, filePath, payload)
+	return filePath
 }
 
 // 遍历逻辑单文件处理

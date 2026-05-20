@@ -7,6 +7,7 @@ import {
   Drawer,
   Form,
   Input,
+  Popconfirm,
   Row,
   Select,
   Space,
@@ -76,6 +77,17 @@ export function JobsPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.deleteJob(id),
+    onSuccess: () => {
+      messageApi.success('扫描任务已删除')
+      queryClient.invalidateQueries({ queryKey: ['jobs'] })
+    },
+    onError: (error) => {
+      messageApi.error(error instanceof Error ? error.message : '删除任务失败')
+    },
+  })
+
   const columns: ColumnsType<Job> = useMemo(
     () => [
       { title: '任务ID', dataIndex: 'id', width: 76 },
@@ -90,11 +102,32 @@ export function JobsPage() {
       {
         title: '操作',
         dataIndex: 'id',
-        width: 84,
-        render: (_, record) => <Link to={`/jobs/${record.id}`}>查看详情</Link>,
+        width: 132,
+        render: (_, record) => (
+          <Space size={8}>
+            <Link to={`/jobs/${record.id}`}>查看详情</Link>
+            <Popconfirm
+              title="确认删除任务"
+              description="会删除该任务及其事件、日志和动作明细，是否继续？"
+              okText="删除"
+              cancelText="取消"
+              okButtonProps={{ danger: true, loading: deleteMutation.isPending }}
+              onConfirm={() => deleteMutation.mutate(record.id)}
+            >
+              <Button
+                danger
+                size="small"
+                type="link"
+                disabled={record.status === 'pending' || record.status === 'running'}
+              >
+                删除
+              </Button>
+            </Popconfirm>
+          </Space>
+        ),
       },
     ],
-    [],
+    [deleteMutation],
   )
 
   return (

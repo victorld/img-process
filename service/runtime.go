@@ -196,6 +196,17 @@ func (r *AppRuntime) GetJob(id uint) (model.ScanJobDB, error) {
 	return r.jobService.GetByID(id)
 }
 
+func (r *AppRuntime) DeleteJob(id uint) (dao.ScanJobDeleteCounts, error) {
+	job, err := r.jobService.GetByID(id)
+	if err != nil {
+		return dao.ScanJobDeleteCounts{}, err
+	}
+	if job.Status == model.JobStatusPending || job.Status == model.JobStatusRunning {
+		return dao.ScanJobDeleteCounts{}, errors.New("pending or running jobs cannot be deleted")
+	}
+	return r.jobService.DeleteWithChildren(id)
+}
+
 func (r *AppRuntime) ListJobs(search model.ScanJobSearch) ([]model.ScanJobDB, int64, error) {
 	return r.jobService.List(search)
 }

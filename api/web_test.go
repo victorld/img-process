@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"img_process/cons"
+	"img_process/dao"
 	"img_process/model"
 
 	"github.com/gin-gonic/gin"
@@ -95,6 +96,79 @@ func TestListJobsReturnsActionAndFolderCounts(t *testing.T) {
 	}
 	if item.ExecutedActionCount != 2 {
 		t.Fatalf("executedActionCount = %d, want 2", item.ExecutedActionCount)
+	}
+}
+
+func TestDeleteJobSuccess(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	oldDeleteJob := deleteJobFunc
+	deleteJobFunc = func(jobID uint) (dao.ScanJobDeleteCounts, error) {
+		if jobID != 42 {
+			t.Fatalf("jobID = %d, want 42", jobID)
+		}
+		return dao.ScanJobDeleteCounts{
+			ActionItems: 3,
+			Events:      2,
+			Logs:        1,
+			Schedules:   1,
+			Jobs:        1,
+		}, nil
+	}
+	t.Cleanup(func() {
+		deleteJobFunc = oldDeleteJob
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "42"}}
+	c.Request = httptest.NewRequest(http.MethodDelete, "/api/jobs/42", nil)
+
+	new(WebAPI).DeleteJob(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp struct {
+		Data struct {
+			ID          uint  `json:"id"`
+			ActionItems int64 `json:"actionItems"`
+			Events      int64 `json:"events"`
+			Logs        int64 `json:"logs"`
+			Schedules   int64 `json:"schedules"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if resp.Data.ID != 42 || resp.Data.ActionItems != 3 || resp.Data.Events != 2 || resp.Data.Logs != 1 || resp.Data.Schedules != 1 {
+		t.Fatalf("response data = %+v", resp.Data)
+	}
+}
+
+func TestDeleteJobRejectsActiveJob(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	oldDeleteJob := deleteJobFunc
+	deleteJobFunc = func(jobID uint) (dao.ScanJobDeleteCounts, error) {
+		return dao.ScanJobDeleteCounts{}, modelErr("pending or running jobs cannot be deleted")
+	}
+	t.Cleanup(func() {
+		deleteJobFunc = oldDeleteJob
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "42"}}
+	c.Request = httptest.NewRequest(http.MethodDelete, "/api/jobs/42", nil)
+
+	new(WebAPI).DeleteJob(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadRequest)
 	}
 }
 

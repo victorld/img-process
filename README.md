@@ -56,7 +56,7 @@
 
 配置说明：
 
-1. Docker 默认直接挂载并读取根目录 `config.yaml`，该文件使用容器内可访问的路径和地址。
+1. 默认使用 macOS 本机运行模式，根目录 `config.yaml` 使用宿主机可直接访问的照片目录和 SMB 备份目录。
 2. 生产或共享环境如需独立配置，建议通过 `IMG_PROCESS_CONFIG` 或 `IMG_PROCESS_CONFIG_DIR` 指定外部配置文件。
 3. `basic.SqlDebug` 默认关闭，只有排查数据库问题时再临时开启
 
@@ -85,21 +85,22 @@ Web 管理台支持：
 
 ## 运行约定
 
-默认以 Docker 作为项目的运行、验收和交付方式。除非只是做纯静态分析，或用户明确要求使用本机开发模式，否则所有会影响页面、接口、配置的修改，在完成后都必须同步到 Docker 服务并立即生效。
+默认以 macOS 本机常驻 Web 服务作为项目的运行、验收和交付方式，并使用 `monit` 做进程守护，避免 Docker Desktop 对 SMB 挂载目录的二次文件共享开销。扫描任务仍通过 Web 管理台或应用内计划任务执行，不额外使用 cron 直接触发扫描。
 
 每次修改后的标准收口步骤：
 
 ```bash
-docker compose up -d --build app
-docker compose ps
+scripts/build-local.sh
+scripts/monit-local-web.sh restart
 curl -I http://127.0.0.1:8081/
 ```
 
 最低要求：
 
-1. 容器处于 `running` 状态
+1. 本机 `bin/img-process-web` 已完成构建
 2. `http://127.0.0.1:8081/` 可访问
-3. 如果修改了前端，需要确认首页资源哈希或页面行为已更新，而不是继续命中旧容器里的旧资源
+3. `scripts/monit-local-web.sh status` 能看到 `img-process-web` 处于 monitored/running 状态
+4. 如果修改了前端，需要确认首页资源哈希或页面行为已更新，而不是继续命中旧构建产物
 
 ## Changelist 维护约定
 
@@ -120,15 +121,27 @@ curl -I http://127.0.0.1:8081/
 8. `.playwright-cli`、临时日志、抓图、测试产物等调试文件不进入主时间线，只允许在附注中说明已排除。
 9. 文案必须用中文，优先写用户可感知或系统行为层面的事实，不写空泛描述。
 
-## 本地开发
+## 本机运行
 
-后端：
+详细脚本说明见 [scripts/README.md](scripts/README.md)。
+
+构建并重启本机服务：
 
 ```bash
-go run ./main/webserver/webserver_main.go
+scripts/build-local.sh
+scripts/monit-local-web.sh restart
 ```
 
-前端：
+查看服务状态：
+
+```bash
+scripts/monit-local-web.sh summary
+curl -I http://127.0.0.1:8081/
+```
+
+`monit/img-process-web.monitrc` 使用仓库内 `log/` 目录保存守护状态，不依赖系统级 `/opt/homebrew/etc/monitrc`。
+
+前端开发模式仍可使用：
 
 ```bash
 cd web
@@ -136,9 +149,9 @@ npm install
 npm run dev
 ```
 
-前端开发模式默认代理到 `http://localhost:8081`。
+前端开发服务器默认代理到 `http://localhost:8081`。
 
-## Docker 运行
+## Docker 运行（可选）
 
 项目已提供 `docker-compose.yml` 和多阶段构建镜像：
 
@@ -147,19 +160,8 @@ docker compose -f /Users/ld/my-file/workspace/cestc/public/docker-compose.yml up
 docker compose up -d --build app
 ```
 
-默认会复用 `cestc/public` 提供的公共 MySQL（`127.0.0.1:33060` / `root:root`），当前仓库只启动 `img-process` Web 服务。
-
-默认 `config.yaml` 面向 Docker 运行；如果需要本机直接运行，可以通过 `IMG_PROCESS_CONFIG` 指向单独的本机配置文件。
-
-如果已经有 `img-process-app-1` 在运行，修改代码后不要只执行本地 `go test` 或前端 `npm run build` 就结束，必须至少再执行一次下面命令，让容器里的实际服务更新：
+当前 `config.yaml` 已切换为本机路径，Docker 运行不再是默认生效环境。如果需要恢复 Docker 运行，建议单独维护 Docker 专用配置文件，并通过 `IMG_PROCESS_CONFIG` 指向容器内配置路径。
 
 ```bash
 docker compose up -d --build app
-```
-
-更新后建议追加验证：
-
-```bash
-docker compose ps
-curl -s http://127.0.0.1:8081/ | head
 ```

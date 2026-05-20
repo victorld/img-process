@@ -3,9 +3,19 @@ package dao
 import (
 	"img_process/model"
 	"img_process/plugin/orm"
+
+	"gorm.io/gorm"
 )
 
 type ScanJobService struct{}
+
+type ScanJobDeleteCounts struct {
+	ActionItems int64
+	Events      int64
+	Logs        int64
+	Schedules   int64
+	Jobs        int64
+}
 
 func (s *ScanJobService) RegisterScanJob(scanJob *model.ScanJobDB) error {
 	return orm.ImgMysqlDB.AutoMigrate(&scanJob)
@@ -23,6 +33,48 @@ func (s *ScanJobService) GetByID(id uint) (model.ScanJobDB, error) {
 	var job model.ScanJobDB
 	err := orm.ImgMysqlDB.First(&job, id).Error
 	return job, err
+}
+
+func (s *ScanJobService) DeleteWithChildren(id uint) (ScanJobDeleteCounts, error) {
+	counts := ScanJobDeleteCounts{}
+	err := orm.ImgMysqlDB.Transaction(func(tx *gorm.DB) error {
+		result := tx.Where("job_id = ?", id).Delete(&model.ScanActionItemDB{})
+		if result.Error != nil {
+			return result.Error
+		}
+		counts.ActionItems = result.RowsAffected
+
+		result = tx.Where("job_id = ?", id).Delete(&model.ScanEventDB{})
+		if result.Error != nil {
+			return result.Error
+		}
+		counts.Events = result.RowsAffected
+
+		result = tx.Where("job_id = ?", id).Delete(&model.ScanJobLogDB{})
+		if result.Error != nil {
+			return result.Error
+		}
+		counts.Logs = result.RowsAffected
+
+		result = tx.Model(&model.ScanScheduleDB{}).
+			Where("last_job_id = ?", id).
+			Updates(map[string]any{
+				"last_job_id":     nil,
+				"last_job_status": "",
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		counts.Schedules = result.RowsAffected
+
+		result = tx.Delete(&model.ScanJobDB{}, id)
+		if result.Error != nil {
+			return result.Error
+		}
+		counts.Jobs = result.RowsAffected
+		return nil
+	})
+	return counts, err
 }
 
 func (s *ScanJobService) List(search model.ScanJobSearch) ([]model.ScanJobDB, int64, error) {

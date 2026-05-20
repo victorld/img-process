@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"img_process/cons"
 	"img_process/model"
@@ -25,6 +26,7 @@ var countGroupedActionItemsByJobsFunc = service.Runtime.CountActionItemsGroupedB
 var listActionItemsFunc = func(search model.ScanActionItemSearch) ([]model.ScanActionItemView, model.ScanActionCounts, model.ScanActionGroupedCounts, int64, error) {
 	return service.Runtime.ListActionItems(search)
 }
+var deleteJobFunc = service.Runtime.DeleteJob
 var executeModifyShootTimeActionItemFunc = service.Runtime.ExecuteModifyShootTimeActionItem
 var executeMoveActionItemFunc = service.Runtime.ExecuteMoveActionItem
 var executeRenameActionItemFunc = service.Runtime.ExecuteRenameActionItem
@@ -124,6 +126,38 @@ func (api *WebAPI) GetJob(c *gin.Context) {
 		return
 	}
 	tools.Success(c, gin.H{"job": serializeJob(job, model.ScanActionGroupedCounts{})}, "ok")
+}
+
+func (api *WebAPI) DeleteJob(c *gin.Context) {
+	jobID, err := parseUintParam(c, "id")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "任务ID错误", gin.H{"error": err.Error()})
+		return
+	}
+	counts, err := deleteJobFunc(jobID)
+	if err != nil {
+		if strings.Contains(err.Error(), "pending or running jobs cannot be deleted") {
+			tools.FailWithStatus(c, http.StatusBadRequest, "删除任务失败", gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			tools.FailWithStatus(c, http.StatusNotFound, "任务不存在", gin.H{"id": jobID})
+			return
+		}
+		tools.Fail(c, "删除任务失败", gin.H{"error": err.Error()})
+		return
+	}
+	if counts.Jobs == 0 {
+		tools.FailWithStatus(c, http.StatusNotFound, "任务不存在", gin.H{"id": jobID})
+		return
+	}
+	tools.Success(c, gin.H{
+		"id":          jobID,
+		"actionItems": counts.ActionItems,
+		"events":      counts.Events,
+		"logs":        counts.Logs,
+		"schedules":   counts.Schedules,
+	}, "任务已删除")
 }
 
 func (api *WebAPI) ListJobEvents(c *gin.Context) {

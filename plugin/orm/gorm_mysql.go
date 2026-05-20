@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm/logger"
 	"img_process/cons"
 	"img_process/tools"
+	"net/url"
 	"strings"
 )
 
@@ -64,7 +65,8 @@ func getDSN(mysqlArgs MysqlArgs, includeDB bool) string {
 	if includeDB {
 		dbname = mysqlArgs.Dbname
 	}
-	return mysqlArgs.Username + ":" + mysqlArgs.Password + "@tcp(" + mysqlArgs.Host + ":" + mysqlArgs.Port + ")/" + dbname + "?" + mysqlArgs.Config
+	config := withDefaultTimeouts(mysqlArgs.Config)
+	return mysqlArgs.Username + ":" + mysqlArgs.Password + "@tcp(" + mysqlArgs.Host + ":" + mysqlArgs.Port + ")/" + dbname + "?" + config
 }
 
 func openMysql(dsn string) (*gorm.DB, error) {
@@ -88,5 +90,25 @@ func createDatabase(mysqlArgs MysqlArgs) error {
 }
 
 func maskedDSN(mysqlArgs MysqlArgs) string {
-	return fmt.Sprintf("%s:%s/%s?%s", mysqlArgs.Host, mysqlArgs.Port, mysqlArgs.Dbname, mysqlArgs.Config)
+	return fmt.Sprintf("%s:%s/%s?%s", mysqlArgs.Host, mysqlArgs.Port, mysqlArgs.Dbname, withDefaultTimeouts(mysqlArgs.Config))
+}
+
+func withDefaultTimeouts(config string) string {
+	values, err := url.ParseQuery(config)
+	if err != nil {
+		if strings.TrimSpace(config) == "" {
+			return "timeout=10s&readTimeout=10s&writeTimeout=10s"
+		}
+		return config
+	}
+	if values.Get("timeout") == "" {
+		values.Set("timeout", "10s")
+	}
+	if values.Get("readTimeout") == "" {
+		values.Set("readTimeout", "10s")
+	}
+	if values.Get("writeTimeout") == "" {
+		values.Set("writeTimeout", "10s")
+	}
+	return values.Encode()
 }

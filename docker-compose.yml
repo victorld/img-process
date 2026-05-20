@@ -3,14 +3,14 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    restart: unless-stopped
+    restart: "no"
     environment:
       IMG_PROCESS_CONFIG: /app/config.yaml
-      IMG_PROCESS_GIS_KEY: ${IMG_PROCESS_GIS_KEY:-}
       TZ: Asia/Shanghai
     ports:
       - "8081:8081"
     volumes:
       - ./config.yaml:/app/config.yaml:ro
       - ./log:/app/log
-      - ${IMG_PROCESS_SCAN_PATH:-/Users/ld/my-file/pic-lab}:/data/pic-lab
+      - /Users/ld/my-file/pic-lib/pic-new:/data/pic-new
+      - /Volumes/mount/personal_folder/pic-lib/pic-new:/data/pic-new-bak

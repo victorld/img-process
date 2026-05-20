@@ -1,9 +1,12 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"sync"
 	"testing"
 
@@ -22,10 +25,29 @@ type actionResultRecorder struct {
 	results []recordedActionResult
 }
 
+type artifactRecorder struct {
+	noopScanRecorder
+	artifacts []recordedArtifact
+	errors    []recordedError
+}
+
 type recordedActionResult struct {
 	id      uint
 	success bool
 	payload map[string]any
+}
+
+type recordedArtifact struct {
+	title       string
+	relatedPath string
+	payload     map[string]any
+}
+
+type recordedError struct {
+	phase       string
+	relatedPath string
+	err         error
+	payload     map[string]any
 }
 
 func (r *actionResultRecorder) RecordActionResult(id uint, success bool, err error, payload map[string]any) {
@@ -40,9 +62,159 @@ func (r *actionResultRecorder) RecordActionResult(id uint, success bool, err err
 	})
 }
 
+func (r *artifactRecorder) RecordArtifact(title string, relatedPath string, payload map[string]any) {
+	copied := map[string]any{}
+	for key, value := range payload {
+		copied[key] = value
+	}
+	r.artifacts = append(r.artifacts, recordedArtifact{
+		title:       title,
+		relatedPath: relatedPath,
+		payload:     copied,
+	})
+}
+
+func (r *artifactRecorder) RecordError(phase string, relatedPath string, err error, payload map[string]any) {
+	copied := map[string]any{}
+	for key, value := range payload {
+		copied[key] = value
+	}
+	r.errors = append(r.errors, recordedError{
+		phase:       phase,
+		relatedPath: relatedPath,
+		err:         err,
+		payload:     copied,
+	})
+}
+
 func ensureTestLogger() {
 	if tools.Logger == nil {
 		tools.Logger = zap.NewNop().Sugar()
+	}
+}
+
+func TestWriteBackupDiffArtifactsStoresFullDetailsAndReturnsSmallSummary(t *testing.T) {
+	ensureTestLogger()
+	oldWorkDir := cons.WorkDir
+	cons.WorkDir = t.TempDir()
+	t.Cleanup(func() {
+		cons.WorkDir = oldWorkDir
+	})
+
+	recorder := &artifactRecorder{}
+	scanner := newScannerWithRecorder(model.DoScanImgArg{}, recorder)
+	scanner.scanUUID = "2026-05-20-12-00-00_testscan"
+
+	bakNewFile := make([]string, 0, backupDiffSummarySampleLimit+5)
+	for i := backupDiffSummarySampleLimit + 4; i >= 0; i-- {
+		bakNewFile = append(bakNewFile, filepath.Join("new", "file_"+string(rune('A'+i))))
+	}
+	bakDeleteFile := []string{"delete/file_C", "delete/file_A", "delete/file_B"}
+	sortStringsForTest(bakNewFile)
+	sortStringsForTest(bakDeleteFile)
+
+	newSummary, deleteSummary := scanner.writeBackupDiffArtifacts(bakNewFile, bakDeleteFile)
+
+	if len(recorder.errors) != 0 {
+		t.Fatalf("RecordError calls = %d, want 0", len(recorder.errors))
+	}
+	if len(recorder.artifacts) != 2 {
+		t.Fatalf("RecordArtifact calls = %d, want 2", len(recorder.artifacts))
+	}
+
+	assertBackupSummary(t, newSummary, len(bakNewFile), true, bakNewFile[:backupDiffSummarySampleLimit])
+	assertBackupSummary(t, deleteSummary, len(bakDeleteFile), false, bakDeleteFile)
+
+	if got := tools.MarshalJsonToString(newSummary); strings.Contains(got, bakNewFile[len(bakNewFile)-1]) {
+		t.Fatalf("summary should not contain full tail detail, got %s", got)
+	}
+
+	assertFileLines(t, newSummary.ArtifactPath, bakNewFile)
+	assertFileLines(t, deleteSummary.ArtifactPath, bakDeleteFile)
+
+	if recorder.artifacts[0].payload["count"] != len(bakNewFile) {
+		t.Fatalf("new artifact count payload = %v", recorder.artifacts[0].payload["count"])
+	}
+	if recorder.artifacts[0].payload["sampleLimit"] != backupDiffSummarySampleLimit {
+		t.Fatalf("new artifact sampleLimit payload = %v", recorder.artifacts[0].payload["sampleLimit"])
+	}
+	if recorder.artifacts[0].payload["truncated"] != true {
+		t.Fatalf("new artifact truncated payload = %v", recorder.artifacts[0].payload["truncated"])
+	}
+
+	var decoded backupDiffSummary
+	if err := json.Unmarshal([]byte(tools.MarshalJsonToString(newSummary)), &decoded); err != nil {
+		t.Fatalf("summary should marshal as JSON: %v", err)
+	}
+	if decoded.Count != len(bakNewFile) {
+		t.Fatalf("decoded count = %d, want %d", decoded.Count, len(bakNewFile))
+	}
+}
+
+func TestWriteBackupDiffArtifactsKeepsEmptySummaryWithoutFiles(t *testing.T) {
+	ensureTestLogger()
+	oldWorkDir := cons.WorkDir
+	cons.WorkDir = t.TempDir()
+	t.Cleanup(func() {
+		cons.WorkDir = oldWorkDir
+	})
+
+	recorder := &artifactRecorder{}
+	scanner := newScannerWithRecorder(model.DoScanImgArg{}, recorder)
+	scanner.scanUUID = "2026-05-20-12-00-00_empty"
+
+	newSummary, deleteSummary := scanner.writeBackupDiffArtifacts(nil, nil)
+
+	assertBackupSummary(t, newSummary, 0, false, []string{})
+	assertBackupSummary(t, deleteSummary, 0, false, []string{})
+	if newSummary.ArtifactPath != "" || deleteSummary.ArtifactPath != "" {
+		t.Fatalf("empty summaries should not have artifact paths: %#v %#v", newSummary, deleteSummary)
+	}
+	if len(recorder.artifacts) != 0 {
+		t.Fatalf("RecordArtifact calls = %d, want 0", len(recorder.artifacts))
+	}
+	entries, err := os.ReadDir(filepath.Join(cons.WorkDir, "log", "dump_delete_file"))
+	if err == nil && len(entries) != 0 {
+		t.Fatalf("empty diffs should not create artifact files, entries = %d", len(entries))
+	}
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("read artifact root: %v", err)
+	}
+}
+
+func sortStringsForTest(items []string) {
+	for i := 1; i < len(items); i++ {
+		for j := i; j > 0 && items[j] < items[j-1]; j-- {
+			items[j], items[j-1] = items[j-1], items[j]
+		}
+	}
+}
+
+func assertBackupSummary(t *testing.T, summary backupDiffSummary, wantCount int, wantTruncated bool, wantSample []string) {
+	t.Helper()
+	if summary.Count != wantCount {
+		t.Fatalf("summary.Count = %d, want %d", summary.Count, wantCount)
+	}
+	if summary.SampleLimit != backupDiffSummarySampleLimit {
+		t.Fatalf("summary.SampleLimit = %d, want %d", summary.SampleLimit, backupDiffSummarySampleLimit)
+	}
+	if summary.Truncated != wantTruncated {
+		t.Fatalf("summary.Truncated = %v, want %v", summary.Truncated, wantTruncated)
+	}
+	if !reflect.DeepEqual(summary.Sample, wantSample) {
+		t.Fatalf("summary.Sample = %#v, want %#v", summary.Sample, wantSample)
+	}
+}
+
+func assertFileLines(t *testing.T, filePath string, want []string) {
+	t.Helper()
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("read %s: %v", filePath, err)
+	}
+	got := strings.Split(string(content), "\n")
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("file lines = %#v, want %#v", got, want)
 	}
 }
 

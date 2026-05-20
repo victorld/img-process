@@ -651,3 +651,111 @@
 #### 数据库变化
 
 - 无数据库变化。
+
+### 2026-05-19 20:45:00 +0800 | `uncommitted` | 更新 Docker 默认运行参数
+
+#### 功能变化
+
+- 根目录 `config.yaml` 按实际 Docker 运行参数更新 Web 登录、扫描展示项、图片缓存、同步删除、GIS Key、批处理和并行处理配置。
+- Docker Compose 将宿主机照片目录 `/Users/ld/my-file/pic-lib/pic-new` 挂载到容器内 `/data/pic-new`，将备份目录 `/Volumes/mount/personal_folder/pic-lib/pic-new` 挂载到 `/data/pic-new-bak`。
+- 扫描默认目录切换为 `/data/pic-new`，备份目录切换为 `/data/pic-new-bak`，并移除空 `IMG_PROCESS_GIS_KEY` 环境变量对配置文件 GIS Key 的覆盖。
+
+#### 数据库变化
+
+- 数据库连接配置变化：默认连接从 `host.docker.internal:33060` 调整为 `192.168.110.250:3366`，用户名保持 `root`，密码调整为指定外部 MySQL 密码，数据库名保持 `img`，连接参数保持 `charset=utf8&parseTime=True&loc=Local`；本次没有新增、修改或删除表字段。
+
+### 2026-05-20 11:55:59 +0800 | `uncommitted` | 切换为本机 monit 守护运行
+
+#### 功能变化
+
+- 默认运行方式从 Docker 容器切换为 macOS 本机常驻 Web 服务，新增本机构建、启动、后台启停和 `monit` 守护脚本；`monit` 会按进程 pid 和 `8081` HTTP 检查结果自动拉起或重启 Web 服务。
+- 根目录 `config.yaml` 的扫描主目录改为宿主机路径 `/Users/ld/my-file/pic-lib/pic-new`，备份目录改为 SMB 挂载路径 `/Volumes/mount/personal_folder/pic-lib/pic-new`，避免通过 Docker Desktop 二次挂载 SMB 目录。
+- Docker Compose 的 `app` 服务关闭自动重启策略，避免可选 Docker 服务在本机 `monit` 守护模式下重新抢占 `8081` 端口。
+- MySQL 连接默认补充 `timeout/readTimeout/writeTimeout=10s`，避免本机常驻服务在数据库连接或握手异常时长期卡在启动阶段。
+- 应用启动时数据库初始化失败会按 5 秒间隔重试最多 2 分钟，避免本机网络短暂抖动导致 Web 服务直接退出。
+- README 更新本机运行、`monit` 守护和可选 Docker 运行说明，并将 `bin/` 加入忽略列表作为本机构建产物目录；旧版 crontab 保活脚本仅作为兼容入口保留，不再写入当前用户 crontab。
+
+#### 数据库变化
+
+- 数据库连接配置保持 `192.168.110.250:3366/img`、用户名 `root` 不变，连接参数在运行时默认补充 `timeout=10s`、`readTimeout=10s`、`writeTimeout=10s`；本次没有新增、修改或删除表字段。
+
+### 2026-05-20 12:02:09 +0800 | `uncommitted` | 备份差异明细改写扫描产物
+
+#### 功能变化
+
+- 备份新增文件和备份删除文件的完整差异列表改为写入扫描产物文件，分别保存到本次扫描目录下的 `bak_new_file_list` 和 `bak_delete_file_list`。
+- 旧版扫描汇总字段 `bak_new_file` 和 `bak_delete_file` 不再保存完整大列表，改为保存包含数量、前 20 条样本、截断标记和产物路径的小型 JSON 摘要，避免大差异列表写入时报 `Data too long`。
+- 扫描任务事件会记录备份差异产物生成事件，并在 payload 中携带完整数量、样本上限和是否截断。
+
+#### 数据库变化
+
+- 本次没有新增、修改或删除表字段；`img_record.bak_new_file` 和 `img_record.bak_delete_file` 的写入内容从完整明细 JSON 数组调整为摘要 JSON 对象，字段类型保持不变。
+
+### 2026-05-20 13:45:23 +0800 | `uncommitted` | 支持删除历史扫描任务
+
+#### 功能变化
+
+- 新增 `DELETE /api/jobs/:id` 接口，支持删除已完成、失败、中断或跳过的历史扫描任务，并同步清理该任务关联的动作明细、事件流和任务日志。
+- 删除历史任务时会清空计划任务表中指向该任务的最近任务引用，避免计划列表展示已删除任务的历史状态。
+- 扫描历史列表的操作列新增“删除”按钮和二次确认；运行中或排队中的任务禁止删除，删除成功后自动刷新列表。
+
+#### 数据库变化
+
+- 本次没有新增、修改或删除表字段；删除历史任务时会删除 `scan_job` 对应记录，并按 `job_id` 删除 `scan_action_item`、`scan_event`、`scan_job_log` 的关联记录；若 `scan_schedule.last_job_id` 指向被删除任务，会将 `scan_schedule.last_job_id` 置空并将 `scan_schedule.last_job_status` 置为空字符串。
+
+### 2026-05-20 13:50:34 +0800 | `uncommitted` | 明确本地模式为默认运行方式
+
+#### 功能变化
+
+- 根目录 `AGENTS.md` 明确项目默认使用 macOS 本地模式构建、启动和验收，代码修改后通过 `./scripts/build-local.sh` 和 `./scripts/monit-local-web.sh restart` 让 `8081` 本机服务切到新版本。
+- 根目录 `AGENTS.md` 明确只有用户要求 Docker 时才使用 `docker compose up -d --build app`，避免后续变更误切到 Docker 服务。
+
+#### 数据库变化
+
+- 无数据库变化。
+
+### 2026-05-20 14:09:57 +0800 | `uncommitted` | 同步接口文档本机运行口径
+
+#### 功能变化
+
+- `interface.md` 中创建扫描任务、创建计划和系统状态接口示例的扫描目录改为当前本机运行路径，避免继续展示旧 Docker 容器路径。
+- `interface.md` 将系统状态接口用途和登录态注意事项中的“容器”表述调整为“Web 服务”，与默认 `monit` 守护模式保持一致。
+
+#### 数据库变化
+
+- 无数据库变化。
+
+### 2026-05-20 14:12:40 +0800 | `uncommitted` | 精简本机运行脚本
+
+#### 功能变化
+
+- 删除旧版 crontab 保活入口 `scripts/keep-local-web.sh`，当前本机运行只保留 `monit` 守护链路。
+- `scripts/stop-local-web.sh` 仅停止仓库本机二进制 `bin/img-process-web` 对应进程，不再按端口直接杀掉任意占用 `8081` 的进程。
+- README 的修改后收口命令改为 `scripts/monit-local-web.sh restart`，和当前默认本地守护模式保持一致。
+
+#### 数据库变化
+
+- 无数据库变化。
+
+### 2026-05-20 14:40:50 +0800 | `uncommitted` | 合并本机启动脚本
+
+#### 功能变化
+
+- 删除独立后台启动脚本 `scripts/start-local-web-daemon.sh`，由 `scripts/start-local-web.sh daemon` 承担 `monit` 后台启动职责。
+- `scripts/start-local-web.sh` 保留无参数前台启动能力，并新增 `daemon` 参数用于写入 pid、启动时间和本地运行日志。
+- `monit/img-process-web.monitrc` 和 README 同步改为调用 `scripts/start-local-web.sh daemon`。
+
+#### 数据库变化
+
+- 无数据库变化。
+
+### 2026-05-20 14:44:01 +0800 | `uncommitted` | 新增本地脚本文档
+
+#### 功能变化
+
+- 新增 `scripts/README.md`，集中记录本地构建、`monit` 守护、启动停止、只改 Go 或只改前端时的生效命令，以及相关运行文件位置。
+- 根目录 README 的本机运行章节改为保留最小构建、重启和验收入口，并链接到 `scripts/README.md`，避免脚本说明重复散落。
+
+#### 数据库变化
+
+- 无数据库变化。

@@ -35,6 +35,7 @@ func InitRouter(r *gin.Engine) *gin.Engine {
 	apiGroup.GET("/jobs", webAPI.ListJobs)
 	apiGroup.POST("/jobs", webAPI.CreateJob)
 	apiGroup.GET("/jobs/:id", webAPI.GetJob)
+	apiGroup.DELETE("/jobs/:id", webAPI.DeleteJob)
 	apiGroup.GET("/jobs/:id/events", webAPI.ListJobEvents)
 	apiGroup.GET("/jobs/:id/logs", webAPI.ListJobLogs)
 	apiGroup.GET("/jobs/:id/action-items", webAPI.ListJobActionItems)

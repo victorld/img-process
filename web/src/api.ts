@@ -46,6 +46,11 @@ export const api = {
       body: JSON.stringify({ source: "manual", scanArgs }),
     }),
   getJob: (id: string | number) => request<{ job: Job }>(`/api/jobs/${id}`),
+  deleteJob: (id: string | number) =>
+    request<{ id: number; actionItems: number; events: number; logs: number; schedules: number }>(
+      `/api/jobs/${id}`,
+      { method: "DELETE" },
+    ),
   getJobEvents: (id: string | number, params: URLSearchParams) =>
     request<{ list: ScanEvent[]; total: number }>(
       `/api/jobs/${id}/events?${params.toString()}`,

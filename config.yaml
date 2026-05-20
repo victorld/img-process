@@ -1,19 +1,19 @@
 database:   #数据库参数
   DbUsername: root
-  DbPassword: root
-  DbHost: host.docker.internal
-  DbPort: 33060
+  DbPassword: lidong@123
+  DbHost: 192.168.110.250
+  DbPort: 3366
   DbName: img
   DbConfig: charset=utf8&parseTime=True&loc=Local
 server:  #web服务参数
   HttpPort: 8081
   HttpUsername: admin
-  HttpPassword: admin@123
+  HttpPassword: admin
 scanArgs:  #扫描参数
-  StartPath: /data/pic-lab
+  StartPath: /Users/ld/my-file/pic-lib/pic-new
   DeleteShow: true
   MoveFileShow: true
-  ModifyDateShow: false
+  ModifyDateShow: true
   RenameFileShow: true
   Md5Show: true
   DeleteAction: false
@@ -24,19 +24,18 @@ basic:
   ColorOutput: true   #日志是否输出彩色
   SqlDebug: false     #是否输出SQL调试日志
 cache:
-  ImgCache: false   #是否要使用图片cache，会将新的记录插入数据库
-  SyncTable: false    #会根据当前数据库匹配不上的记录删掉
+  ImgCache: true   #是否要使用图片cache，会将新的记录插入数据库
+  SyncTable: true    #会根据当前数据库匹配不上的记录删掉
   TruncateTable: false    #先truncate表
 dump:
   PoolSize: 8   #单个照片处理的并行度
   Md5Retry: 3   #获取哈希值的重试次数
   Md5CountLength: 65536    # 1024 * 64
 bak:
-  StartPathBak: ""
+  StartPathBak: /Volumes/mount/personal_folder/pic-lib/pic-new
 gis:
-  key : abc   #amap的key
+  key : 96fd6b0ee12dfee568cc3489f7d7bb28   #amap的key
 batch:
   IDInsertBatchSize: 1000   #img_database的查询批次
   IDDeleteBatchSize: 300    #img_database的删除批次
   GDUpdateBatchSize: 1000   #更新gis_database的批次
-

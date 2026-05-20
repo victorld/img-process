@@ -278,7 +278,7 @@
   "source": "manual",
   "scheduleId": null,
   "scanArgs": {
-    "startPath": "/data/pic-lab",
+    "startPath": "/Users/ld/my-file/pic-lib/pic-new",
     "md5Show": true
   }
 }
@@ -745,7 +745,7 @@
   "cronExpr": "",
   "scheduleConfig": "{\"hour\":2,\"minute\":30}",
   "scanArgs": {
-    "startPath": "/data/pic-lab"
+    "startPath": "/Users/ld/my-file/pic-lib/pic-new"
   }
 }
 ```
@@ -866,17 +866,17 @@
   "data": {
     "server": {
       "httpPort": "8081",
-      "startPath": "/data/pic-lab",
-      "startPathBak": "",
+      "startPath": "/Users/ld/my-file/pic-lib/pic-new",
+      "startPathBak": "/Volumes/mount/personal_folder/pic-lib/pic-new",
       "poolSize": 8,
-      "imgCache": false,
+      "imgCache": true,
       "sqlDebug": false,
       "scanDefaults": {
-        "startPath": "/data/pic-lab",
-        "startPathBak": "",
+        "startPath": "/Users/ld/my-file/pic-lib/pic-new",
+        "startPathBak": "/Volumes/mount/personal_folder/pic-lib/pic-new",
         "deleteShow": true,
         "moveFileShow": true,
-        "modifyDateShow": false,
+        "modifyDateShow": true,
         "renameFileShow": true,
         "md5Show": true,
         "deleteAction": false,
@@ -893,7 +893,7 @@
 主要用途：
 
 - 前端初始化默认扫描参数
-- 检查当前容器实际加载的运行配置
+- 检查当前 Web 服务实际加载的运行配置
 
 ### 6. 旧扫描接口
 
@@ -981,7 +981,7 @@
 
 ## 重要约束与注意点
 
-1. `/api` 登录态完全依赖内存 Session，重启容器后需要重新登录。
+1. `/api` 登录态完全依赖内存 Session，重启 Web 服务后需要重新登录。
 2. `/img/*` 和 `/api/*` 是两套入口，前者偏兼容接口，后者是当前管理台主入口。
 3. 任务和动作相关响应中，很多业务信息并非独立字段，而是从数据库 JSON 字段反序列化后返回。
 4. `GET /api/jobs/:id/stream` 是长连接 SSE，不适合普通短请求调试方式。
