@@ -16,7 +16,7 @@ func TestDuplicateDeleteTarget(t *testing.T) {
 		MetadataJSON: `{"currentPath":"/photos/a.jpg","keepPath":"/photos/b.jpg"}`,
 	}
 
-	side, deletePath, recommendedDeletePath, err := duplicateDeleteTarget(item, "A")
+	side, deletePath, recommendedDeletePath, err := duplicateDeleteTarget(item, "A", "")
 	if err != nil {
 		t.Fatalf("duplicateDeleteTarget A error: %v", err)
 	}
@@ -30,7 +30,7 @@ func TestDuplicateDeleteTarget(t *testing.T) {
 		t.Fatalf("recommendedDeletePath = %q, want /photos/a.jpg", recommendedDeletePath)
 	}
 
-	side, deletePath, recommendedDeletePath, err = duplicateDeleteTarget(item, "B")
+	side, deletePath, recommendedDeletePath, err = duplicateDeleteTarget(item, "B", "")
 	if err != nil {
 		t.Fatalf("duplicateDeleteTarget B error: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestDuplicateDeleteTargetFallsBackToTargetPath(t *testing.T) {
 		TargetPath: "/photos/b.jpg",
 	}
 
-	side, deletePath, _, err := duplicateDeleteTarget(item, "B")
+	side, deletePath, _, err := duplicateDeleteTarget(item, "B", "")
 	if err != nil {
 		t.Fatalf("duplicateDeleteTarget fallback error: %v", err)
 	}

@@ -42,7 +42,17 @@ func (s *ScanActionItemService) List(search model.ScanActionItemSearch) ([]model
 	db := orm.ImgMysqlDB.Model(&model.ScanActionItemDB{}).Where("job_id = ?", search.JobID).Order("id desc")
 	switch search.Tab {
 	case "pending":
-		db = db.Where("stage = ? AND status = ?", model.ActionStageCandidate, model.ActionStatusPending)
+		if search.ActionType == model.ActionTypeDeleteDup {
+			db = db.Where(
+				"action_type = ? AND ((stage = ? AND status = ?) OR stage = ?)",
+				model.ActionTypeDeleteDup,
+				model.ActionStageCandidate,
+				model.ActionStatusPending,
+				model.ActionStageDiscovery,
+			)
+		} else {
+			db = db.Where("stage = ? AND status = ?", model.ActionStageCandidate, model.ActionStatusPending)
+		}
 	case "executed":
 		db = db.Where("stage = ? AND status in ?", model.ActionStageExecuted, []string{model.ActionStatusSucceeded, model.ActionStatusFailed, model.ActionStatusSkipped})
 	case "error":
@@ -156,6 +166,10 @@ func (s *ScanActionItemService) CountGroupedByJob(jobID uint) (model.ScanActionG
 		if row.Stage == model.ActionStageCandidate && row.Status == model.ActionStatusPending {
 			addActionCount(&grouped.Pending, row.ActionType, row.Total)
 		}
+		if row.Stage == model.ActionStageDiscovery && row.ActionType == model.ActionTypeDeleteDup {
+			grouped.Pending.DeleteDuplicate += row.Total
+			grouped.Pending.Total += row.Total
+		}
 		if row.Stage == model.ActionStageExecuted {
 			addActionCount(&grouped.Executed, row.ActionType, row.Total)
 		}
@@ -189,6 +203,10 @@ func (s *ScanActionItemService) CountGroupedByJobs(jobIDs []uint) (map[uint]mode
 		grouped := groupedByJob[row.JobID]
 		if row.Stage == model.ActionStageCandidate && row.Status == model.ActionStatusPending {
 			addActionCount(&grouped.Pending, row.ActionType, row.Total)
+		}
+		if row.Stage == model.ActionStageDiscovery && row.ActionType == model.ActionTypeDeleteDup {
+			grouped.Pending.DeleteDuplicate += row.Total
+			grouped.Pending.Total += row.Total
 		}
 		if row.Stage == model.ActionStageExecuted {
 			addActionCount(&grouped.Executed, row.ActionType, row.Total)

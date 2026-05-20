@@ -22,15 +22,17 @@ import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
+import { configSections, type ConfigSectionKey } from "../configSections";
 import type {
   Job,
   ScanActionCounts,
   ScanActionGroupedCounts,
   ScanActionItem,
+  ScanActionPhoto,
   ScanEvent,
   ScanJobLog,
 } from "../types";
-import { formatDateTime } from "../utils/dateTime";
+import { formatDateTime, formatDurationBetween } from "../utils/dateTime";
 import {
   formatActionStatus,
   formatJobSource,
@@ -47,15 +49,24 @@ type SummaryRecord = Record<string, unknown>;
 type DuplicatePairLine = {
   key: string;
   pairId: number;
-  side: "A" | "B";
+  groupIndex: number;
+  rowIndex: number;
   fileName: string;
   path: string;
-  slot: "pair_a" | "pair_b";
+  rawPath: string;
+  slot: string;
+  sizeText: string;
+  md5Matched: boolean;
+  pathSource: string;
+  matchCount?: number;
   recommendedDelete: boolean;
-  deleteTargetSide: "A" | "B";
+  executedAction: boolean;
   status: string;
   executedAt?: string;
   errorMessage?: string;
+  deleteEligible: boolean;
+  deleteIneligibleReason?: string;
+  groupSize: number;
 };
 
 type StatsField = {
@@ -68,11 +79,6 @@ type StatsTableRow = {
   key: string;
   label: string;
   value: unknown;
-};
-
-type RawArgField = {
-  key: string;
-  description: string;
 };
 
 type RawArgTableRow = {
@@ -208,22 +214,32 @@ const statsColumns: ColumnsType<StatsTableRow> = [
   },
 ];
 
-const rawArgFields: RawArgField[] = [
-  { key: "deleteShow", description: "是否展示删除候选" },
-  { key: "moveFileShow", description: "是否展示移动候选" },
-  { key: "modifyDateShow", description: "是否展示修改拍摄时间候选" },
-  { key: "renameFileShow", description: "是否展示重命名候选" },
-  { key: "md5Show", description: "是否展示重复文件候选" },
-  { key: "deleteAction", description: "是否直接执行删除动作" },
-  { key: "moveFileAction", description: "是否直接执行移动动作" },
-  { key: "modifyDateAction", description: "是否直接执行修改拍摄时间动作" },
-  { key: "renameFileAction", description: "是否直接执行重命名动作" },
-  { key: "startPath", description: "扫描根目录" },
-  { key: "startPathBak", description: "备份目录" },
-];
+const rawScanArgKeysByConfigKey: Record<string, string> = {
+  StartPath: "startPath",
+  DeleteShow: "deleteShow",
+  MoveFileShow: "moveFileShow",
+  ModifyDateShow: "modifyDateShow",
+  RenameFileShow: "renameFileShow",
+  Md5Show: "md5Show",
+  DeleteAction: "deleteAction",
+  MoveFileAction: "moveFileAction",
+  ModifyDateAction: "modifyDateAction",
+  RenameFileAction: "renameFileAction",
+  StartPathBak: "startPathBak",
+};
 
-const rawArgDescriptions = new Map(
-  rawArgFields.map((field) => [field.key, field.description]),
+const rawArgDescriptions = new Map<string, string>(
+  configSections.flatMap((section) =>
+    section.fields.flatMap((field) => {
+      const sourceKey = rawScanArgKeysByConfigKey[field.key];
+      return sourceKey
+        ? [
+            [field.key, field.label],
+            [sourceKey, field.label],
+          ]
+        : [[field.key, field.label]];
+    }),
+  ),
 );
 
 const rawArgColumns: ColumnsType<RawArgTableRow> = [
@@ -275,6 +291,19 @@ export function JobDetailPage() {
       return api.getJobActionItems(id, params);
     },
   });
+  const actionCountsQuery = useQuery({
+    queryKey: ["job-actions", id, "counts"],
+    queryFn: () =>
+      api.getJobActionItems(
+        id,
+        new URLSearchParams({
+          tab: "pending",
+          type: "delete",
+          page: "1",
+          pageSize: "1",
+        }),
+      ),
+  });
 
   const eventQuery = useQuery({
     queryKey: ["job-events", id],
@@ -324,10 +353,17 @@ export function JobDetailPage() {
   });
 
   const duplicateDeleteActionMutation = useMutation({
-    mutationFn: ({ itemId, side }: { itemId: number; side: "A" | "B" }) =>
-      api.executeDuplicateDeleteActionItem(id, itemId, side),
-    onSuccess: (_, variables) => {
-      messageApi.success(`重复项 ${variables.side} 图已删除`);
+    mutationFn: ({
+      itemId,
+      side,
+      path,
+    }: {
+      itemId: number;
+      side: "A" | "B" | "PATH";
+      path?: string;
+    }) => api.executeDuplicateDeleteActionItem(id, itemId, side, path),
+    onSuccess: () => {
+      messageApi.success("重复项照片已删除");
       queryClient.invalidateQueries({ queryKey: ["job-actions", id] });
       queryClient.invalidateQueries({ queryKey: ["job-events", id] });
       queryClient.invalidateQueries({ queryKey: ["job", id] });
@@ -432,7 +468,9 @@ export function JobDetailPage() {
   const events = eventQuery.data?.list ?? [];
   const logs = logQuery.data?.list ?? [];
   const groupedCounts =
-    actionQuery.data?.groupedCounts ?? summaryToGroupedCounts(summary);
+    actionQuery.data?.groupedCounts ??
+    actionCountsQuery.data?.groupedCounts ??
+    summaryToGroupedCounts(summary);
   const pendingActionTotal = groupedCounts.pending.total;
   const executedActionTotal = groupedCounts.executed.total;
   const tabItems = useMemo(
@@ -484,6 +522,9 @@ export function JobDetailPage() {
           </Descriptions.Item>
           <Descriptions.Item label="结束时间">
             {formatDateTime(job?.endAt)}
+          </Descriptions.Item>
+          <Descriptions.Item label="执行时长">
+            {formatDurationBetween(job?.startAt, job?.endAt ?? job?.lastHeartbeatAt)}
           </Descriptions.Item>
           <Descriptions.Item label="最近心跳">
             {formatDateTime(job?.lastHeartbeatAt)}
@@ -549,8 +590,12 @@ export function JobDetailPage() {
               isRenamingAction: renameActionMutation.isPending,
               isDeletingAction: deleteActionMutation.isPending,
               isDeletingAll: deleteAllMutation.isPending,
-              onDeleteDuplicateAction: (itemId, side) =>
-                duplicateDeleteActionMutation.mutate({ itemId, side }),
+              onDeleteDuplicateAction: (itemId, path) =>
+                duplicateDeleteActionMutation.mutate({
+                  itemId,
+                  side: "PATH",
+                  path,
+                }),
               onDeleteRecommendedDuplicates: () => duplicateMutation.mutate(),
               onModifyShootTime: (itemId) =>
                 modifyShootTimeMutation.mutate(itemId),
@@ -593,7 +638,7 @@ function renderTab(
     isRenamingAction: boolean;
     isDeletingAction: boolean;
     isDeletingAll: boolean;
-    onDeleteDuplicateAction: (itemId: number, side: "A" | "B") => void;
+    onDeleteDuplicateAction: (itemId: number, path: string) => void;
     onDeleteRecommendedDuplicates: () => void;
     onModifyShootTime: (itemId: number) => void;
     onMoveAction: (itemId: number) => void;
@@ -649,6 +694,7 @@ function renderActionTab(
   tab: ActionTabKey,
   context: {
     id: string;
+    summary?: SummaryRecord;
     actions: ScanActionItem[];
     groupedCounts: ScanActionGroupedCounts;
     actionTotal: number;
@@ -662,7 +708,7 @@ function renderActionTab(
     isRenamingAction: boolean;
     isDeletingAction: boolean;
     isDeletingAll: boolean;
-    onDeleteDuplicateAction: (itemId: number, side: "A" | "B") => void;
+    onDeleteDuplicateAction: (itemId: number, path: string) => void;
     onDeleteRecommendedDuplicates: () => void;
     onModifyShootTime: (itemId: number) => void;
     onMoveAction: (itemId: number) => void;
@@ -679,6 +725,12 @@ function renderActionTab(
   const duplicateRows = isDuplicateType
     ? buildDuplicatePairLines(context.actions)
     : [];
+  const duplicateDiscoveryTotal = getDuplicateDiscoveryTotal(
+    context.actionTotal,
+    context.summary,
+    tabCounts,
+    tab,
+  );
   const showRenameRedirect =
     tab === "pending" &&
     context.actionType === "rename" &&
@@ -692,7 +744,11 @@ function renderActionTab(
         onChange={context.setActionType}
         items={actionTypeOptions.map((item) => ({
           key: item.key,
-          label: `${item.label} (${countForType(tabCounts, item.key)})`,
+          label: `${item.label} (${
+            item.key === "delete_duplicate"
+              ? duplicateDiscoveryTotal
+              : countForType(tabCounts, item.key)
+          })`,
           children: (
             <Space direction="vertical" size={12} style={{ width: "100%" }}>
               {tab === "pending" &&
@@ -703,6 +759,19 @@ function renderActionTab(
                   showIcon
                   message="当前任务未开启“计算重复文件”"
                   description="这次扫描不会产出重复项数据。如需查看重复项，请在新建扫描时勾选“计算重复文件（md5Show）”。"
+                />
+              ) : null}
+              {tab === "pending" &&
+              item.key === "delete_duplicate" &&
+              context.duplicateDetectionEnabled &&
+              duplicateDiscoveryTotal > 0 &&
+              tabCounts.deleteDuplicate === 0 &&
+              duplicateRows.length === 0 ? (
+                <Alert
+                  type="info"
+                  showIcon
+                  message={`本次扫描发现 ${duplicateDiscoveryTotal} 组重复项`}
+                  description="正在加载重复项发现记录；可执行删除动作会在表格中标记“建议删除”。"
                 />
               ) : null}
               {showRenameRedirect ? (
@@ -737,7 +806,7 @@ function renderActionTab(
                       <Button
                         danger
                         loading={context.isDeletingDuplicateBulk}
-                        disabled={context.actionTotal === 0}
+                        disabled={tabCounts.deleteDuplicate === 0}
                       >
                         按建议删除所有照片
                       </Button>
@@ -779,7 +848,18 @@ function renderActionTab(
                     )}
                     dataSource={duplicateRows}
                     rowClassName={(record) =>
-                      `duplicate-line-row duplicate-line-row-${record.side.toLowerCase()}`
+                      [
+                        "duplicate-line-row",
+                        record.rowIndex === 0 ? "duplicate-line-row-start" : "",
+                        record.rowIndex === record.groupSize - 1
+                          ? "duplicate-line-row-end"
+                          : "",
+                        record.groupIndex % 2 === 0
+                          ? "duplicate-line-group-even"
+                          : "duplicate-line-group-odd",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")
                     }
                     locale={{
                       emptyText: getActionEmptyState(
@@ -976,21 +1056,23 @@ function getDuplicatePairColumns(
   id: string,
   tab: ActionTabKey,
   isDeletingDuplicateAction: boolean,
-  onDeleteDuplicateAction: (itemId: number, side: "A" | "B") => void,
+  onDeleteDuplicateAction: (itemId: number, path: string) => void,
 ): ColumnsType<DuplicatePairLine> {
   const columns: ColumnsType<DuplicatePairLine> = [
     {
-      title: "AB",
-      dataIndex: "side",
-      width: 72,
-      render: (value: DuplicatePairLine["side"]) => (
-        <span className="duplicate-side-cell">{value}</span>
+      title: "组",
+      dataIndex: "groupIndex",
+      width: 82,
+      render: (value: number, record) => (
+        <span className="duplicate-side-cell">
+          {value + 1}-{record.rowIndex + 1}
+        </span>
       ),
     },
     {
       title: "照片",
       dataIndex: "slot",
-      width: 104,
+      width: 96,
       render: (_, record) => (
         <PreviewImage
           id={id}
@@ -1003,40 +1085,86 @@ function getDuplicatePairColumns(
     {
       title: "照片文件名",
       dataIndex: "fileName",
+      width: 190,
       render: (value: string) => value || "-",
     },
     {
       title: "照片位置",
       dataIndex: "path",
-      render: (value: string) => value || "-",
+      width: 360,
+      render: (value: string) => (
+        <Typography.Text className="duplicate-path-text" title={value}>
+          {value || "-"}
+        </Typography.Text>
+      ),
     },
     {
-      title: "建议删除",
-      dataIndex: "recommendedDelete",
-      width: 108,
-      render: (value: boolean) =>
-        value ? <Typography.Text type="danger">是</Typography.Text> : "-",
+      title: "关键字段",
+      width: 230,
+      render: (_, record) => (
+        <Space direction="vertical" size={0}>
+          <Typography.Text>大小：{record.sizeText || "-"}</Typography.Text>
+          <Typography.Text>
+            MD5：{record.md5Matched ? "匹配" : "未匹配"}
+          </Typography.Text>
+          <Typography.Text type="secondary">
+            来源：{record.pathSource || "-"}
+            {record.matchCount && record.matchCount > 1
+              ? `（同名候选 ${record.matchCount}）`
+              : ""}
+          </Typography.Text>
+        </Space>
+      ),
     },
+    tab === "executed"
+      ? {
+          title: "实际操作",
+          dataIndex: "executedAction",
+          width: 96,
+          render: (value: boolean) =>
+            value ? <Typography.Text type="danger">删除</Typography.Text> : "",
+        }
+      : {
+          title: "建议删除",
+          dataIndex: "recommendedDelete",
+          width: 96,
+          render: (value: boolean, record) =>
+            value ? (
+              <Typography.Text type="danger">是</Typography.Text>
+            ) : (
+              <Typography.Text type="secondary">
+                {record.deleteEligible ? "-" : "需核对"}
+              </Typography.Text>
+            ),
+        },
   ];
 
   if (tab === "pending") {
     columns.push({
       title: "操作",
-      width: 96,
+      width: 92,
       render: (_, record) => (
-        <Popconfirm
-          title="确认删除"
-          description={`将立即删除当前 ${record.side} 图，是否继续？`}
-          okText="确认"
-          cancelText="取消"
-          onConfirm={() =>
-            onDeleteDuplicateAction(record.pairId, record.deleteTargetSide)
-          }
-        >
-          <Button danger type="link" loading={isDeletingDuplicateAction}>
-            删除
+        record.deleteEligible ? (
+          <Popconfirm
+            title="确认删除"
+            description={`将立即删除 ${record.fileName}，是否继续？`}
+            okText="确认"
+            cancelText="取消"
+            onConfirm={() => onDeleteDuplicateAction(record.pairId, record.rawPath)}
+          >
+            <Button danger type="link" loading={isDeletingDuplicateAction}>
+              删除
+            </Button>
+          </Popconfirm>
+        ) : (
+          <Button
+            type="link"
+            disabled
+            title={record.deleteIneligibleReason || "当前重复项仅供核对"}
+          >
+            仅核对
           </Button>
-        </Popconfirm>
+        )
       ),
     });
   } else {
@@ -1045,19 +1173,22 @@ function getDuplicatePairColumns(
         title: "状态",
         dataIndex: "status",
         width: 88,
-        render: (value: string) => <Tag>{formatActionStatus(value)}</Tag>,
+        render: (value: string, record) =>
+          record.executedAction ? <Tag>{formatActionStatus(value)}</Tag> : "",
       },
       {
         title: "执行时间",
         dataIndex: "executedAt",
         width: 120,
-        render: (value: string | undefined) => formatDateTime(value),
+        render: (value: string | undefined, record) =>
+          record.executedAction ? formatDateTime(value) : "",
       },
       {
         title: "错误",
         dataIndex: "errorMessage",
         width: 180,
-        render: (value: string | undefined) => value || "-",
+        render: (value: string | undefined, record) =>
+          record.executedAction ? value || "-" : "",
       },
     );
   }
@@ -1178,37 +1309,57 @@ function photoColumn(
 function buildDuplicatePairLines(
   actions: ScanActionItem[],
 ): DuplicatePairLine[] {
-  return actions.flatMap((record) => {
-    if (!record.pair) return [];
-    return [
-      {
-        key: `${record.id}-A`,
+  return actions.flatMap((record, groupIndex) => {
+    const photos = duplicatePhotosForRecord(record);
+    const deleteEligible = record.duplicateMeta?.deleteEligible ?? true;
+    const deleteIneligibleReason =
+      record.duplicateMeta?.deleteIneligibleReason;
+    return photos.map((photo, rowIndex) => ({
+        key: `${record.id}-${rowIndex}`,
         pairId: record.id,
-        side: "A",
-        fileName: record.pair.photoA.fileName,
-        path: formatParentDirectory(record.pair.photoA.path) || "",
-        slot: "pair_a",
-        recommendedDelete: true,
-        deleteTargetSide: "A",
+        groupIndex,
+        rowIndex,
+        fileName: photo.fileName,
+        path: formatParentDirectory(photo.path) || photo.path || "",
+        rawPath: photo.path,
+        slot: photo.previewSlot || `duplicate_${rowIndex}`,
+        sizeText: photo.sizeText || "-",
+        md5Matched: photo.md5Matched ?? true,
+        pathSource: photo.pathSource || "扫描记录",
+        matchCount: photo.matchCount,
+        recommendedDelete: photo.recommendedDelete ?? false,
+        executedAction: photo.executedAction ?? false,
         status: record.status,
         executedAt: record.executedAt,
         errorMessage: record.errorMessage,
-      },
-      {
-        key: `${record.id}-B`,
-        pairId: record.id,
-        side: "B",
-        fileName: record.pair.photoB.fileName,
-        path: formatParentDirectory(record.pair.photoB.path) || "",
-        slot: "pair_b",
-        recommendedDelete: false,
-        deleteTargetSide: "B",
-        status: record.status,
-        executedAt: record.executedAt,
-        errorMessage: record.errorMessage,
-      },
-    ];
+        deleteEligible: (photo.deleteEligible ?? deleteEligible) && Boolean(photo.path),
+        deleteIneligibleReason,
+        groupSize: photos.length,
+    }));
   });
+}
+
+function duplicatePhotosForRecord(record: ScanActionItem): ScanActionPhoto[] {
+  if (record.duplicatePhotos && record.duplicatePhotos.length > 0) {
+    return record.duplicatePhotos;
+  }
+  if (!record.pair) return [];
+  return [
+    {
+      ...record.pair.photoA,
+      previewSlot: "pair_a",
+      recommendedDelete: true,
+      executedAction: record.stage === "executed",
+      deleteEligible: record.duplicateMeta?.deleteEligible ?? true,
+    },
+    {
+      ...record.pair.photoB,
+      previewSlot: "pair_b",
+      recommendedDelete: false,
+      executedAction: false,
+      deleteEligible: record.duplicateMeta?.deleteEligible ?? true,
+    },
+  ];
 }
 
 function textColumn(
@@ -1298,6 +1449,23 @@ function countForType(counts: ScanActionCounts, type: string) {
   }
 }
 
+function getDuplicateDiscoveryTotal(
+  actionTotal: number,
+  summary: SummaryRecord | undefined,
+  tabCounts: ScanActionCounts,
+  tab: ActionTabKey,
+) {
+  if (tab !== "pending") {
+    return Math.max(actionTotal, tabCounts.deleteDuplicate);
+  }
+  if (actionTotal > 0 || tabCounts.total > 0) {
+    return Math.max(actionTotal, tabCounts.deleteDuplicate);
+  }
+  const detectedGroups =
+    numberFromSummaryKey(summary, "DumpFileCnt", "dumpFileCnt") ?? 0;
+  return Math.max(actionTotal, detectedGroups, tabCounts.deleteDuplicate);
+}
+
 function getActionEmptyState(
   tab: ActionTabKey,
   actionType: string,
@@ -1335,39 +1503,96 @@ function renderStatsTab(summary?: SummaryRecord) {
 
 function renderRawArgsTab(scanArgs?: Record<string, unknown>) {
   return (
+    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+      {configSections.map((section) => (
+        <div key={section.key} className={NO_SCROLL_TABLE_CLASS}>
+          <Typography.Title level={5} className="raw-args-section-title">
+            {section.title}
+          </Typography.Title>
+          <Table
+            rowKey="key"
+            tableLayout="fixed"
+            columns={rawArgColumns}
+            dataSource={buildRawArgRowsForSection(section.key, scanArgs)}
+            pagination={false}
+          />
+        </div>
+      ))}
+      {renderUnknownRawArgs(scanArgs)}
+    </Space>
+  );
+}
+
+function buildRawArgRowsForSection(
+  sectionKey: ConfigSectionKey,
+  scanArgs?: Record<string, unknown>,
+): RawArgTableRow[] {
+  const section = configSections.find((item) => item.key === sectionKey);
+  if (!section) {
+    return [];
+  }
+  return section.fields.map((field) => {
+    const sourceKey = rawScanArgKeysByConfigKey[field.key] ?? field.key;
+    return {
+      key: `${section.key}.${field.key}`,
+      name: sourceKey,
+      value: rawArgValueForField(field.key, scanArgs),
+      description: field.label,
+    };
+  });
+}
+
+function rawArgValueForField(
+  configKey: string,
+  scanArgs?: Record<string, unknown>,
+) {
+  if (!scanArgs) {
+    return undefined;
+  }
+  const scanArgKey = rawScanArgKeysByConfigKey[configKey];
+  if (scanArgKey && Object.prototype.hasOwnProperty.call(scanArgs, scanArgKey)) {
+    return scanArgs[scanArgKey];
+  }
+  if (Object.prototype.hasOwnProperty.call(scanArgs, configKey)) {
+    return scanArgs[configKey];
+  }
+  return undefined;
+}
+
+function renderUnknownRawArgs(scanArgs?: Record<string, unknown>) {
+  const rows = buildUnknownRawArgRows(scanArgs);
+  if (rows.length === 0) {
+    return null;
+  }
+  return (
     <div className={NO_SCROLL_TABLE_CLASS}>
+      <Typography.Title level={5} className="raw-args-section-title">
+        未登记参数
+      </Typography.Title>
       <Table
         rowKey="key"
         tableLayout="fixed"
         columns={rawArgColumns}
-        dataSource={buildRawArgRows(scanArgs)}
+        dataSource={rows}
         pagination={false}
       />
     </div>
   );
 }
 
-function buildRawArgRows(scanArgs?: Record<string, unknown>): RawArgTableRow[] {
-  const args = scanArgs ?? {};
-  const rows = rawArgFields.map((field) => ({
-    key: field.key,
-    name: field.key,
-    value: args[field.key],
-    description: field.description,
-  }));
-  const knownKeys = new Set(rawArgFields.map((field) => field.key));
-  Object.entries(args).forEach(([key, value]) => {
-    if (knownKeys.has(key)) {
-      return;
-    }
-    rows.push({
+function buildUnknownRawArgRows(scanArgs?: Record<string, unknown>): RawArgTableRow[] {
+  if (!scanArgs) {
+    return [];
+  }
+  const knownKeys = new Set(Object.values(rawScanArgKeysByConfigKey));
+  return Object.entries(scanArgs)
+    .filter(([key]) => !knownKeys.has(key))
+    .map(([key, value]) => ({
       key,
       name: key,
       value,
       description: rawArgDescriptions.get(key) ?? "未登记参数",
-    });
-  });
-  return rows;
+    }));
 }
 
 function renderRawArgValue(value: unknown) {

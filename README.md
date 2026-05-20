@@ -90,7 +90,6 @@ Web 管理台支持：
 每次修改后的标准收口步骤：
 
 ```bash
-scripts/build-local.sh
 scripts/monit-local-web.sh restart
 curl -I http://127.0.0.1:8081/
 ```
@@ -128,7 +127,6 @@ curl -I http://127.0.0.1:8081/
 构建并重启本机服务：
 
 ```bash
-scripts/build-local.sh
 scripts/monit-local-web.sh restart
 ```
 

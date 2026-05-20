@@ -27,6 +27,10 @@ prepare_config() {
   chmod 700 "$RUNTIME_CONFIG"
 }
 
+build_local() {
+  "$ROOT_DIR/scripts/build-local.sh"
+}
+
 cmd="${1:-status}"
 
 case "$cmd" in
@@ -49,6 +53,7 @@ case "$cmd" in
     ;;
   restart)
     require_monit
+    build_local
     prepare_config
     if "$MONIT_BIN" -c "$RUNTIME_CONFIG" summary >/dev/null 2>&1; then
       "$MONIT_BIN" -c "$RUNTIME_CONFIG" restart img-process-web

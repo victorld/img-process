@@ -1129,6 +1129,30 @@ func (s *Scanner) dumpFileProcess() map[string][]string {
 		}
 
 		tools.Logger.Info("file : ", tools.StrWithColor(md5, "blue"))
+		groupPhotos := buildDuplicateGroupPhotoMetadata(files, minPhoto, sizeMatch)
+		if !sizeMatch {
+			s.recorder.RecordCandidateAction(model.ScanActionItemDB{
+				ActionType:     model.ActionTypeDeleteDup,
+				ObjectType:     model.ActionObjectFile,
+				SourcePath:     firstNonEmptyPath(files),
+				TargetPath:     minPhoto,
+				ReasonCode:     "duplicate_md5",
+				ReasonText:     "重复文件候选，仅展示不建议自动删除",
+				Stage:          model.ActionStageDiscovery,
+				Status:         model.ActionStatusSkipped,
+				DuplicateGroup: md5,
+				MetadataJSON: tools.MarshalJsonToString(ginH(
+					"fileName", filepath.Base(firstNonEmptyPath(files)),
+					"currentPath", firstNonEmptyPath(files),
+					"keepPath", minPhoto,
+					"keepFileName", filepath.Base(minPhoto),
+					"sizeMatch", sizeMatch,
+					"deleteEligible", false,
+					"deleteIneligibleReason", "同 MD5 分组内文件大小不一致，需人工核对",
+					"duplicatePhotos", groupPhotos,
+				)),
+			})
+		}
 		for _, photo := range files {
 			if photo != minPhoto {
 				if sizeMatch {
@@ -1147,6 +1171,8 @@ func (s *Scanner) dumpFileProcess() map[string][]string {
 							"keepPath", minPhoto,
 							"keepFileName", filepath.Base(minPhoto),
 							"sizeMatch", sizeMatch,
+							"deleteEligible", true,
+							"duplicatePhotos", groupPhotos,
 						)),
 					})
 					tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"), " SIZE: ", tools.GetFileSize(photo))
@@ -1163,6 +1189,35 @@ func (s *Scanner) dumpFileProcess() map[string][]string {
 	}
 
 	return dumpMap
+}
+
+func firstNonEmptyPath(paths []string) string {
+	for _, candidate := range paths {
+		if strings.TrimSpace(candidate) != "" {
+			return candidate
+		}
+	}
+	return ""
+}
+
+func buildDuplicateGroupPhotoMetadata(files []string, recommendedDeletePath string, deleteEligible bool) []model.ScanActionPreview {
+	photos := make([]model.ScanActionPreview, 0, len(files))
+	for index, file := range files {
+		sizeBytes := tools.GetFileSize(file)
+		photos = append(photos, model.ScanActionPreview{
+			FileName:          filepath.Base(file),
+			Path:              file,
+			SizeBytes:         sizeBytes,
+			SizeText:          formatFileSize(sizeBytes),
+			MD5Matched:        true,
+			PathSource:        "扫描记录",
+			RecommendedDelete: deleteEligible && file != recommendedDeletePath,
+			DeleteEligible:    deleteEligible,
+			CandidateIndex:    index,
+			MatchCount:        1,
+		})
+	}
+	return photos
 }
 
 func (s *Scanner) writeDumpArtifacts(dumpMap map[string][]string) error {

@@ -30,7 +30,7 @@ func TestListJobsReturnsActionAndFolderCounts(t *testing.T) {
 				Source:      model.JobSourceManual,
 				TotalCount:  463,
 				StartAt:     &startAt,
-				SummaryJSON: `{"dirTotal":28}`,
+				SummaryJSON: `{"dirTotal":28,"dirTotalBak":19,"fileTotalBak":431}`,
 			},
 		}, 1, nil
 	}
@@ -64,11 +64,13 @@ func TestListJobsReturnsActionAndFolderCounts(t *testing.T) {
 		Data struct {
 			Total int64 `json:"total"`
 			List  []struct {
-				ID                  uint  `json:"id"`
-				TotalCount          int64 `json:"totalCount"`
-				TotalFolderCount    int64 `json:"totalFolderCount"`
-				PendingActionCount  int64 `json:"pendingActionCount"`
-				ExecutedActionCount int64 `json:"executedActionCount"`
+				ID                     uint  `json:"id"`
+				TotalCount             int64 `json:"totalCount"`
+				TotalFolderCount       int64 `json:"totalFolderCount"`
+				TotalBackupFileCount   int64 `json:"totalBackupFileCount"`
+				TotalBackupFolderCount int64 `json:"totalBackupFolderCount"`
+				PendingActionCount     int64 `json:"pendingActionCount"`
+				ExecutedActionCount    int64 `json:"executedActionCount"`
 			} `json:"list"`
 		} `json:"data"`
 	}
@@ -90,6 +92,12 @@ func TestListJobsReturnsActionAndFolderCounts(t *testing.T) {
 	}
 	if item.TotalCount != 463 {
 		t.Fatalf("totalCount = %d, want 463", item.TotalCount)
+	}
+	if item.TotalBackupFolderCount != 19 {
+		t.Fatalf("totalBackupFolderCount = %d, want 19", item.TotalBackupFolderCount)
+	}
+	if item.TotalBackupFileCount != 431 {
+		t.Fatalf("totalBackupFileCount = %d, want 431", item.TotalBackupFileCount)
 	}
 	if item.PendingActionCount != 6 {
 		t.Fatalf("pendingActionCount = %d, want 6", item.PendingActionCount)

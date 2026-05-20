@@ -19,6 +19,8 @@ export type Job = {
   processedCount: number
   totalCount: number
   totalFolderCount?: number
+  totalBackupFileCount?: number
+  totalBackupFolderCount?: number
   pendingActionCount?: number
   executedActionCount?: number
   hasAction: boolean
@@ -47,6 +49,8 @@ export type ScanActionItem = {
   duplicateGroup?: string
   detail?: ScanActionDetail
   pair?: ScanActionPair
+  duplicatePhotos?: ScanActionPhoto[]
+  duplicateMeta?: ScanActionDuplicateMeta
 }
 
 export type ScanActionCounts = {
@@ -82,11 +86,26 @@ export type ScanActionPhoto = {
   fileName: string
   path: string
   previewSlot?: string
+  sizeBytes?: number
+  sizeText?: string
+  md5Matched?: boolean
+  pathSource?: string
+  recommendedDelete?: boolean
+  executedAction?: boolean
+  deleteEligible?: boolean
+  candidateIndex?: number
+  matchCount?: number
 }
 
 export type ScanActionPair = {
   photoA: ScanActionPhoto
   photoB: ScanActionPhoto
+}
+
+export type ScanActionDuplicateMeta = {
+  sizeMatch: boolean
+  deleteEligible: boolean
+  deleteIneligibleReason?: string
 }
 
 export type ScanEvent = {

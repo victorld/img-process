@@ -82,6 +82,10 @@ body {
   overflow-wrap: anywhere;
 }
 
+.raw-args-section-title {
+  margin: 0 0 12px;
+}
+
 .log-block {
   max-height: 520px;
   line-height: 1.6;
@@ -89,7 +93,7 @@ body {
 }
 
 .action-preview {
-  border-radius: 12px;
+  border-radius: 6px;
   overflow: hidden;
   background: #eef2ef;
 }
@@ -132,20 +136,49 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 32px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #eef5f1;
+  min-width: 42px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: #edf5f1;
   font-weight: 700;
   color: #466456;
 }
 
-.duplicate-line-row-a td {
-  border-bottom: 0 !important;
+.duplicate-line-row td {
+  border-bottom-color: transparent !important;
+  vertical-align: middle;
 }
 
-.duplicate-line-row-b td {
-  border-top: 0 !important;
+.duplicate-line-group-even td {
+  background: #fbfdfb;
+}
+
+.duplicate-line-group-odd td {
+  background: #f6faf8;
+}
+
+.duplicate-line-row-start td {
+  border-top: 12px solid #fff !important;
+}
+
+.duplicate-line-row-start td:first-child {
+  border-left: 4px solid #5b8f78;
+}
+
+.duplicate-line-row-end td {
+  border-bottom: 1px solid #d9e6df !important;
+}
+
+.duplicate-line-row:hover td {
+  background: #eef7f2 !important;
+}
+
+.duplicate-path-text {
+  display: block;
+  line-height: 1.45;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .app-table {

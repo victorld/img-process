@@ -2,7 +2,7 @@
 
 - git commit 的提交描述必须使用中文。
 - 项目默认使用 macOS 本地模式构建、启动和验收；除非用户明确要求，否则不要使用 Docker 作为最终生效环境。
-- 启动或重启项目默认使用本地守护方式：先运行 `./scripts/build-local.sh` 生成前端产物和本机二进制，再运行 `./scripts/monit-local-web.sh restart` 让 `8081` 上的本机服务切到新版本。
+- 启动或重启项目默认使用本地守护方式：运行 `./scripts/monit-local-web.sh restart`，该命令会先执行 `./scripts/build-local.sh` 生成前端产物和本机二进制，再让 `8081` 上的本机服务切到新版本。
 - 任何会影响前端、后端或配置的修改完成后，都必须用本地模式让实际服务立即生效，并验证 `http://localhost:8081` 对外访问已经切到新版本。
 - 只有用户明确要求 Docker 时，才使用 `docker compose up -d --build app`；不要因为仓库存在 Docker 配置就默认切换到 Docker。
 - 只要本分支相对 `master` 新增了有效代码、配置、接口、部署或数据库改动，就必须同步更新根目录 `changelist.md`。

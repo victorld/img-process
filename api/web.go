@@ -1,13 +1,18 @@
 package api
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io/fs"
 	"net/http"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +25,8 @@ import (
 )
 
 type WebAPI struct{}
+
+var previewThumbMu sync.Mutex
 
 var listJobsFunc = service.Runtime.ListJobs
 var countGroupedActionItemsByJobsFunc = service.Runtime.CountActionItemsGroupedByJobs
@@ -240,8 +247,68 @@ func (api *WebAPI) PreviewJobAction(c *gin.Context) {
 		return
 	}
 	c.Header("Cache-Control", "private, max-age=60")
-	c.Header("Content-Disposition", "inline; filename=\""+filepath.Base(path)+"\"")
-	c.File(path)
+	previewPath := path
+	if !isBrowserImagePreview(path) {
+		thumbPath, err := ensurePreviewThumbnail(path)
+		if err != nil {
+			tools.FailWithStatus(c, http.StatusBadRequest, "图片预览失败", gin.H{"error": err.Error()})
+			return
+		}
+		previewPath = thumbPath
+	}
+	c.Header("Content-Disposition", "inline; filename=\""+filepath.Base(previewPath)+"\"")
+	c.File(previewPath)
+}
+
+func isBrowserImagePreview(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp":
+		return true
+	default:
+		return false
+	}
+}
+
+func ensurePreviewThumbnail(sourcePath string) (string, error) {
+	previewThumbMu.Lock()
+	defer previewThumbMu.Unlock()
+
+	stat, err := os.Stat(sourcePath)
+	if err != nil {
+		return "", err
+	}
+	hash := sha1.Sum([]byte(sourcePath + "|" + stat.ModTime().Format(time.RFC3339Nano) + "|" + strconv.FormatInt(stat.Size(), 10)))
+	dir := filepath.Join(cons.WorkDir, "log", "preview_cache")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	thumbPath := filepath.Join(dir, hex.EncodeToString(hash[:])+".jpg")
+	if _, err := os.Stat(thumbPath); err == nil {
+		return thumbPath, nil
+	}
+
+	args := []string{
+		"-hide_banner",
+		"-loglevel", "error",
+		"-y",
+		"-i", sourcePath,
+		"-frames:v", "1",
+		"-vf", "scale='min(320,iw)':-1",
+		thumbPath,
+	}
+	output, err := runPreviewFFmpeg(args...)
+	if err != nil {
+		return "", errors.New("生成预览缩略图失败：" + strings.TrimSpace(string(output)))
+	}
+	return thumbPath, nil
+}
+
+var runPreviewFFmpeg = func(args ...string) ([]byte, error) {
+	return execCommandCombinedOutput("ffmpeg", args...)
+}
+
+func execCommandCombinedOutput(name string, args ...string) ([]byte, error) {
+	return exec.Command(name, args...).CombinedOutput()
 }
 
 func (api *WebAPI) StreamJob(c *gin.Context) {
@@ -344,12 +411,14 @@ func (api *WebAPI) DeleteDuplicateActionItem(c *gin.Context) {
 		return
 	}
 
-	if err := service.Runtime.ExecuteDuplicateActionItem(jobID, itemID, req.Side); err != nil {
+	if err := service.Runtime.ExecuteDuplicateActionItem(jobID, itemID, req.Side, req.Path); err != nil {
 		if isBadRequestError(err) ||
 			strings.Contains(err.Error(), "does not belong") ||
 			strings.Contains(err.Error(), "not a pending duplicate delete action") ||
 			strings.Contains(err.Error(), "invalid duplicate side") ||
-			strings.Contains(err.Error(), "duplicate delete path is empty") {
+			strings.Contains(err.Error(), "duplicate delete path is empty") ||
+			strings.Contains(err.Error(), "duplicate delete path is not in this duplicate group") ||
+			strings.Contains(err.Error(), "duplicate delete path is outside allowed roots") {
 			tools.FailWithStatus(c, http.StatusBadRequest, "执行重复项删除失败", gin.H{"error": err.Error()})
 			return
 		}
@@ -357,7 +426,7 @@ func (api *WebAPI) DeleteDuplicateActionItem(c *gin.Context) {
 		return
 	}
 
-	tools.Success(c, gin.H{"jobId": jobID, "itemId": itemID, "side": strings.ToUpper(strings.TrimSpace(req.Side))}, "重复项删除已执行")
+	tools.Success(c, gin.H{"jobId": jobID, "itemId": itemID, "side": strings.ToUpper(strings.TrimSpace(req.Side)), "path": req.Path}, "重复项删除已执行")
 }
 
 func (api *WebAPI) ModifyJobShootTimeActionItem(c *gin.Context) {
@@ -698,30 +767,36 @@ func parseTimeRange(startRaw string, endRaw string) (*time.Time, *time.Time) {
 
 func serializeJob(job model.ScanJobDB, groupedCounts model.ScanActionGroupedCounts) gin.H {
 	summary := parseJSON(job.SummaryJSON)
+	pendingActionCount := groupedCounts.Pending.Total
+	if pendingActionCount == 0 {
+		pendingActionCount = summaryInt(summary, "dumpFileCnt", "DumpFileCnt")
+	}
 	return gin.H{
-		"id":                  job.ID,
-		"jobUuid":             job.JobUUID,
-		"scanUuid":            job.ScanUUID,
-		"source":              job.Source,
-		"status":              job.Status,
-		"scheduleId":          job.ScheduleID,
-		"queueAt":             job.QueueAt,
-		"startAt":             job.StartAt,
-		"endAt":               job.EndAt,
-		"currentPhase":        job.CurrentPhase,
-		"lastHeartbeatAt":     job.LastHeartbeatAt,
-		"processedCount":      job.ProcessedCount,
-		"totalCount":          job.TotalCount,
-		"totalFolderCount":    summaryInt(summary, "dirTotal", "DirTotal"),
-		"hasAction":           job.HasAction,
-		"scanArgs":            parseJSON(job.ScanArgs),
-		"summary":             summary,
-		"pendingActionCount":  groupedCounts.Pending.Total,
-		"executedActionCount": groupedCounts.Executed.Total,
-		"artifactPath":        job.ArtifactPath,
-		"errorMessage":        job.ErrorMessage,
-		"createdAt":           job.CreatedAt,
-		"updatedAt":           job.UpdatedAt,
+		"id":                     job.ID,
+		"jobUuid":                job.JobUUID,
+		"scanUuid":               job.ScanUUID,
+		"source":                 job.Source,
+		"status":                 job.Status,
+		"scheduleId":             job.ScheduleID,
+		"queueAt":                job.QueueAt,
+		"startAt":                job.StartAt,
+		"endAt":                  job.EndAt,
+		"currentPhase":           job.CurrentPhase,
+		"lastHeartbeatAt":        job.LastHeartbeatAt,
+		"processedCount":         job.ProcessedCount,
+		"totalCount":             job.TotalCount,
+		"totalFolderCount":       summaryInt(summary, "dirTotal", "DirTotal"),
+		"totalBackupFileCount":   summaryInt(summary, "fileTotalBak", "FileTotalBak"),
+		"totalBackupFolderCount": summaryInt(summary, "dirTotalBak", "DirTotalBak"),
+		"hasAction":              job.HasAction,
+		"scanArgs":               parseJSON(job.ScanArgs),
+		"summary":                summary,
+		"pendingActionCount":     pendingActionCount,
+		"executedActionCount":    groupedCounts.Executed.Total,
+		"artifactPath":           job.ArtifactPath,
+		"errorMessage":           job.ErrorMessage,
+		"createdAt":              job.CreatedAt,
+		"updatedAt":              job.UpdatedAt,
 	}
 }
 

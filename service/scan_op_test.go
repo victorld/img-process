@@ -182,6 +182,55 @@ func TestWriteBackupDiffArtifactsKeepsEmptySummaryWithoutFiles(t *testing.T) {
 	}
 }
 
+func TestDumpFileProcessRecordsReviewOnlyDuplicateWhenSizeMismatch(t *testing.T) {
+	ensureTestLogger()
+	recorder := &captureRecorder{}
+	scanner := newScannerWithRecorder(model.DoScanImgArg{}, recorder)
+	scanner.md5Show = true
+
+	root := t.TempDir()
+	keep := filepath.Join(root, "2024", "2024-01", "2024-01-01", "IMG_0001.JPG")
+	duplicate := filepath.Join(root, "2024", "2024-01", "2024-01-02", "IMG_0002.JPG")
+	if err := os.MkdirAll(filepath.Dir(keep), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(duplicate), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keep, []byte("same-prefix-a"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(duplicate, []byte("same-prefix-but-longer"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	scanner.md5DumpMap["md5-1"] = []string{keep, duplicate}
+
+	dumpMap := scanner.dumpFileProcess()
+	if len(dumpMap) != 1 {
+		t.Fatalf("dumpMap len = %d, want 1", len(dumpMap))
+	}
+	if len(scanner.shouldDeleteMd5Files) != 0 {
+		t.Fatalf("shouldDeleteMd5Files = %#v, want empty", scanner.shouldDeleteMd5Files)
+	}
+	if len(recorder.items) != 1 {
+		t.Fatalf("recorded items = %d, want 1", len(recorder.items))
+	}
+	item := recorder.items[0]
+	if item.Stage != model.ActionStageDiscovery {
+		t.Fatalf("stage = %q, want discovery", item.Stage)
+	}
+	if item.Status != model.ActionStatusSkipped {
+		t.Fatalf("status = %q, want skipped", item.Status)
+	}
+	meta := parseTestMetadata(t, item.MetadataJSON)
+	if meta["deleteEligible"] != false {
+		t.Fatalf("deleteEligible = %v, want false", meta["deleteEligible"])
+	}
+	if meta["deleteIneligibleReason"] == "" {
+		t.Fatal("deleteIneligibleReason should not be empty")
+	}
+}
+
 func sortStringsForTest(items []string) {
 	for i := 1; i < len(items); i++ {
 		for j := i; j > 0 && items[j] < items[j-1]; j-- {

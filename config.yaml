@@ -30,7 +30,7 @@ cache:
 dump:
   PoolSize: 8   #单个照片处理的并行度
   Md5Retry: 3   #获取哈希值的重试次数
-  Md5CountLength: 65536    # 1024 * 64
+  Md5CountLength: 262144    # 1024 * 64 * 4
 bak:
   StartPathBak: /Volumes/mount/personal_folder/pic-lib/pic-new
 gis:

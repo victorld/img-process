@@ -13,6 +13,7 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
   message,
 } from 'antd'
@@ -21,7 +22,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import type { Job } from '../types'
-import { formatDateTime } from '../utils/dateTime'
+import { formatDateTime, formatDurationBetween } from '../utils/dateTime'
 import { formatJobSource, formatJobStatus } from '../utils/displayText'
 import { NO_SCROLL_TABLE_CLASS } from '../utils/table'
 
@@ -37,6 +38,19 @@ type ScanFormValues = {
   moveFileAction?: boolean
   modifyDateAction?: boolean
   renameFileAction?: boolean
+}
+
+function renderShortUuid(value?: string | null) {
+  const fullUuid = value ?? ''
+  if (!fullUuid) {
+    return '-'
+  }
+
+  return (
+    <Tooltip title={fullUuid}>
+      <Typography.Text>{fullUuid.slice(0, 8)}</Typography.Text>
+    </Tooltip>
+  )
 }
 
 export function JobsPage() {
@@ -91,19 +105,22 @@ export function JobsPage() {
   const columns: ColumnsType<Job> = useMemo(
     () => [
       { title: '任务ID', dataIndex: 'id', width: 76 },
-      { title: '任务UUID', dataIndex: 'jobUuid', width: 180 },
+      { title: '任务UUID', dataIndex: 'jobUuid', width: 96, render: renderShortUuid },
       { title: '状态', dataIndex: 'status', width: 88, render: (value) => <Tag>{formatJobStatus(String(value ?? ''))}</Tag> },
       { title: '来源', dataIndex: 'source', width: 72, render: (value) => formatJobSource(String(value ?? '')) },
       { title: '总文件夹数', dataIndex: 'totalFolderCount', width: 96, render: (value) => Number(value ?? 0) },
       { title: '总文件数', dataIndex: 'totalCount', width: 88, render: (value) => Number(value ?? 0) },
+      { title: '备份总文件夹数', dataIndex: 'totalBackupFolderCount', width: 120, render: (value) => Number(value ?? 0) },
+      { title: '备份总文件数', dataIndex: 'totalBackupFileCount', width: 108, render: (value) => Number(value ?? 0) },
       { title: '待执行动作', dataIndex: 'pendingActionCount', width: 96, render: (value) => Number(value ?? 0) },
       { title: '已执行动作', dataIndex: 'executedActionCount', width: 96, render: (value) => Number(value ?? 0) },
       { title: '开始时间', dataIndex: 'startAt', width: 132, render: (value) => formatDateTime(value) },
+      { title: '执行时长', dataIndex: 'endAt', width: 96, render: (_: unknown, record: Job) => formatDurationBetween(record.startAt, record.endAt ?? record.lastHeartbeatAt) },
       {
         title: '操作',
         dataIndex: 'id',
         width: 132,
-        render: (_, record) => (
+        render: (_: unknown, record: Job) => (
           <Space size={8}>
             <Link to={`/jobs/${record.id}`}>查看详情</Link>
             <Popconfirm
@@ -144,7 +161,7 @@ export function JobsPage() {
               const result = await systemStatusQuery.refetch()
               const defaults = result.data?.server.scanDefaults as ScanFormValues | undefined
               form.resetFields()
-              form.setFieldsValue(defaults ?? {})
+              form.setFieldsValue({ ...defaults, modifyDateShow: false })
               setDrawerOpen(true)
             }}
           >

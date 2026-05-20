@@ -24,4 +24,5 @@ type UpsertScheduleReq struct {
 
 type ExecuteDuplicateDeleteReq struct {
 	Side string `json:"side" binding:"required"`
+	Path string `json:"path"`
 }

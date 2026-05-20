@@ -37,19 +37,19 @@ func (r *AppRuntime) ExecuteDeleteActionItem(jobID uint, itemID uint) error {
 	return r.executeDeleteActionItem(&item)
 }
 
-func (r *AppRuntime) ExecuteDuplicateActionItem(jobID uint, itemID uint, side string) error {
+func (r *AppRuntime) ExecuteDuplicateActionItem(jobID uint, itemID uint, side string, requestedPath string) error {
 	item, err := r.actionItemService.GetByID(itemID)
 	if err != nil {
-		return err
+		return r.executeLegacyDuplicatePath(jobID, itemID, requestedPath, err)
 	}
 	if item.JobID != jobID {
 		return errors.New("action item does not belong to job")
 	}
-	if !isPendingDuplicateDeleteAction(item) {
+	if !isPendingDuplicateDeleteAction(item) && strings.TrimSpace(requestedPath) == "" {
 		return errors.New("action item is not a pending duplicate delete action")
 	}
 
-	return r.executeDuplicateDeleteActionItem(&item, side)
+	return r.executeDuplicateDeleteActionItem(&item, side, requestedPath)
 }
 
 func (r *AppRuntime) ExecuteModifyShootTimeActionItem(jobID uint, itemID uint) error {
@@ -264,8 +264,8 @@ func (r *AppRuntime) executeDeleteActionItem(item *model.ScanActionItemDB) error
 	return nil
 }
 
-func (r *AppRuntime) executeDuplicateDeleteActionItem(item *model.ScanActionItemDB, side string) error {
-	normalizedSide, deletePath, recommendedDeletePath, err := duplicateDeleteTarget(*item, side)
+func (r *AppRuntime) executeDuplicateDeleteActionItem(item *model.ScanActionItemDB, side string, requestedPath string) error {
+	normalizedSide, deletePath, recommendedDeletePath, err := duplicateDeleteTarget(*item, side, requestedPath)
 	if err != nil {
 		return err
 	}
@@ -351,12 +351,19 @@ func isPendingDuplicateDeleteAction(item model.ScanActionItemDB) bool {
 	if item.Stage != model.ActionStageCandidate || item.Status != model.ActionStatusPending {
 		return false
 	}
-	return item.ActionType == model.ActionTypeDeleteDup
+	if item.ActionType != model.ActionTypeDeleteDup {
+		return false
+	}
+	metadata := parseActionItemMetadata(item)
+	return metadata.DeleteEligible == nil || *metadata.DeleteEligible
 }
 
-func duplicateDeleteTarget(item model.ScanActionItemDB, side string) (string, string, string, error) {
+func duplicateDeleteTarget(item model.ScanActionItemDB, side string, requestedPath string) (string, string, string, error) {
 	normalizedSide := strings.ToUpper(strings.TrimSpace(side))
-	if normalizedSide != "A" && normalizedSide != "B" {
+	if normalizedSide == "" && strings.TrimSpace(requestedPath) != "" {
+		normalizedSide = "PATH"
+	}
+	if normalizedSide != "A" && normalizedSide != "B" && normalizedSide != "PATH" {
 		return "", "", "", errors.New("invalid duplicate side")
 	}
 
@@ -368,11 +375,58 @@ func duplicateDeleteTarget(item model.ScanActionItemDB, side string) (string, st
 	if normalizedSide == "B" {
 		deletePath = keepPath
 	}
+	if normalizedSide == "PATH" {
+		deletePath = strings.TrimSpace(requestedPath)
+		if !duplicatePathBelongsToItem(metadata, deletePath) {
+			return "", "", "", errors.New("duplicate delete path is not in this duplicate group")
+		}
+	}
 	if strings.TrimSpace(deletePath) == "" {
 		return "", "", "", errors.New("duplicate delete path is empty")
 	}
 
 	return normalizedSide, deletePath, recommendedDeletePath, nil
+}
+
+func duplicatePathBelongsToItem(metadata actionItemMetadata, deletePath string) bool {
+	for _, photo := range metadata.DuplicatePhotos {
+		if sameCleanPath(photo.Path, deletePath) {
+			return true
+		}
+	}
+	return sameCleanPath(metadata.CurrentPath, deletePath) || sameCleanPath(metadata.KeepPath, deletePath)
+}
+
+func sameCleanPath(a string, b string) bool {
+	if strings.TrimSpace(a) == "" || strings.TrimSpace(b) == "" {
+		return false
+	}
+	return filepath.Clean(a) == filepath.Clean(b)
+}
+
+func (r *AppRuntime) executeLegacyDuplicatePath(jobID uint, itemID uint, requestedPath string, originalErr error) error {
+	requestedPath = strings.TrimSpace(requestedPath)
+	if requestedPath == "" {
+		return originalErr
+	}
+	job, err := r.jobService.GetByID(jobID)
+	if err != nil {
+		return err
+	}
+	if !isPathInRoots(requestedPath, collectAllowedPreviewRoots(job)) {
+		return errors.New("duplicate delete path is outside allowed roots")
+	}
+	err = tools.DeleteFile(requestedPath)
+	_ = r.eventService.Create(&model.ScanEventDB{
+		JobID:       jobID,
+		EventType:   model.EventTypeLifecycle,
+		Phase:       "post_action",
+		Level:       "info",
+		Title:       "重复项删除已执行",
+		Message:     "历史重复项单张照片已删除",
+		RelatedPath: requestedPath,
+	})
+	return err
 }
 
 func appendDuplicateExecutionAudit(metadataJSON string, side string, deletePath string, recommendedDeletePath string) string {

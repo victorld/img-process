@@ -15,6 +15,7 @@ const (
 
 	ActionStageCandidate = "candidate"
 	ActionStageExecuted  = "executed"
+	ActionStageDiscovery = "discovery"
 
 	ActionStatusPending   = "pending"
 	ActionStatusSucceeded = "succeeded"
@@ -69,9 +70,24 @@ type ScanActionGroupedCounts struct {
 }
 
 type ScanActionPreview struct {
-	FileName    string `json:"fileName"`
-	Path        string `json:"path"`
-	PreviewSlot string `json:"previewSlot,omitempty"`
+	FileName          string `json:"fileName"`
+	Path              string `json:"path"`
+	PreviewSlot       string `json:"previewSlot,omitempty"`
+	SizeBytes         int64  `json:"sizeBytes,omitempty"`
+	SizeText          string `json:"sizeText,omitempty"`
+	MD5Matched        bool   `json:"md5Matched"`
+	PathSource        string `json:"pathSource,omitempty"`
+	RecommendedDelete bool   `json:"recommendedDelete"`
+	ExecutedAction    bool   `json:"executedAction"`
+	DeleteEligible    bool   `json:"deleteEligible"`
+	CandidateIndex    int    `json:"candidateIndex"`
+	MatchCount        int    `json:"matchCount,omitempty"`
+}
+
+type ScanActionDuplicateMeta struct {
+	SizeMatch              bool   `json:"sizeMatch"`
+	DeleteEligible         bool   `json:"deleteEligible"`
+	DeleteIneligibleReason string `json:"deleteIneligibleReason,omitempty"`
 }
 
 type ScanActionDetail struct {
@@ -94,20 +110,22 @@ type ScanActionPair struct {
 }
 
 type ScanActionItemView struct {
-	ID             uint              `json:"id"`
-	ActionType     string            `json:"actionType"`
-	ObjectType     string            `json:"objectType"`
-	SourcePath     string            `json:"sourcePath"`
-	TargetPath     string            `json:"targetPath,omitempty"`
-	ReasonCode     string            `json:"reasonCode,omitempty"`
-	ReasonText     string            `json:"reasonText,omitempty"`
-	Stage          string            `json:"stage"`
-	Status         string            `json:"status"`
-	DiscoveredAt   *time.Time        `json:"discoveredAt,omitempty"`
-	ExecutedAt     *time.Time        `json:"executedAt,omitempty"`
-	ErrorMessage   string            `json:"errorMessage,omitempty"`
-	MetadataJSON   string            `json:"metadataJson,omitempty"`
-	DuplicateGroup string            `json:"duplicateGroup,omitempty"`
-	Detail         *ScanActionDetail `json:"detail,omitempty"`
-	Pair           *ScanActionPair   `json:"pair,omitempty"`
+	ID              uint                     `json:"id"`
+	ActionType      string                   `json:"actionType"`
+	ObjectType      string                   `json:"objectType"`
+	SourcePath      string                   `json:"sourcePath"`
+	TargetPath      string                   `json:"targetPath,omitempty"`
+	ReasonCode      string                   `json:"reasonCode,omitempty"`
+	ReasonText      string                   `json:"reasonText,omitempty"`
+	Stage           string                   `json:"stage"`
+	Status          string                   `json:"status"`
+	DiscoveredAt    *time.Time               `json:"discoveredAt,omitempty"`
+	ExecutedAt      *time.Time               `json:"executedAt,omitempty"`
+	ErrorMessage    string                   `json:"errorMessage,omitempty"`
+	MetadataJSON    string                   `json:"metadataJson,omitempty"`
+	DuplicateGroup  string                   `json:"duplicateGroup,omitempty"`
+	Detail          *ScanActionDetail        `json:"detail,omitempty"`
+	Pair            *ScanActionPair          `json:"pair,omitempty"`
+	DuplicatePhotos []ScanActionPreview      `json:"duplicatePhotos,omitempty"`
+	DuplicateMeta   *ScanActionDuplicateMeta `json:"duplicateMeta,omitempty"`
 }

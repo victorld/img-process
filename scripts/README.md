@@ -7,34 +7,18 @@
 修改代码后让 `http://127.0.0.1:8081/` 生效：
 
 ```bash
-scripts/build-local.sh
 scripts/monit-local-web.sh restart
 curl -I http://127.0.0.1:8081/
 ```
 
-只改 Go 代码时，可以用更轻量的构建命令替代完整前端构建：
-
-```bash
-go build -mod=vendor -o bin/img-process-web ./main/webserver/webserver_main.go
-scripts/monit-local-web.sh restart
-curl -I http://127.0.0.1:8081/
-```
-
-只改前端时，需要重新生成 `web/dist`，再重启 Web 服务让静态资源切换到新版本：
-
-```bash
-npm --prefix web ci
-npm --prefix web run build
-scripts/monit-local-web.sh restart
-curl -I http://127.0.0.1:8081/
-```
+`restart` 会先完整构建，再重启 Web 服务；只改 Go 或只改前端时也可以使用同一个命令，避免服务继续使用旧二进制或旧 `web/dist`。
 
 ## 脚本职责
 
 | 脚本 | 用途 |
 | --- | --- |
 | `scripts/build-local.sh` | 完整构建前端产物和本机 Go 二进制。会执行 `npm --prefix web ci`、`npm --prefix web run build` 和 `go build`。 |
-| `scripts/monit-local-web.sh` | 管理本仓库自带的 `monit` 运行配置，支持 `start`、`stop`、`restart`、`reload`、`status`、`summary`、`validate`、`unmonitor`。 |
+| `scripts/monit-local-web.sh` | 管理本仓库自带的 `monit` 运行配置，支持 `start`、`stop`、`restart`、`reload`、`status`、`summary`、`validate`、`unmonitor`；其中 `restart` 会先完整构建本地前端产物和 Go 二进制。 |
 | `scripts/start-local-web.sh` | 启动 Web 服务。无参数时前台启动；`daemon` 参数供 `monit` 后台启动，并写入 `log/local-web.pid` 和 `log/local-web.started`。 |
 | `scripts/stop-local-web.sh` | 停止本仓库的 `bin/img-process-web` 进程，并清理本地 pid/start 标记。不会按端口杀掉非本项目进程。 |
 

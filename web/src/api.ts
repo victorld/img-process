@@ -94,13 +94,14 @@ export const api = {
   executeDuplicateDeleteActionItem: (
     id: string | number,
     itemId: number,
-    side: "A" | "B",
+    side: "A" | "B" | "PATH",
+    path?: string,
   ) =>
-    request<{ jobId: number; itemId: number; side: "A" | "B" }>(
+    request<{ jobId: number; itemId: number; side: "A" | "B" | "PATH"; path?: string }>(
       `/api/jobs/${id}/action-items/${itemId}/delete-duplicate`,
       {
         method: "POST",
-        body: JSON.stringify({ side }),
+        body: JSON.stringify({ side, path }),
       },
     ),
   executeDeleteAllActionItems: (id: string | number) =>
