@@ -1,6 +1,6 @@
 database:   #数据库参数
   DbUsername: root
-  DbPassword: lidong@123
+  DbPassword: root
   DbHost: 192.168.110.250
   DbPort: 3366
   DbName: img
@@ -13,7 +13,7 @@ scanArgs:  #扫描参数
   StartPath: /Users/ld/my-file/pic-lib/pic-new
   DeleteShow: true
   MoveFileShow: true
-  ModifyDateShow: true
+  ModifyDateShow: false
   RenameFileShow: true
   Md5Show: true
   DeleteAction: false
@@ -34,7 +34,7 @@ dump:
 bak:
   StartPathBak: /Volumes/mount/personal_folder/pic-lib/pic-new
 gis:
-  key : 96fd6b0ee12dfee568cc3489f7d7bb28   #amap的key
+  key : abc   #amap的key
 batch:
   IDInsertBatchSize: 1000   #img_database的查询批次
   IDDeleteBatchSize: 300    #img_database的删除批次
