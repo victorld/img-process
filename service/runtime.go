@@ -151,7 +151,7 @@ func (r *AppRuntime) CreateJob(source string, scheduleID *uint, scanArgs model.D
 	if err := validateScanArgs(scanArgs); err != nil {
 		return model.ScanJobDB{}, err
 	}
-	scanArgsJSON := tools.MarshalJsonToString(scanArgs)
+	scanArgsJSON := tools.MarshalJsonToString(buildScanExecutionSnapshot(scanArgs))
 	hasAction := hasActionEnabled(scanArgs)
 	now := time.Now()
 	job := model.ScanJobDB{
@@ -616,6 +616,55 @@ func NormalizeScanArgs(scanArgs model.DoScanImgArg) model.DoScanImgArg {
 		scanArgs.RenameFileAction = boolPtr(cons.RenameFileAction)
 	}
 	return scanArgs
+}
+
+func buildScanExecutionSnapshot(scanArgs model.DoScanImgArg) map[string]any {
+	snapshot := map[string]any{}
+	if err := json.Unmarshal([]byte(tools.MarshalJsonToString(scanArgs)), &snapshot); err != nil {
+		snapshot = map[string]any{}
+	}
+
+	for key, value := range currentSystemConfigSnapshot() {
+		snapshot[key] = value
+	}
+	return snapshot
+}
+
+func currentSystemConfigSnapshot() map[string]any {
+	return map[string]any{
+		"DbUsername":        cons.DbUsername,
+		"DbPassword":        maskRuntimeSecret(cons.DbPassword),
+		"DbHost":            cons.DbHost,
+		"DbPort":            cons.DbPort,
+		"DbName":            cons.DbName,
+		"DbConfig":          cons.DbConfig,
+		"HttpPort":          cons.HttpPort,
+		"HttpUsername":      cons.HttpUsername,
+		"HttpPassword":      maskRuntimeSecret(cons.HttpPassword),
+		"ColorOutput":       cons.AppConfig.Basic.ColorOutput,
+		"SqlDebug":          cons.SqlDebug,
+		"ImgCache":          cons.ImgCache,
+		"SyncTable":         cons.SyncTable,
+		"TruncateTable":     cons.TruncateTable,
+		"PoolSize":          cons.PoolSize,
+		"Md5Retry":          cons.Md5Retry,
+		"Md5CountLength":    cons.Md5CountLength,
+		"key":               maskRuntimeSecret(cons.GisKey),
+		"IDInsertBatchSize": cons.IDInsertBatchSize,
+		"IDDeleteBatchSize": cons.IDDeleteBatchSize,
+		"GDUpdateBatchSize": cons.GDUpdateBatchSize,
+	}
+}
+
+func maskRuntimeSecret(value string) string {
+	if value == "" {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) == 1 {
+		return string(runes[0])
+	}
+	return string(runes[0]) + strings.Repeat("*", len(runes)-1)
 }
 
 func boolPtr(v bool) *bool {

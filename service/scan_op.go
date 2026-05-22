@@ -968,7 +968,7 @@ func (s *Scanner) deleteFileProcess(ps photoStruct, printFileFlag *bool) {
 	}
 
 	if s.deleteAction {
-		if err := os.Remove(ps.photo); err != nil {
+		if err := tools.DeleteFile(ps.photo); err != nil {
 			s.recordActionError("delete file", ps.photo, err)
 			tools.Logger.Info(tools.StrWithColor("delete file failed:", "yellow"), ps.photo, err)
 			s.recorder.RecordActionResult(ps.deleteActionID, false, err, ginH("path", ps.photo))
@@ -1075,7 +1075,7 @@ func (s *Scanner) emptyDirProcess() {
 			}
 
 			if s.deleteAction {
-				if err := os.Remove(ds.dir); err != nil {
+				if err := tools.DeleteEmptyDir(ds.dir); err != nil {
 					s.recordActionError("delete empty dir", ds.dir, err)
 					tools.Logger.Info(tools.StrWithColor("delete empty dir failed:", "yellow"), ds.dir, err)
 					s.recorder.RecordActionResult(ds.actionID, false, err, ginH("path", ds.dir))

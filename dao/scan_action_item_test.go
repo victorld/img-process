@@ -34,15 +34,7 @@ func TestCountGroupedRowsSeparatesPendingExecutedAndError(t *testing.T) {
 
 	grouped := model.ScanActionGroupedCounts{}
 	for _, row := range rows {
-		if row.Stage == model.ActionStageCandidate && row.Status == model.ActionStatusPending {
-			addActionCount(&grouped.Pending, row.ActionType, row.Total)
-		}
-		if row.Stage == model.ActionStageExecuted {
-			addActionCount(&grouped.Executed, row.ActionType, row.Total)
-		}
-		if row.Status == model.ActionStatusFailed {
-			addActionCount(&grouped.Error, row.ActionType, row.Total)
-		}
+		addGroupedActionCount(&grouped, row)
 	}
 
 	if grouped.Pending.Rename != 1 {
@@ -53,5 +45,24 @@ func TestCountGroupedRowsSeparatesPendingExecutedAndError(t *testing.T) {
 	}
 	if grouped.Error.Rename != 3 {
 		t.Fatalf("error rename = %d, want 3", grouped.Error.Rename)
+	}
+}
+
+func TestGroupedCountsIgnoreDiscoveryDuplicateAsPending(t *testing.T) {
+	rows := []actionCountRow{
+		{Stage: model.ActionStageDiscovery, Status: model.ActionStatusSkipped, ActionType: model.ActionTypeDeleteDup, Total: 2},
+		{Stage: model.ActionStageCandidate, Status: model.ActionStatusPending, ActionType: model.ActionTypeDeleteDup, Total: 1},
+	}
+
+	grouped := model.ScanActionGroupedCounts{}
+	for _, row := range rows {
+		addGroupedActionCount(&grouped, row)
+	}
+
+	if grouped.Pending.DeleteDuplicate != 1 {
+		t.Fatalf("pending duplicate = %d, want 1", grouped.Pending.DeleteDuplicate)
+	}
+	if grouped.Pending.Total != 1 {
+		t.Fatalf("pending total = %d, want 1", grouped.Pending.Total)
 	}
 }

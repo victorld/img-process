@@ -47,6 +47,7 @@ var (
 	removeFile         = os.Remove
 	mkdirAll           = os.MkdirAll
 	writeFile          = os.WriteFile
+	trashDirPath       = defaultTrashDir
 	colorOutputEnabled bool
 )
 
@@ -193,24 +194,22 @@ func GetFileSize(filePath string) int64 {
 
 }
 func DeleteFile(filePath string) error {
-
-	// 删除文件
-	err := removeFile(filePath)
-	return err
-
+	if err := movePathToTrash(filePath, false); err != nil {
+		return fmt.Errorf("移动到废纸篓失败: %w", err)
+	}
+	return nil
 }
 
 func DeleteEmptyDir(filePath string) error {
-
 	for {
 		if flag, err := IsEmpty(filePath); err == nil && flag {
-			if err := removeFile(filePath); err != nil {
-				return err
+			if err := movePathToTrash(filePath, true); err != nil {
+				return fmt.Errorf("移动空目录到废纸篓失败: %w", err)
 			}
 			if Logger != nil {
-				Logger.Info("remove dir : ", filePath)
+				Logger.Info("move dir to trash : ", filePath)
 			} else {
-				fmt.Println("remove dir : ", filePath)
+				fmt.Println("move dir to trash : ", filePath)
 			}
 			parentDir := filepath.Dir(filePath)
 			if err := DeleteEmptyDir(parentDir); err != nil {
@@ -222,6 +221,130 @@ func DeleteEmptyDir(filePath string) error {
 	}
 	return nil
 
+}
+
+func defaultTrashDir() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil || homeDir == "" {
+		return ""
+	}
+	return filepath.Join(homeDir, ".Trash")
+}
+
+func movePathToTrash(path string, allowDir bool) error {
+	if path == "" {
+		return errors.New("path is empty")
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() && !allowDir {
+		return fmt.Errorf("%s is a directory", path)
+	}
+
+	trashDir := trashDirPath()
+	if trashDir == "" {
+		return errors.New("cannot resolve current user trash directory")
+	}
+	if err := mkdirAll(trashDir, os.ModePerm); err != nil {
+		return err
+	}
+
+	targetPath := nextTrashPath(trashDir, filepath.Base(path))
+	if err := renameFile(path, targetPath); err == nil {
+		return nil
+	} else if !errors.Is(err, syscall.EXDEV) {
+		return err
+	}
+
+	return movePathAcrossDevices(path, targetPath)
+}
+
+func nextTrashPath(trashDir string, name string) string {
+	if name == "" || name == "." || name == string(os.PathSeparator) {
+		name = "deleted-item"
+	}
+
+	targetPath := filepath.Join(trashDir, name)
+	if !Exists(targetPath) {
+		return targetPath
+	}
+
+	ext := filepath.Ext(name)
+	base := strings.TrimSuffix(name, ext)
+	if base == "" {
+		base = "deleted-item"
+	}
+	timestamp := time.Now().Format("20060102-150405")
+
+	for i := 1; ; i++ {
+		candidate := filepath.Join(trashDir, fmt.Sprintf("%s-%s-%d%s", base, timestamp, i, ext))
+		if !Exists(candidate) {
+			return candidate
+		}
+	}
+}
+
+func movePathAcrossDevices(src string, dst string) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		if err := copyDir(src, dst); err != nil {
+			return err
+		}
+		if err := removeFile(src); err != nil {
+			_ = os.RemoveAll(dst)
+			return err
+		}
+		return nil
+	}
+	if _, err := CopyFile(src, dst); err != nil {
+		return err
+	}
+	if err := removeFile(src); err != nil {
+		_ = removeFile(dst)
+		return err
+	}
+	return nil
+}
+
+func copyDir(src string, dst string) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s is not a directory", src)
+	}
+	if err := mkdirAll(dst, info.Mode()); err != nil {
+		return err
+	}
+	return filepath.Walk(src, func(path string, itemInfo os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if path == src {
+			return nil
+		}
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		targetPath := filepath.Join(dst, relPath)
+		if itemInfo.IsDir() {
+			return mkdirAll(targetPath, itemInfo.Mode())
+		}
+		if !itemInfo.Mode().IsRegular() {
+			return fmt.Errorf("%s is not a regular file", path)
+		}
+		if _, err := CopyFile(path, targetPath); err != nil {
+			return err
+		}
+		return os.Chmod(targetPath, itemInfo.Mode())
+	})
 }
 
 func IsEmpty(filePath string) (bool, error) {

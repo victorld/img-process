@@ -107,6 +107,61 @@ func TestListJobsReturnsActionAndFolderCounts(t *testing.T) {
 	}
 }
 
+func TestListJobsDoesNotFallbackPendingActionCountToDumpFileCnt(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	oldListJobs := listJobsFunc
+	oldCountGrouped := countGroupedActionItemsByJobsFunc
+	listJobsFunc = func(search model.ScanJobSearch) ([]model.ScanJobDB, int64, error) {
+		return []model.ScanJobDB{
+			{
+				CommonModel: model.CommonModel{ID: 12},
+				JobUUID:     "job-uuid-12",
+				Status:      model.JobStatusSucceeded,
+				Source:      model.JobSourceManual,
+				SummaryJSON: `{"DumpFileCnt":3}`,
+			},
+		}, 1, nil
+	}
+	countGroupedActionItemsByJobsFunc = func(jobIDs []uint) (map[uint]model.ScanActionGroupedCounts, error) {
+		return map[uint]model.ScanActionGroupedCounts{
+			12: {},
+		}, nil
+	}
+	t.Cleanup(func() {
+		listJobsFunc = oldListJobs
+		countGroupedActionItemsByJobsFunc = oldCountGrouped
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/jobs?page=1&pageSize=20", nil)
+
+	new(WebAPI).ListJobs(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp struct {
+		Data struct {
+			List []struct {
+				PendingActionCount int64 `json:"pendingActionCount"`
+			} `json:"list"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if len(resp.Data.List) != 1 {
+		t.Fatalf("list len = %d, want 1", len(resp.Data.List))
+	}
+	if resp.Data.List[0].PendingActionCount != 0 {
+		t.Fatalf("pendingActionCount = %d, want 0", resp.Data.List[0].PendingActionCount)
+	}
+}
+
 func TestDeleteJobSuccess(t *testing.T) {
 	ensureLogger()
 	gin.SetMode(gin.TestMode)

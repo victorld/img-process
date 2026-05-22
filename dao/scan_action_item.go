@@ -42,17 +42,7 @@ func (s *ScanActionItemService) List(search model.ScanActionItemSearch) ([]model
 	db := orm.ImgMysqlDB.Model(&model.ScanActionItemDB{}).Where("job_id = ?", search.JobID).Order("id desc")
 	switch search.Tab {
 	case "pending":
-		if search.ActionType == model.ActionTypeDeleteDup {
-			db = db.Where(
-				"action_type = ? AND ((stage = ? AND status = ?) OR stage = ?)",
-				model.ActionTypeDeleteDup,
-				model.ActionStageCandidate,
-				model.ActionStatusPending,
-				model.ActionStageDiscovery,
-			)
-		} else {
-			db = db.Where("stage = ? AND status = ?", model.ActionStageCandidate, model.ActionStatusPending)
-		}
+		db = db.Where("stage = ? AND status = ?", model.ActionStageCandidate, model.ActionStatusPending)
 	case "executed":
 		db = db.Where("stage = ? AND status in ?", model.ActionStageExecuted, []string{model.ActionStatusSucceeded, model.ActionStatusFailed, model.ActionStatusSkipped})
 	case "error":
@@ -163,19 +153,7 @@ func (s *ScanActionItemService) CountGroupedByJob(jobID uint) (model.ScanActionG
 
 	grouped := model.ScanActionGroupedCounts{}
 	for _, row := range rows {
-		if row.Stage == model.ActionStageCandidate && row.Status == model.ActionStatusPending {
-			addActionCount(&grouped.Pending, row.ActionType, row.Total)
-		}
-		if row.Stage == model.ActionStageDiscovery && row.ActionType == model.ActionTypeDeleteDup {
-			grouped.Pending.DeleteDuplicate += row.Total
-			grouped.Pending.Total += row.Total
-		}
-		if row.Stage == model.ActionStageExecuted {
-			addActionCount(&grouped.Executed, row.ActionType, row.Total)
-		}
-		if row.Status == model.ActionStatusFailed {
-			addActionCount(&grouped.Error, row.ActionType, row.Total)
-		}
+		addGroupedActionCount(&grouped, row)
 	}
 	return grouped, nil
 }
@@ -201,23 +179,23 @@ func (s *ScanActionItemService) CountGroupedByJobs(jobIDs []uint) (map[uint]mode
 	}
 	for _, row := range rows {
 		grouped := groupedByJob[row.JobID]
-		if row.Stage == model.ActionStageCandidate && row.Status == model.ActionStatusPending {
-			addActionCount(&grouped.Pending, row.ActionType, row.Total)
-		}
-		if row.Stage == model.ActionStageDiscovery && row.ActionType == model.ActionTypeDeleteDup {
-			grouped.Pending.DeleteDuplicate += row.Total
-			grouped.Pending.Total += row.Total
-		}
-		if row.Stage == model.ActionStageExecuted {
-			addActionCount(&grouped.Executed, row.ActionType, row.Total)
-		}
-		if row.Status == model.ActionStatusFailed {
-			addActionCount(&grouped.Error, row.ActionType, row.Total)
-		}
+		addGroupedActionCount(&grouped, row)
 		groupedByJob[row.JobID] = grouped
 	}
 
 	return groupedByJob, nil
+}
+
+func addGroupedActionCount(grouped *model.ScanActionGroupedCounts, row actionCountRow) {
+	if row.Stage == model.ActionStageCandidate && row.Status == model.ActionStatusPending {
+		addActionCount(&grouped.Pending, row.ActionType, row.Total)
+	}
+	if row.Stage == model.ActionStageExecuted {
+		addActionCount(&grouped.Executed, row.ActionType, row.Total)
+	}
+	if row.Status == model.ActionStatusFailed {
+		addActionCount(&grouped.Error, row.ActionType, row.Total)
+	}
 }
 
 func countRowsByType(rows []actionCountRow) model.ScanActionCounts {

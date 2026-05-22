@@ -122,6 +122,11 @@ func buildDuplicateGroupViewsWithExcludedPaths(items []model.ScanActionItemDB, e
 	views := make([]model.ScanActionItemView, 0, len(items))
 	groupIndex := map[string]int{}
 	for _, item := range items {
+		if item.Stage != model.ActionStageExecuted {
+			if _, ok := excludedPaths[cleanPathKey(item.SourcePath)]; ok {
+				continue
+			}
+		}
 		view := buildActionItemView(item)
 		if item.Stage != model.ActionStageExecuted {
 			view = filterDuplicateViewPhotos(view, excludedPaths)
@@ -177,9 +182,6 @@ func (r *AppRuntime) refineDuplicateGroupedCounts(jobID uint, groupedCounts mode
 	errorItems := make([]model.ScanActionItemDB, 0, len(list))
 	for _, item := range list {
 		if item.Stage == model.ActionStageCandidate && item.Status == model.ActionStatusPending {
-			pendingItems = append(pendingItems, item)
-		}
-		if item.Stage == model.ActionStageDiscovery {
 			pendingItems = append(pendingItems, item)
 		}
 		if item.Stage == model.ActionStageExecuted {

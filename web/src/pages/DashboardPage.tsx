@@ -1,8 +1,25 @@
 import { useQuery } from '@tanstack/react-query'
-import { Card, Col, List, Row, Space, Statistic, Tag, Typography } from 'antd'
+import { Card, Col, List, Row, Space, Statistic, Table, Tag, Tooltip, Typography } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
-import { formatJobStatus, formatPhase, formatScheduleMode } from '../utils/displayText'
+import type { Job } from '../types'
+import { formatDurationBetween } from '../utils/dateTime'
+import { formatJobSource, formatJobStatus, formatPhase, formatScheduleMode } from '../utils/displayText'
+
+function renderShortUuid(value?: string | null) {
+  const fullUuid = value ?? ''
+  if (!fullUuid) {
+    return '-'
+  }
+
+  return (
+    <Tooltip title={fullUuid}>
+      <Typography.Text>{fullUuid.slice(0, 8)}</Typography.Text>
+    </Tooltip>
+  )
+}
 
 export function DashboardPage() {
   const jobsQuery = useQuery({
@@ -18,6 +35,27 @@ export function DashboardPage() {
   const schedules = schedulesQuery.data?.list ?? []
   const runningCount = jobs.filter((item) => item.status === 'running').length
   const failedCount = jobs.filter((item) => item.status === 'failed').length
+  const jobColumns: ColumnsType<Job> = useMemo(
+    () => [
+      { title: '任务UUID', dataIndex: 'jobUuid', width: 96, render: renderShortUuid },
+      { title: '任务类型', dataIndex: 'source', width: 88, render: (value) => formatJobSource(String(value ?? '')) },
+      { title: '阶段', dataIndex: 'currentPhase', width: 108, render: (value) => formatPhase(String(value || 'queued')) },
+      { title: '状态', dataIndex: 'status', width: 84, render: (value) => <Tag>{formatJobStatus(String(value ?? ''))}</Tag> },
+      {
+        title: '运行时间',
+        dataIndex: 'endAt',
+        width: 100,
+        render: (_: unknown, record: Job) => formatDurationBetween(record.startAt, record.endAt ?? record.lastHeartbeatAt),
+      },
+      {
+        title: '操作',
+        dataIndex: 'id',
+        width: 88,
+        render: (_: unknown, record: Job) => <Link to={`/jobs/${record.id}`}>查看详情</Link>,
+      },
+    ],
+    [],
+  )
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -36,14 +74,13 @@ export function DashboardPage() {
       <Row gutter={16}>
         <Col span={14}>
           <Card title="最近任务">
-            <List
+            <Table
+              columns={jobColumns}
               dataSource={jobs}
-              renderItem={(item) => (
-                <List.Item actions={[<Link key="view" to={`/jobs/${item.id}`}>查看详情</Link>]}>
-                  <List.Item.Meta title={item.jobUuid} description={formatPhase(item.currentPhase || 'queued')} />
-                  <Tag>{formatJobStatus(item.status)}</Tag>
-                </List.Item>
-              )}
+              loading={jobsQuery.isLoading}
+              pagination={false}
+              rowKey="id"
+              size="small"
             />
           </Card>
         </Col>

@@ -470,7 +470,7 @@ export function JobDetailPage() {
   const groupedCounts =
     actionQuery.data?.groupedCounts ??
     actionCountsQuery.data?.groupedCounts ??
-    summaryToGroupedCounts(summary);
+    emptyGroupedCounts();
   const pendingActionTotal = groupedCounts.pending.total;
   const executedActionTotal = groupedCounts.executed.total;
   const tabItems = useMemo(
@@ -694,7 +694,6 @@ function renderActionTab(
   tab: ActionTabKey,
   context: {
     id: string;
-    summary?: SummaryRecord;
     actions: ScanActionItem[];
     groupedCounts: ScanActionGroupedCounts;
     actionTotal: number;
@@ -725,12 +724,6 @@ function renderActionTab(
   const duplicateRows = isDuplicateType
     ? buildDuplicatePairLines(context.actions)
     : [];
-  const duplicateDiscoveryTotal = getDuplicateDiscoveryTotal(
-    context.actionTotal,
-    context.summary,
-    tabCounts,
-    tab,
-  );
   const showRenameRedirect =
     tab === "pending" &&
     context.actionType === "rename" &&
@@ -744,11 +737,7 @@ function renderActionTab(
         onChange={context.setActionType}
         items={actionTypeOptions.map((item) => ({
           key: item.key,
-          label: `${item.label} (${
-            item.key === "delete_duplicate"
-              ? duplicateDiscoveryTotal
-              : countForType(tabCounts, item.key)
-          })`,
+          label: `${item.label} (${countForType(tabCounts, item.key)})`,
           children: (
             <Space direction="vertical" size={12} style={{ width: "100%" }}>
               {tab === "pending" &&
@@ -759,19 +748,6 @@ function renderActionTab(
                   showIcon
                   message="当前任务未开启“计算重复文件”"
                   description="这次扫描不会产出重复项数据。如需查看重复项，请在新建扫描时勾选“计算重复文件（md5Show）”。"
-                />
-              ) : null}
-              {tab === "pending" &&
-              item.key === "delete_duplicate" &&
-              context.duplicateDetectionEnabled &&
-              duplicateDiscoveryTotal > 0 &&
-              tabCounts.deleteDuplicate === 0 &&
-              duplicateRows.length === 0 ? (
-                <Alert
-                  type="info"
-                  showIcon
-                  message={`本次扫描发现 ${duplicateDiscoveryTotal} 组重复项`}
-                  description="正在加载重复项发现记录；可执行删除动作会在表格中标记“建议删除”。"
                 />
               ) : null}
               {showRenameRedirect ? (
@@ -1449,23 +1425,6 @@ function countForType(counts: ScanActionCounts, type: string) {
   }
 }
 
-function getDuplicateDiscoveryTotal(
-  actionTotal: number,
-  summary: SummaryRecord | undefined,
-  tabCounts: ScanActionCounts,
-  tab: ActionTabKey,
-) {
-  if (tab !== "pending") {
-    return Math.max(actionTotal, tabCounts.deleteDuplicate);
-  }
-  if (actionTotal > 0 || tabCounts.total > 0) {
-    return Math.max(actionTotal, tabCounts.deleteDuplicate);
-  }
-  const detectedGroups =
-    numberFromSummaryKey(summary, "DumpFileCnt", "dumpFileCnt") ?? 0;
-  return Math.max(actionTotal, detectedGroups, tabCounts.deleteDuplicate);
-}
-
 function getActionEmptyState(
   tab: ActionTabKey,
   actionType: string,
@@ -1584,7 +1543,10 @@ function buildUnknownRawArgRows(scanArgs?: Record<string, unknown>): RawArgTable
   if (!scanArgs) {
     return [];
   }
-  const knownKeys = new Set(Object.values(rawScanArgKeysByConfigKey));
+  const knownKeys = new Set([
+    ...Object.values(rawScanArgKeysByConfigKey),
+    ...configSections.flatMap((section) => section.fields.map((field) => field.key)),
+  ]);
   return Object.entries(scanArgs)
     .filter(([key]) => !knownKeys.has(key))
     .map(([key, value]) => ({
@@ -1678,48 +1640,11 @@ function formatJsonValue(value: unknown) {
   return JSON.stringify(value, null, 2) ?? "-";
 }
 
-function summaryToCounts(
-  summary?: SummaryRecord,
-): ScanActionCounts {
-  const deleteCount = numberFromSummaryKey(
-    summary,
-    "DeleteFileCnt",
-    "deleteFileCnt",
-  ) ?? 0;
-  const moveCount =
-    numberFromSummaryKey(summary, "MoveFileCnt", "moveFileCnt") ?? 0;
-  const modifyCount = numberFromSummaryKey(
-    summary,
-    "ModifyDateFileCnt",
-    "modifyDateFileCnt",
-  ) ?? 0;
-  const duplicateCount = numberFromSummaryKey(
-    summary,
-    "DumpFileCnt",
-    "dumpFileCnt",
-  ) ?? 0;
-  const renameCount = numberFromSummaryKey(
-    summary,
-    "RenameFileCnt",
-    "renameFileCnt",
-  ) ?? 0;
+function emptyGroupedCounts(): ScanActionGroupedCounts {
   return {
-    delete: deleteCount,
-    move: moveCount,
-    modifyTime: modifyCount,
-    deleteDuplicate: duplicateCount,
-    rename: renameCount,
-    total: deleteCount + moveCount + modifyCount + duplicateCount + renameCount,
-  };
-}
-
-function summaryToGroupedCounts(
-  summary?: SummaryRecord,
-): ScanActionGroupedCounts {
-  return {
-    pending: summaryToCounts(summary),
-    executed: EMPTY_COUNTS,
-    error: EMPTY_COUNTS,
+    pending: { ...EMPTY_COUNTS },
+    executed: { ...EMPTY_COUNTS },
+    error: { ...EMPTY_COUNTS },
   };
 }
 

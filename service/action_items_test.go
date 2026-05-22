@@ -333,6 +333,37 @@ func TestBuildDuplicateGroupViewsExcludesExecutedDuplicatePhotoFromPending(t *te
 	}
 }
 
+func TestBuildDuplicateGroupViewsExcludesExecutedDuplicateItemFromPending(t *testing.T) {
+	items := []model.ScanActionItemDB{
+		{
+			CommonModel:    model.CommonModel{ID: 1},
+			ActionType:     model.ActionTypeDeleteDup,
+			ObjectType:     model.ActionObjectFile,
+			SourcePath:     "/photos/b.jpg",
+			TargetPath:     "/photos/a.jpg",
+			DuplicateGroup: "md5-1",
+			MetadataJSON:   `{"deleteEligible":true,"sizeMatch":true,"duplicatePhotos":[{"fileName":"a.jpg","path":"/photos/a.jpg","recommendedDelete":false,"deleteEligible":true},{"fileName":"b.jpg","path":"/photos/b.jpg","recommendedDelete":true,"deleteEligible":true}]}`,
+		},
+		{
+			CommonModel:    model.CommonModel{ID: 2},
+			ActionType:     model.ActionTypeDeleteDup,
+			ObjectType:     model.ActionObjectFile,
+			SourcePath:     "/photos/b.jpg",
+			TargetPath:     "/photos/a.jpg",
+			Stage:          model.ActionStageExecuted,
+			Status:         model.ActionStatusSucceeded,
+			DuplicateGroup: "md5-1",
+			MetadataJSON:   `{"executedDeletePath":"/photos/b.jpg","recommendedDeletePath":"/photos/b.jpg","duplicatePhotos":[{"fileName":"a.jpg","path":"/photos/a.jpg","recommendedDelete":false,"deleteEligible":true},{"fileName":"b.jpg","path":"/photos/b.jpg","recommendedDelete":true,"deleteEligible":true}]}`,
+		},
+	}
+
+	excludedPaths := duplicateExecutedDeletePaths(items)
+	views := buildDuplicateGroupViewsWithExcludedPaths(items[:1], excludedPaths)
+	if len(views) != 0 {
+		t.Fatalf("views len = %d, want 0 after duplicate item was executed", len(views))
+	}
+}
+
 func TestShouldUseLegacyDuplicateCompareOnlyBeforeAnyDuplicateResult(t *testing.T) {
 	search := model.ScanActionItemSearch{
 		Tab:        "pending",

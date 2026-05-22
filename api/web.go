@@ -767,10 +767,6 @@ func parseTimeRange(startRaw string, endRaw string) (*time.Time, *time.Time) {
 
 func serializeJob(job model.ScanJobDB, groupedCounts model.ScanActionGroupedCounts) gin.H {
 	summary := parseJSON(job.SummaryJSON)
-	pendingActionCount := groupedCounts.Pending.Total
-	if pendingActionCount == 0 {
-		pendingActionCount = summaryInt(summary, "dumpFileCnt", "DumpFileCnt")
-	}
 	return gin.H{
 		"id":                     job.ID,
 		"jobUuid":                job.JobUUID,
@@ -791,7 +787,7 @@ func serializeJob(job model.ScanJobDB, groupedCounts model.ScanActionGroupedCoun
 		"hasAction":              job.HasAction,
 		"scanArgs":               parseJSON(job.ScanArgs),
 		"summary":                summary,
-		"pendingActionCount":     pendingActionCount,
+		"pendingActionCount":     groupedCounts.Pending.Total,
 		"executedActionCount":    groupedCounts.Executed.Total,
 		"artifactPath":           job.ArtifactPath,
 		"errorMessage":           job.ErrorMessage,
