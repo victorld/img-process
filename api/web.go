@@ -1,15 +1,18 @@
 package api
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,6 +22,7 @@ import (
 	"gorm.io/gorm"
 
 	"img_process/cons"
+	"img_process/dao"
 	"img_process/model"
 	"img_process/service"
 	"img_process/tools"
@@ -37,6 +41,21 @@ var deleteJobFunc = service.Runtime.DeleteJob
 var executeModifyShootTimeActionItemFunc = service.Runtime.ExecuteModifyShootTimeActionItem
 var executeMoveActionItemFunc = service.Runtime.ExecuteMoveActionItem
 var executeRenameActionItemFunc = service.Runtime.ExecuteRenameActionItem
+var listFileAnalysisFunc = new(dao.ImgDatabaseService).GetFileAnalysis
+var selectSystemDirectoryFunc = selectSystemDirectory
+var runSystemDirectoryPickerFunc = runSystemDirectoryPicker
+var runSystemDirectoryPickerScriptFunc = runSystemDirectoryPickerScript
+var transparentPNG = []byte{
+	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+	0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+	0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+	0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+	0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
+	0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+	0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
+	0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+	0x42, 0x60, 0x82,
+}
 
 func (api *WebAPI) Login(c *gin.Context) {
 	var req model.LoginReq
@@ -225,6 +244,58 @@ func (api *WebAPI) ListJobActionItems(c *gin.Context) {
 	tools.Success(c, gin.H{"list": list, "total": total, "counts": counts, "groupedCounts": groupedCounts}, "ok")
 }
 
+func (api *WebAPI) GetFileAnalysis(c *gin.Context) {
+	var search model.FileAnalysisSearch
+	bindPageQuery(c, &search.PageInfo)
+	search.FileKey = c.Query("fileKey")
+	search.ShootDateStatus = c.Query("shootDateStatus")
+	search.GeoStatus = c.Query("geoStatus")
+	search.LocAddrKeyword = c.Query("locAddrKeyword")
+	search.ShootDateStart = c.Query("shootDateStart")
+	search.ShootDateEnd = c.Query("shootDateEnd")
+
+	result, err := listFileAnalysisFunc(search)
+	if err != nil {
+		tools.Fail(c, "查询文件分析失败", gin.H{"error": err.Error()})
+		return
+	}
+	for i := range result.List {
+		result.List[i].PreviewURL = fileAnalysisPreviewURL(result.List[i].ImgKey, "thumb")
+	}
+	tools.Success(c, gin.H{
+		"summary":     result.Summary,
+		"yearStats":   result.YearStats,
+		"suffixStats": result.SuffixStats,
+		"list":        result.List,
+		"total":       result.Total,
+	}, "ok")
+}
+
+func (api *WebAPI) PreviewFileAnalysis(c *gin.Context) {
+	imgKey := strings.TrimSpace(c.Query("imgKey"))
+	if imgKey == "" {
+		serveFileAnalysisPlaceholder(c)
+		return
+	}
+	path, err := resolveFileAnalysisPreviewPath(imgKey)
+	if err != nil {
+		serveFileAnalysisPlaceholder(c)
+		return
+	}
+	c.Header("Cache-Control", "private, max-age=60")
+	previewPath := path
+	if !isBrowserImagePreview(path) {
+		thumbPath, err := ensurePreviewImage(path, c.Query("quality"))
+		if err != nil {
+			serveFileAnalysisPlaceholder(c)
+			return
+		}
+		previewPath = thumbPath
+	}
+	c.Header("Content-Disposition", "inline; filename=\""+filepath.Base(previewPath)+"\"")
+	c.File(previewPath)
+}
+
 func (api *WebAPI) PreviewJobAction(c *gin.Context) {
 	jobID, err := parseUintParam(c, "id")
 	if err != nil {
@@ -343,6 +414,181 @@ var runPreviewFFmpeg = func(args ...string) ([]byte, error) {
 
 func execCommandCombinedOutput(name string, args ...string) ([]byte, error) {
 	return exec.Command(name, args...).CombinedOutput()
+}
+
+func runSystemDirectoryPickerScript(script string) ([]byte, []byte, error) {
+	cmd := exec.Command("osascript", "-e", script)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	stdout, err := cmd.Output()
+	return stdout, stderr.Bytes(), err
+}
+
+func fileAnalysisPreviewURL(imgKey string, quality string) string {
+	params := url.Values{}
+	params.Set("imgKey", imgKey)
+	if quality != "" {
+		params.Set("quality", quality)
+	}
+	return "/api/files/analysis/preview?" + params.Encode()
+}
+
+func resolveFileAnalysisPreviewPath(imgKey string) (string, error) {
+	dirDate, fileName := splitFileAnalysisKey(imgKey)
+	if dirDate == "" || fileName == "" || strings.Contains(fileName, string(filepath.Separator)) {
+		return "", fs.ErrNotExist
+	}
+	if len(dirDate) < len("2006-01-02") {
+		return "", fs.ErrNotExist
+	}
+	year := dirDate[:4]
+	month := dirDate[:7]
+	candidates := []string{
+		filepath.Join(cons.StartPath, year, month, dirDate, fileName),
+		filepath.Join(cons.StartPathBak, year, month, dirDate, fileName),
+	}
+	roots := []string{cons.StartPath, cons.StartPathBak}
+	for _, candidate := range candidates {
+		if strings.TrimSpace(candidate) == "" {
+			continue
+		}
+		if !isPathInRoots(candidate, roots) {
+			continue
+		}
+		stat, err := os.Stat(candidate)
+		if err == nil && !stat.IsDir() {
+			return candidate, nil
+		}
+	}
+	if fallback := findFileAnalysisPreviewFallback(roots, dirDate, fileName); fallback != "" {
+		return fallback, nil
+	}
+	return "", fs.ErrNotExist
+}
+
+func findFileAnalysisPreviewFallback(roots []string, dirDate string, fileName string) string {
+	type match struct {
+		path  string
+		score int
+	}
+	matches := make([]match, 0, 4)
+	seen := map[string]struct{}{}
+	for _, root := range roots {
+		root = strings.TrimSpace(root)
+		if root == "" {
+			continue
+		}
+		for _, candidate := range fileAnalysisPreviewFallbackCandidates(root, dirDate, fileName) {
+			if !isPathInRoots(candidate, roots) {
+				continue
+			}
+			stat, err := os.Stat(candidate)
+			if err != nil || stat.IsDir() {
+				continue
+			}
+			absPath, err := filepath.Abs(candidate)
+			if err != nil {
+				continue
+			}
+			if _, ok := seen[absPath]; ok {
+				continue
+			}
+			seen[absPath] = struct{}{}
+			matches = append(matches, match{path: candidate, score: fileAnalysisPreviewPathScore(candidate, dirDate)})
+		}
+	}
+	if len(matches) == 0 {
+		return ""
+	}
+	sort.Slice(matches, func(i, j int) bool {
+		if matches[i].score == matches[j].score {
+			return matches[i].path < matches[j].path
+		}
+		return matches[i].score > matches[j].score
+	})
+	return matches[0].path
+}
+
+func fileAnalysisPreviewFallbackCandidates(root string, dirDate string, fileName string) []string {
+	dirs := []string{root}
+	if len(dirDate) >= 4 {
+		yearDir := filepath.Join(root, dirDate[:4])
+		dirs = append(dirs, yearDir)
+		if len(dirDate) >= 7 {
+			monthDir := filepath.Join(yearDir, dirDate[:7])
+			dirs = append(dirs, monthDir)
+			if len(dirDate) >= 10 {
+				dirs = append(dirs, filepath.Join(monthDir, dirDate[:10]))
+			}
+		}
+	}
+	for _, dir := range append([]string{}, dirs...) {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
+				dirs = append(dirs, filepath.Join(dir, entry.Name()))
+			}
+		}
+	}
+	candidates := make([]string, 0, len(dirs))
+	for _, dir := range dirs {
+		candidates = append(candidates, filepath.Join(dir, fileName))
+	}
+	return candidates
+}
+
+func fileAnalysisPreviewPathScore(path string, dirDate string) int {
+	normalized := filepath.ToSlash(path)
+	score := 0
+	if strings.Contains(normalized, dirDate) {
+		score += 3
+	}
+	if len(dirDate) >= 7 && strings.Contains(normalized, dirDate[:7]) {
+		score += 2
+	}
+	if len(dirDate) >= 4 && strings.Contains(normalized, dirDate[:4]) {
+		score++
+	}
+	return score
+}
+
+func splitFileAnalysisKey(imgKey string) (string, string) {
+	parts := strings.SplitN(strings.TrimSpace(imgKey), "|", 2)
+	if len(parts) != 2 {
+		return "", ""
+	}
+	return parts[0], parts[1]
+}
+
+func isPathInRoots(path string, roots []string) bool {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	for _, root := range roots {
+		root = strings.TrimSpace(root)
+		if root == "" {
+			continue
+		}
+		absRoot, err := filepath.Abs(root)
+		if err != nil {
+			continue
+		}
+		rel, err := filepath.Rel(absRoot, absPath)
+		if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
+}
+
+func serveFileAnalysisPlaceholder(c *gin.Context) {
+	c.Header("Content-Type", "image/svg+xml; charset=utf-8")
+	c.Header("Cache-Control", "private, max-age=60")
+	c.String(http.StatusOK, `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#eef2ef"/><text x="48" y="53" text-anchor="middle" fill="#6f7f77" font-size="13">无预览</text></svg>`)
 }
 
 func (api *WebAPI) StreamJob(c *gin.Context) {
@@ -711,6 +957,181 @@ func (api *WebAPI) UpdateSystemSettings(c *gin.Context) {
 		"config":           config,
 		"readonlySections": service.ReadonlySystemSettingSections(),
 	}, "设置已保存")
+}
+
+func (api *WebAPI) SelectSystemDirectory(c *gin.Context) {
+	var req model.SelectSystemDirectoryReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "参数错误", gin.H{"error": err.Error()})
+		return
+	}
+	path, err := selectSystemDirectoryFunc(req.Path, req.Title)
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, err.Error(), gin.H{"error": err.Error()})
+		return
+	}
+	tools.Success(c, gin.H{"path": path}, "ok")
+}
+
+func selectSystemDirectory(path string, title string) (string, error) {
+	if title == "" {
+		title = "选择目录"
+	}
+	defaultPath := resolveSystemDirectoryPickerDefault(path)
+	selected, err := runSystemDirectoryPickerFunc(defaultPath, title)
+	if err != nil {
+		return "", err
+	}
+	return normalizeSelectedSystemDirectory(selected)
+}
+
+func resolveSystemDirectoryPickerDefault(path string) string {
+	candidate := strings.TrimSpace(path)
+	if candidate != "" {
+		if resolved, ok := existingDirectoryForPicker(candidate); ok {
+			return resolved
+		}
+		for parent := filepath.Dir(candidate); parent != "." && parent != candidate; parent = filepath.Dir(parent) {
+			if resolved, ok := existingDirectoryForPicker(parent); ok {
+				return resolved
+			}
+			if filepath.Dir(parent) == parent {
+				break
+			}
+		}
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		if resolved, ok := existingDirectoryForPicker(home); ok {
+			return resolved
+		}
+	}
+	return string(filepath.Separator)
+}
+
+func existingDirectoryForPicker(path string) (string, bool) {
+	abs, err := filepath.Abs(filepath.Clean(path))
+	if err != nil {
+		return "", false
+	}
+	info, err := os.Stat(abs)
+	if err != nil || !info.IsDir() {
+		return "", false
+	}
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		abs = resolved
+	}
+	return abs, true
+}
+
+func runSystemDirectoryPicker(defaultPath string, title string) (string, error) {
+	script := `set defaultFolder to POSIX file ` + appleScriptQuote(defaultPath) + `
+try
+	set selectedFolder to choose folder with prompt ` + appleScriptQuote(title) + ` default location defaultFolder
+	return POSIX path of selectedFolder
+on error number -128
+	return "__CANCELLED__"
+end try`
+	stdout, stderr, err := runSystemDirectoryPickerScriptFunc(script)
+	if err != nil {
+		detail := strings.TrimSpace(string(stderr))
+		if detail == "" {
+			detail = strings.TrimSpace(err.Error())
+		}
+		return "", errors.New("打开系统目录选择窗口失败：" + detail)
+	}
+	selected := strings.TrimSpace(string(stdout))
+	if selected == "__CANCELLED__" {
+		return "", errors.New("已取消选择目录")
+	}
+	if selected == "" {
+		return "", errors.New("未选择目录")
+	}
+	return selected, nil
+}
+
+func normalizeSelectedSystemDirectory(path string) (string, error) {
+	selected := strings.TrimSpace(path)
+	if selected == "" {
+		return "", errors.New("未选择目录")
+	}
+	abs, err := filepath.Abs(filepath.Clean(selected))
+	if err != nil {
+		return "", errors.New("请选择有效目录：" + err.Error())
+	}
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		abs = resolved
+	}
+	info, err := os.Stat(abs)
+	if err != nil {
+		return "", errors.New("请选择有效目录：" + err.Error())
+	}
+	if !info.IsDir() {
+		return "", errors.New("请选择有效目录")
+	}
+	return abs, nil
+}
+
+func appleScriptQuote(value string) string {
+	escaped := strings.ReplaceAll(value, "\\", "\\\\")
+	escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+	return `"` + escaped + `"`
+}
+
+func (api *WebAPI) ListSystemDirectories(c *gin.Context) {
+	path := strings.TrimSpace(c.Query("path"))
+	if path == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			tools.FailWithStatus(c, http.StatusBadRequest, "读取目录失败", gin.H{"error": err.Error()})
+			return
+		}
+		path = home
+	}
+	if !filepath.IsAbs(path) {
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			tools.FailWithStatus(c, http.StatusBadRequest, "读取目录失败", gin.H{"error": err.Error()})
+			return
+		}
+		path = abs
+	}
+	path = filepath.Clean(path)
+	info, err := os.Stat(path)
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "读取目录失败", gin.H{"error": err.Error()})
+		return
+	}
+	if !info.IsDir() {
+		tools.FailWithStatus(c, http.StatusBadRequest, "路径不是目录", gin.H{"error": "path is not a directory"})
+		return
+	}
+	dirEntries, err := os.ReadDir(path)
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "读取目录失败", gin.H{"error": err.Error()})
+		return
+	}
+	entries := make([]gin.H, 0, len(dirEntries))
+	for _, entry := range dirEntries {
+		if !entry.IsDir() {
+			continue
+		}
+		entries = append(entries, gin.H{
+			"name": entry.Name(),
+			"path": filepath.Join(path, entry.Name()),
+		})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		return strings.ToLower(entries[i]["name"].(string)) < strings.ToLower(entries[j]["name"].(string))
+	})
+	parent := filepath.Dir(path)
+	if parent == path {
+		parent = ""
+	}
+	tools.Success(c, gin.H{
+		"path":    path,
+		"parent":  parent,
+		"entries": entries,
+	}, "ok")
 }
 
 func maskConfigSecret(value string) string {

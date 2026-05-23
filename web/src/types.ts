@@ -173,3 +173,53 @@ export type SystemStatus = {
     scanDefaults?: Record<string, unknown>
   }
 }
+
+export type FileAnalysisSummary = {
+  totalCount: number
+  withShootDateCount: number
+  withLocNumCount: number
+  withLocAddrCount: number
+  shootDateCoverage: number
+  locNumCoverage: number
+  locAddrCoverage: number
+}
+
+export type FileAnalysisStatItem = {
+  key: string
+  count: number
+  percent: number
+}
+
+export type FileAnalysisItem = {
+  id: number
+  imgKey: string
+  dirDate: string
+  fileName: string
+  suffix: string
+  shootDate: string
+  locNum: string
+  locStreet: string
+  locAddr: string
+  remark: string
+  updatedAt: string
+  previewUrl: string
+}
+
+export type FileAnalysisResult = {
+  summary: FileAnalysisSummary
+  yearStats: FileAnalysisStatItem[]
+  suffixStats: FileAnalysisStatItem[]
+  list: FileAnalysisItem[]
+  total: number
+}
+
+export type DirectoryEntry = {
+  name: string
+  path: string
+}
+
+export type DirectoryListing = {
+  path: string
+  parent: string
+  entries: DirectoryEntry[]
+}

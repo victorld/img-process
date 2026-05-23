@@ -2,8 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -288,6 +291,110 @@ func TestListJobActionItemsReturnsGroupedCounts(t *testing.T) {
 	}
 	if resp.Data.GroupedCounts.Error.Rename != 1 {
 		t.Fatalf("error rename = %d, want 1", resp.Data.GroupedCounts.Error.Rename)
+	}
+}
+
+func TestGetFileAnalysisBindsFiltersAndPreviewURL(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	oldListFileAnalysis := listFileAnalysisFunc
+	listFileAnalysisFunc = func(search model.FileAnalysisSearch) (model.FileAnalysisResult, error) {
+		if search.Page != 2 || search.PageSize != 5 {
+			t.Fatalf("page = %d/%d, want 2/5", search.Page, search.PageSize)
+		}
+		if search.FileKey != "IMG" || search.ShootDateStatus != "present" || search.GeoStatus != "full" {
+			t.Fatalf("search basic filters = %+v", search)
+		}
+		if search.LocAddrKeyword != "上海" || search.ShootDateStart != "2024-01-01" || search.ShootDateEnd != "2024-12-31" {
+			t.Fatalf("search range filters = %+v", search)
+		}
+		return model.FileAnalysisResult{
+			Summary: model.FileAnalysisSummary{TotalCount: 1, WithShootDateCount: 1, WithLocNumCount: 1, WithLocAddrCount: 1},
+			List: []model.FileAnalysisItem{{
+				ID:       9,
+				ImgKey:   "2024-01-02|IMG_0001.JPG",
+				DirDate:  "2024-01-02",
+				FileName: "IMG_0001.JPG",
+			}},
+			Total: 1,
+		}, nil
+	}
+	t.Cleanup(func() {
+		listFileAnalysisFunc = oldListFileAnalysis
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/files/analysis?page=2&pageSize=5&fileKey=IMG&shootDateStatus=present&geoStatus=full&locAddrKeyword=%E4%B8%8A%E6%B5%B7&shootDateStart=2024-01-01&shootDateEnd=2024-12-31", nil)
+
+	new(WebAPI).GetFileAnalysis(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	var resp struct {
+		Data struct {
+			List []struct {
+				PreviewURL string `json:"previewUrl"`
+			} `json:"list"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if len(resp.Data.List) != 1 {
+		t.Fatalf("list len = %d, want 1", len(resp.Data.List))
+	}
+	if !strings.Contains(resp.Data.List[0].PreviewURL, "/api/files/analysis/preview?") || !strings.Contains(resp.Data.List[0].PreviewURL, "quality=thumb") {
+		t.Fatalf("previewUrl = %q", resp.Data.List[0].PreviewURL)
+	}
+}
+
+func TestResolveFileAnalysisPreviewPath(t *testing.T) {
+	root := t.TempDir()
+	filePath := filepath.Join(root, "2024", "2024-01", "2024-01-02", "IMG_0001.JPG")
+	if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filePath, []byte("fake"), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	oldStartPath := cons.StartPath
+	oldStartPathBak := cons.StartPathBak
+	cons.StartPath = root
+	cons.StartPathBak = ""
+	t.Cleanup(func() {
+		cons.StartPath = oldStartPath
+		cons.StartPathBak = oldStartPathBak
+	})
+
+	got, err := resolveFileAnalysisPreviewPath("2024-01-02|IMG_0001.JPG")
+	if err != nil {
+		t.Fatalf("resolve path: %v", err)
+	}
+	if got != filePath {
+		t.Fatalf("path = %q, want %q", got, filePath)
+	}
+	fallbackPath := filepath.Join(root, "2024", "imported-album", "IMG_0002.JPG")
+	if err := os.MkdirAll(filepath.Dir(fallbackPath), 0o755); err != nil {
+		t.Fatalf("mkdir fallback: %v", err)
+	}
+	if err := os.WriteFile(fallbackPath, []byte("fallback"), 0o644); err != nil {
+		t.Fatalf("write fallback: %v", err)
+	}
+	got, err = resolveFileAnalysisPreviewPath("2024-01-02|IMG_0002.JPG")
+	if err != nil {
+		t.Fatalf("resolve fallback path: %v", err)
+	}
+	if got != fallbackPath {
+		t.Fatalf("fallback path = %q, want %q", got, fallbackPath)
+	}
+	if _, err := resolveFileAnalysisPreviewPath("2024-01-02|../IMG_0001.JPG"); err == nil {
+		t.Fatalf("expected invalid img key to fail")
+	}
+	if _, err := resolveFileAnalysisPreviewPath("2024-01-02|MISSING.JPG"); err == nil {
+		t.Fatalf("expected missing file to fail")
 	}
 }
 
@@ -641,6 +748,347 @@ func TestUpdateSystemSettingsRejectsReadonlySections(t *testing.T) {
 	c.Request.Header.Set("Content-Type", "application/json")
 
 	new(WebAPI).UpdateSystemSettings(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestSelectSystemDirectoryReturnsSelectedPath(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	root := t.TempDir()
+	selected := filepath.Join(root, "selected")
+	if err := os.Mkdir(selected, 0755); err != nil {
+		t.Fatalf("mkdir selected: %v", err)
+	}
+	oldPicker := runSystemDirectoryPickerFunc
+	runSystemDirectoryPickerFunc = func(path string, title string) (string, error) {
+		if path != realPathForTest(root) {
+			t.Fatalf("path = %q, want %q", path, realPathForTest(root))
+		}
+		if title != "选择扫描目录" {
+			t.Fatalf("title = %q, want 选择扫描目录", title)
+		}
+		return selected + string(filepath.Separator), nil
+	}
+	t.Cleanup(func() {
+		runSystemDirectoryPickerFunc = oldPicker
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/system/select-directory", strings.NewReader(`{"path":"`+root+`","title":"选择扫描目录"}`))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	new(WebAPI).SelectSystemDirectory(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body=%s", w.Code, http.StatusOK, w.Body.String())
+	}
+	var resp struct {
+		Data struct {
+			Path string `json:"path"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if resp.Data.Path != realPathForTest(selected) {
+		t.Fatalf("path = %q, want %q", resp.Data.Path, realPathForTest(selected))
+	}
+}
+
+func TestSelectSystemDirectoryReportsCancel(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	oldPicker := runSystemDirectoryPickerFunc
+	runSystemDirectoryPickerFunc = func(path string, title string) (string, error) {
+		return "", errors.New("已取消选择目录")
+	}
+	t.Cleanup(func() {
+		runSystemDirectoryPickerFunc = oldPicker
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/system/select-directory", strings.NewReader(`{"path":"/tmp"}`))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	new(WebAPI).SelectSystemDirectory(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+	if !strings.Contains(w.Body.String(), "已取消选择目录") {
+		t.Fatalf("body = %s, want cancel message", w.Body.String())
+	}
+}
+
+func TestSelectSystemDirectoryReportsScriptFailure(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	oldPicker := runSystemDirectoryPickerFunc
+	runSystemDirectoryPickerFunc = func(path string, title string) (string, error) {
+		return "", errors.New("打开系统目录选择窗口失败：boom")
+	}
+	t.Cleanup(func() {
+		runSystemDirectoryPickerFunc = oldPicker
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/system/select-directory", strings.NewReader(`{"path":"/tmp"}`))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	new(WebAPI).SelectSystemDirectory(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+	if !strings.Contains(w.Body.String(), "打开系统目录选择窗口失败") {
+		t.Fatalf("body = %s, want script failure message", w.Body.String())
+	}
+}
+
+func TestRunSystemDirectoryPickerIgnoresStderrNoise(t *testing.T) {
+	root := t.TempDir()
+	oldRunner := runSystemDirectoryPickerScriptFunc
+	runSystemDirectoryPickerScriptFunc = func(script string) ([]byte, []byte, error) {
+		return []byte(root + "\n"), []byte("2026-05-23 22:14:11.981 osascript[72154:136702606] +[IMKClient subclass]: chose IMKClient_Modern\n"), nil
+	}
+	t.Cleanup(func() {
+		runSystemDirectoryPickerScriptFunc = oldRunner
+	})
+
+	got, err := runSystemDirectoryPicker("/tmp", "选择目录")
+	if err != nil {
+		t.Fatalf("run picker: %v", err)
+	}
+	if got != root {
+		t.Fatalf("selected path = %q, want %q", got, root)
+	}
+}
+
+func TestRunSystemDirectoryPickerCancelIgnoresStderrNoise(t *testing.T) {
+	oldRunner := runSystemDirectoryPickerScriptFunc
+	runSystemDirectoryPickerScriptFunc = func(script string) ([]byte, []byte, error) {
+		return []byte("__CANCELLED__\n"), []byte("2026-05-23 22:14:11.981 osascript[72154:136702606] +[IMKClient subclass]: chose IMKClient_Modern\n"), nil
+	}
+	t.Cleanup(func() {
+		runSystemDirectoryPickerScriptFunc = oldRunner
+	})
+
+	_, err := runSystemDirectoryPicker("/tmp", "选择目录")
+	if err == nil || !strings.Contains(err.Error(), "已取消选择目录") {
+		t.Fatalf("err = %v, want cancel error", err)
+	}
+	if strings.Contains(err.Error(), "请选择有效目录") || strings.Contains(err.Error(), "IMKClient") {
+		t.Fatalf("err = %v, want clean cancel error", err)
+	}
+}
+
+func TestRunSystemDirectoryPickerReportsStderrOnFailure(t *testing.T) {
+	oldRunner := runSystemDirectoryPickerScriptFunc
+	runSystemDirectoryPickerScriptFunc = func(script string) ([]byte, []byte, error) {
+		return nil, []byte("permission denied\n"), errors.New("exit status 1")
+	}
+	t.Cleanup(func() {
+		runSystemDirectoryPickerScriptFunc = oldRunner
+	})
+
+	_, err := runSystemDirectoryPicker("/tmp", "选择目录")
+	if err == nil || !strings.Contains(err.Error(), "打开系统目录选择窗口失败：permission denied") {
+		t.Fatalf("err = %v, want stderr failure detail", err)
+	}
+}
+
+func TestSelectSystemDirectoryFallsBackFromMissingDefaultToParent(t *testing.T) {
+	root := t.TempDir()
+	child := filepath.Join(root, "missing", "leaf")
+	oldPicker := runSystemDirectoryPickerFunc
+	runSystemDirectoryPickerFunc = func(path string, title string) (string, error) {
+		if path != realPathForTest(root) {
+			t.Fatalf("default path = %q, want existing parent %q", path, realPathForTest(root))
+		}
+		return root, nil
+	}
+	t.Cleanup(func() {
+		runSystemDirectoryPickerFunc = oldPicker
+	})
+
+	got, err := selectSystemDirectory(child, "选择目录")
+	if err != nil {
+		t.Fatalf("select directory: %v", err)
+	}
+	if got != realPathForTest(root) {
+		t.Fatalf("selected path = %q, want %q", got, realPathForTest(root))
+	}
+}
+
+func TestSelectSystemDirectoryNormalizesRelativeSelection(t *testing.T) {
+	root := t.TempDir()
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(oldWd)
+	})
+	dir := "relative-dir"
+	if err := os.Mkdir(dir, 0755); err != nil {
+		t.Fatalf("mkdir relative dir: %v", err)
+	}
+	oldPicker := runSystemDirectoryPickerFunc
+	runSystemDirectoryPickerFunc = func(path string, title string) (string, error) {
+		return dir, nil
+	}
+	t.Cleanup(func() {
+		runSystemDirectoryPickerFunc = oldPicker
+	})
+
+	got, err := selectSystemDirectory("", "选择目录")
+	if err != nil {
+		t.Fatalf("select directory: %v", err)
+	}
+	want := realPathForTest(filepath.Join(root, dir))
+	if got != want {
+		t.Fatalf("selected path = %q, want %q", got, want)
+	}
+}
+
+func TestSelectSystemDirectoryRejectsSelectedFile(t *testing.T) {
+	root := t.TempDir()
+	filePath := filepath.Join(root, "file.txt")
+	if err := os.WriteFile(filePath, []byte("not dir"), 0644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	oldPicker := runSystemDirectoryPickerFunc
+	runSystemDirectoryPickerFunc = func(path string, title string) (string, error) {
+		return filePath, nil
+	}
+	t.Cleanup(func() {
+		runSystemDirectoryPickerFunc = oldPicker
+	})
+
+	_, err := selectSystemDirectory(root, "选择目录")
+	if err == nil || !strings.Contains(err.Error(), "请选择有效目录") {
+		t.Fatalf("err = %v, want valid directory error", err)
+	}
+}
+
+func realPathForTest(path string) string {
+	if abs, err := filepath.Abs(filepath.Clean(path)); err == nil {
+		path = abs
+	}
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	return path
+}
+
+func TestListSystemDirectoriesReturnsOnlyDirectories(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "Beta"), 0755); err != nil {
+		t.Fatalf("mkdir Beta: %v", err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "alpha"), 0755); err != nil {
+		t.Fatalf("mkdir alpha: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "file.txt"), []byte("skip"), 0644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/system/directories?path="+root, nil)
+
+	new(WebAPI).ListSystemDirectories(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body=%s", w.Code, http.StatusOK, w.Body.String())
+	}
+	var resp struct {
+		Data struct {
+			Path    string `json:"path"`
+			Parent  string `json:"parent"`
+			Entries []struct {
+				Name string `json:"name"`
+				Path string `json:"path"`
+			} `json:"entries"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if resp.Data.Path != root {
+		t.Fatalf("path = %q, want %q", resp.Data.Path, root)
+	}
+	if resp.Data.Parent != filepath.Dir(root) {
+		t.Fatalf("parent = %q, want %q", resp.Data.Parent, filepath.Dir(root))
+	}
+	if len(resp.Data.Entries) != 2 {
+		t.Fatalf("entries = %+v, want two directories", resp.Data.Entries)
+	}
+	if resp.Data.Entries[0].Name != "alpha" || resp.Data.Entries[1].Name != "Beta" {
+		t.Fatalf("entries order = %+v, want alpha then Beta", resp.Data.Entries)
+	}
+}
+
+func TestListSystemDirectoriesUsesHomeWhenPathEmpty(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/system/directories", nil)
+
+	new(WebAPI).ListSystemDirectories(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body=%s", w.Code, http.StatusOK, w.Body.String())
+	}
+	var resp struct {
+		Data struct {
+			Path string `json:"path"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("home dir: %v", err)
+	}
+	if resp.Data.Path != filepath.Clean(home) {
+		t.Fatalf("path = %q, want home %q", resp.Data.Path, filepath.Clean(home))
+	}
+}
+
+func TestListSystemDirectoriesRejectsFilePath(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	root := t.TempDir()
+	filePath := filepath.Join(root, "file.txt")
+	if err := os.WriteFile(filePath, []byte("not a dir"), 0644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/system/directories?path="+filePath, nil)
+
+	new(WebAPI).ListSystemDirectories(c)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadRequest)

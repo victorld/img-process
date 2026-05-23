@@ -26,6 +26,11 @@ type UpdateSystemSettingsReq struct {
 	Config map[string]map[string]any `json:"config" binding:"required"`
 }
 
+type SelectSystemDirectoryReq struct {
+	Path  string `json:"path"`
+	Title string `json:"title"`
+}
+
 type ExecuteDuplicateDeleteReq struct {
 	Side string `json:"side" binding:"required"`
 	Path string `json:"path"`

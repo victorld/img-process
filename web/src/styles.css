@@ -108,6 +108,29 @@ body {
   min-width: 0;
 }
 
+.settings-scan-groups {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-scan-path-row {
+  display: grid;
+  grid-template-columns: minmax(280px, 760px);
+}
+
+.settings-scan-grid-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(160px, 1fr));
+  column-gap: 24px;
+  row-gap: 4px;
+  justify-items: start;
+}
+
+.settings-scan-path-row .ant-form-item,
+.settings-scan-grid-row .ant-form-item {
+  min-width: 0;
+}
+
 .raw-args-section-title {
   margin: 0 0 12px;
 }
@@ -248,4 +271,54 @@ body {
 .app-table-actions .ant-btn,
 .app-table-actions .ant-btn-link {
   margin-inline-start: 0 !important;
+}
+
+.file-coverage-text {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.file-stat-row {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) 112px;
+  gap: 10px;
+  align-items: center;
+}
+
+.file-stat-track {
+  height: 10px;
+  border-radius: 999px;
+  background: #e5eee9;
+  overflow: hidden;
+}
+
+.file-stat-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2f7d62;
+}
+
+.file-analysis-table {
+  width: 100%;
+}
+
+.file-analysis-table .ant-table-cell {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.file-analysis-table .ant-typography {
+  max-width: 100%;
+}
+
+.file-remark-text {
+  display: block;
+  max-width: 170px;
+}
+
+.clickable-row {
+  cursor: pointer;
 }

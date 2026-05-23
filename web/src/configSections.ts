@@ -12,13 +12,15 @@ export type ConfigSectionKey =
 export type ConfigField = {
   key: string;
   label: string;
-  valueType?: "string" | "boolean" | "number";
+  valueType?: "string" | "boolean" | "number" | "path";
+  group?: "path" | "show" | "action";
   secret?: boolean;
 };
 
 export type ConfigSection = {
   key: ConfigSectionKey;
   title: string;
+  description?: string;
   fields: ConfigField[];
 };
 
@@ -46,18 +48,19 @@ export const configSections: ConfigSection[] = [
   },
   {
     key: "scanArgs",
-    title: "scanArgs 扫描参数",
+    title: "scanArgs 默认扫描参数",
+    description: "用于调整扫描任务默认的值填写",
     fields: [
-      { key: "StartPath", label: "扫描目录" },
-      { key: "DeleteShow", label: "显示重复删除项", valueType: "boolean" },
-      { key: "MoveFileShow", label: "显示移动项", valueType: "boolean" },
-      { key: "ModifyDateShow", label: "显示修改时间项", valueType: "boolean" },
-      { key: "RenameFileShow", label: "显示重命名项", valueType: "boolean" },
-      { key: "Md5Show", label: "计算 MD5", valueType: "boolean" },
-      { key: "DeleteAction", label: "执行重复删除", valueType: "boolean" },
-      { key: "MoveFileAction", label: "执行移动", valueType: "boolean" },
-      { key: "ModifyDateAction", label: "执行修改时间", valueType: "boolean" },
-      { key: "RenameFileAction", label: "执行重命名", valueType: "boolean" },
+      { key: "StartPath", label: "扫描目录", valueType: "path", group: "path" },
+      { key: "DeleteShow", label: "显示删除项", valueType: "boolean", group: "show" },
+      { key: "MoveFileShow", label: "显示移动项", valueType: "boolean", group: "show" },
+      { key: "ModifyDateShow", label: "显示修改时间项", valueType: "boolean", group: "show" },
+      { key: "RenameFileShow", label: "显示重命名项", valueType: "boolean", group: "show" },
+      { key: "Md5Show", label: "计算 MD5", valueType: "boolean", group: "show" },
+      { key: "DeleteAction", label: "执行删除", valueType: "boolean", group: "action" },
+      { key: "MoveFileAction", label: "执行移动", valueType: "boolean", group: "action" },
+      { key: "ModifyDateAction", label: "执行修改时间", valueType: "boolean", group: "action" },
+      { key: "RenameFileAction", label: "执行重命名", valueType: "boolean", group: "action" },
     ],
   },
   {
@@ -89,7 +92,7 @@ export const configSections: ConfigSection[] = [
   {
     key: "bak",
     title: "bak 备份配置",
-    fields: [{ key: "StartPathBak", label: "备份目录" }],
+    fields: [{ key: "StartPathBak", label: "显示的默认备份目录", valueType: "path" }],
   },
   {
     key: "gis",

@@ -7,6 +7,8 @@ import type {
   ScanEvent,
   ScanJobLog,
   Schedule,
+  DirectoryListing,
+  FileAnalysisResult,
   SystemStatus,
 } from "./types";
 
@@ -154,7 +156,22 @@ export const api = {
     }),
   runSchedule: (id: number) =>
     request<{ job: Job }>(`/api/schedules/${id}/run`, { method: "POST" }),
+  getFileAnalysis: (params: URLSearchParams) =>
+    request<FileAnalysisResult>(`/api/files/analysis?${params.toString()}`),
   getSystemStatus: () => request<SystemStatus>("/api/system/status"),
+  listSystemDirectories: (path?: string) => {
+    const params = new URLSearchParams();
+    if (path) {
+      params.set("path", path);
+    }
+    const query = params.toString();
+    return request<DirectoryListing>(`/api/system/directories${query ? `?${query}` : ""}`);
+  },
+  selectSystemDirectory: (path: string | undefined, title: string) =>
+    request<{ path: string }>("/api/system/select-directory", {
+      method: "POST",
+      body: JSON.stringify({ path, title }),
+    }),
   updateSystemSettings: (config: Record<string, Record<string, unknown>>) =>
     request<Pick<SystemStatus, "config" | "configFile" | "configSource" | "readonlySections">>(
       "/api/system/settings",

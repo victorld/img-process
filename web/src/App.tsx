@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { api } from './api'
 import { DashboardPage } from './pages/DashboardPage'
+import { FilesPage } from './pages/FilesPage'
 import { JobDetailPage } from './pages/JobDetailPage'
 import { JobsPage } from './pages/JobsPage'
 import { SchedulesPage } from './pages/SchedulesPage'
@@ -59,6 +60,7 @@ function ProtectedLayout() {
 
   const selectedKey = useMemo(() => {
     if (location.pathname.startsWith('/jobs')) return 'jobs'
+    if (location.pathname.startsWith('/files')) return 'files'
     if (location.pathname.startsWith('/schedules')) return 'schedules'
     if (location.pathname.startsWith('/settings')) return 'settings'
     return 'dashboard'
@@ -87,6 +89,7 @@ function ProtectedLayout() {
             items={[
               { key: 'dashboard', label: <Link to="/">仪表盘</Link> },
               { key: 'jobs', label: <Link to="/jobs">扫描历史</Link> },
+              { key: 'files', label: <Link to="/files">文件分析</Link> },
               { key: 'schedules', label: <Link to="/schedules">计划任务</Link> },
               { key: 'settings', label: <Link to="/settings">系统设置</Link> },
             ]}
@@ -113,6 +116,7 @@ function ProtectedLayout() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/jobs" element={<JobsPage />} />
               <Route path="/jobs/:id" element={<JobDetailPage />} />
+              <Route path="/files" element={<FilesPage />} />
               <Route path="/schedules" element={<SchedulesPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Routes>

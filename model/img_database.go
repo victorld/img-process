@@ -27,3 +27,52 @@ type ImgDatabaseSearch struct {
 	EndCreatedAt   *time.Time `json:"endCreatedAt" form:"endCreatedAt"`
 	PageInfo
 }
+
+type FileAnalysisSearch struct {
+	PageInfo
+	FileKey         string
+	ShootDateStatus string
+	GeoStatus       string
+	LocAddrKeyword  string
+	ShootDateStart  string
+	ShootDateEnd    string
+}
+
+type FileAnalysisSummary struct {
+	TotalCount         int64   `json:"totalCount"`
+	WithShootDateCount int64   `json:"withShootDateCount"`
+	WithLocNumCount    int64   `json:"withLocNumCount"`
+	WithLocAddrCount   int64   `json:"withLocAddrCount"`
+	ShootDateCoverage  float64 `json:"shootDateCoverage"`
+	LocNumCoverage     float64 `json:"locNumCoverage"`
+	LocAddrCoverage    float64 `json:"locAddrCoverage"`
+}
+
+type FileAnalysisStatItem struct {
+	Key     string  `json:"key"`
+	Count   int64   `json:"count"`
+	Percent float64 `json:"percent"`
+}
+
+type FileAnalysisItem struct {
+	ID         uint      `json:"id"`
+	ImgKey     string    `json:"imgKey"`
+	DirDate    string    `json:"dirDate"`
+	FileName   string    `json:"fileName"`
+	Suffix     string    `json:"suffix"`
+	ShootDate  string    `json:"shootDate"`
+	LocNum     string    `json:"locNum"`
+	LocStreet  string    `json:"locStreet"`
+	LocAddr    string    `json:"locAddr"`
+	Remark     string    `json:"remark"`
+	UpdatedAt  time.Time `json:"updatedAt"`
+	PreviewURL string    `json:"previewUrl"`
+}
+
+type FileAnalysisResult struct {
+	Summary     FileAnalysisSummary    `json:"summary"`
+	YearStats   []FileAnalysisStatItem `json:"yearStats"`
+	SuffixStats []FileAnalysisStatItem `json:"suffixStats"`
+	List        []FileAnalysisItem     `json:"list"`
+	Total       int64                  `json:"total"`
+}
