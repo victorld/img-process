@@ -1,6 +1,7 @@
 /.idea/
 /.env
 /.env.local
+/config.yaml
 /bin/
 /log/
 log/img_num_list
