@@ -57,6 +57,8 @@ type DuplicatePairLine = {
   slot: string;
   sizeText: string;
   md5Matched: boolean;
+  matchKey?: string;
+  matchType?: string;
   pathSource: string;
   matchCount?: number;
   recommendedDelete: boolean;
@@ -93,6 +95,7 @@ const actionTypeOptions = [
   { key: "move", label: "移动" },
   { key: "modify_time", label: "修改时间" },
   { key: "delete_duplicate", label: "重复项" },
+  { key: "delete_path_duplicate", label: "文件路径重复项" },
   { key: "rename", label: "重命名" },
 ] as const;
 
@@ -101,6 +104,7 @@ const EMPTY_COUNTS: ScanActionCounts = {
   move: 0,
   modifyTime: 0,
   deleteDuplicate: 0,
+  deletePathDuplicate: 0,
   rename: 0,
   total: 0,
 };
@@ -186,6 +190,11 @@ const statsFields: StatsField[] = [
   },
   { key: "EmptyDirCnt", label: "空目录数", aliases: ["emptyDirCnt"] },
   { key: "DumpFileCnt", label: "重复文件数", aliases: ["dumpFileCnt"] },
+  {
+    key: "PathDuplicateFileCnt",
+    label: "文件路径重复项数",
+    aliases: ["pathDuplicateFileCnt"],
+  },
   { key: "ExifErrCnt", label: "EXIF 解析错误数", aliases: ["exifErrCnt"] },
   {
     key: "ExifDateNameSet",
@@ -343,6 +352,19 @@ export function JobDetailPage() {
     mutationFn: () => api.executeDuplicateDelete(id),
     onSuccess: () => {
       messageApi.success("重复文件删除已执行");
+      queryClient.invalidateQueries({ queryKey: ["job-actions", id] });
+      queryClient.invalidateQueries({ queryKey: ["job-events", id] });
+      queryClient.invalidateQueries({ queryKey: ["job", id] });
+    },
+    onError: (error) => {
+      messageApi.error(error instanceof Error ? error.message : "执行失败");
+    },
+  });
+
+  const pathDuplicateMutation = useMutation({
+    mutationFn: () => api.executePathDuplicateDelete(id),
+    onSuccess: () => {
+      messageApi.success("文件路径重复项删除已执行");
       queryClient.invalidateQueries({ queryKey: ["job-actions", id] });
       queryClient.invalidateQueries({ queryKey: ["job-events", id] });
       queryClient.invalidateQueries({ queryKey: ["job", id] });
@@ -584,7 +606,8 @@ export function JobDetailPage() {
               ),
               isDeletingDuplicateAction:
                 duplicateDeleteActionMutation.isPending,
-              isDeletingDuplicateBulk: duplicateMutation.isPending,
+              isDeletingDuplicateBulk:
+                duplicateMutation.isPending || pathDuplicateMutation.isPending,
               isModifyingShootTime: modifyShootTimeMutation.isPending,
               isMovingAction: moveActionMutation.isPending,
               isRenamingAction: renameActionMutation.isPending,
@@ -596,7 +619,13 @@ export function JobDetailPage() {
                   side: "PATH",
                   path,
                 }),
-              onDeleteRecommendedDuplicates: () => duplicateMutation.mutate(),
+              onDeleteRecommendedDuplicates: (actionType) => {
+                if (actionType === "delete_path_duplicate") {
+                  pathDuplicateMutation.mutate();
+                  return;
+                }
+                duplicateMutation.mutate();
+              },
               onModifyShootTime: (itemId) =>
                 modifyShootTimeMutation.mutate(itemId),
               onMoveAction: (itemId) => moveActionMutation.mutate(itemId),
@@ -639,7 +668,7 @@ function renderTab(
     isDeletingAction: boolean;
     isDeletingAll: boolean;
     onDeleteDuplicateAction: (itemId: number, path: string) => void;
-    onDeleteRecommendedDuplicates: () => void;
+    onDeleteRecommendedDuplicates: (actionType: string) => void;
     onModifyShootTime: (itemId: number) => void;
     onMoveAction: (itemId: number) => void;
     onRenameAction: (itemId: number) => void;
@@ -708,7 +737,7 @@ function renderActionTab(
     isDeletingAction: boolean;
     isDeletingAll: boolean;
     onDeleteDuplicateAction: (itemId: number, path: string) => void;
-    onDeleteRecommendedDuplicates: () => void;
+    onDeleteRecommendedDuplicates: (actionType: string) => void;
     onModifyShootTime: (itemId: number) => void;
     onMoveAction: (itemId: number) => void;
     onRenameAction: (itemId: number) => void;
@@ -720,7 +749,7 @@ function renderActionTab(
   },
 ) {
   const tabCounts = context.groupedCounts[tab];
-  const isDuplicateType = context.actionType === "delete_duplicate";
+  const isDuplicateType = isDuplicateActionType(context.actionType);
   const duplicateRows = isDuplicateType
     ? buildDuplicatePairLines(context.actions)
     : [];
@@ -767,22 +796,26 @@ function renderActionTab(
                   }
                 />
               ) : null}
-              {tab === "pending" &&
-              item.key === "delete_duplicate" &&
-              context.duplicateDetectionEnabled ? (
+              {shouldShowDeleteRecommendedButton(
+                tab,
+                item.key,
+                context.duplicateDetectionEnabled,
+              ) ? (
                 <Row justify="end">
                   <Col>
                     <Popconfirm
                       title="确认按建议删除所有照片"
-                      description="将批量删除当前重复项中所有“建议删除=是”的照片，是否继续？"
+                      description={`将批量删除当前${item.label}中所有“建议删除=是”的照片，是否继续？`}
                       okText="确认"
                       cancelText="取消"
-                      onConfirm={context.onDeleteRecommendedDuplicates}
+                      onConfirm={() =>
+                        context.onDeleteRecommendedDuplicates(item.key)
+                      }
                     >
                       <Button
                         danger
                         loading={context.isDeletingDuplicateBulk}
-                        disabled={tabCounts.deleteDuplicate === 0}
+                        disabled={countForType(tabCounts, item.key) === 0}
                       >
                         按建议删除所有照片
                       </Button>
@@ -1080,9 +1113,7 @@ function getDuplicatePairColumns(
       render: (_, record) => (
         <Space direction="vertical" size={0}>
           <Typography.Text>大小：{record.sizeText || "-"}</Typography.Text>
-          <Typography.Text>
-            MD5：{record.md5Matched ? "匹配" : "未匹配"}
-          </Typography.Text>
+          <Typography.Text>{formatDuplicateMatchText(record)}</Typography.Text>
           <Typography.Text type="secondary">
             来源：{record.pathSource || "-"}
             {record.matchCount && record.matchCount > 1
@@ -1301,6 +1332,8 @@ function buildDuplicatePairLines(
         slot: photo.previewSlot || `duplicate_${rowIndex}`,
         sizeText: photo.sizeText || "-",
         md5Matched: photo.md5Matched ?? true,
+        matchKey: photo.matchKey,
+        matchType: photo.matchType,
         pathSource: photo.pathSource || "扫描记录",
         matchCount: photo.matchCount,
         recommendedDelete: photo.recommendedDelete ?? false,
@@ -1402,10 +1435,27 @@ function PreviewImage({
       width={72}
       height={72}
       src={api.getJobActionPreviewUrl(id, itemId, slot)}
+      preview={{
+        src: api.getJobActionPreviewUrl(id, itemId, slot, "full"),
+      }}
       alt={alt}
       fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Crect width='72' height='72' fill='%23eef2ef'/%3E%3Ctext x='36' y='40' text-anchor='middle' fill='%23839590' font-size='12'%3E%E6%97%A0%E5%9B%BE%3C/text%3E%3C/svg%3E"
     />
   );
+}
+
+function shouldShowDeleteRecommendedButton(
+  tab: ActionTabKey,
+  actionType: string,
+  duplicateDetectionEnabled: boolean,
+) {
+  if (tab !== "pending") {
+    return false;
+  }
+  if (actionType === "delete_path_duplicate") {
+    return true;
+  }
+  return actionType === "delete_duplicate" && duplicateDetectionEnabled;
 }
 
 function countForType(counts: ScanActionCounts, type: string) {
@@ -1418,11 +1468,24 @@ function countForType(counts: ScanActionCounts, type: string) {
       return counts.modifyTime;
     case "delete_duplicate":
       return counts.deleteDuplicate;
+    case "delete_path_duplicate":
+      return counts.deletePathDuplicate;
     case "rename":
       return counts.rename;
     default:
       return 0;
   }
+}
+
+function isDuplicateActionType(actionType: string) {
+  return actionType === "delete_duplicate" || actionType === "delete_path_duplicate";
+}
+
+function formatDuplicateMatchText(record: DuplicatePairLine) {
+  if (record.matchType === "img_key") {
+    return `img_key：${record.matchKey || "匹配"}`;
+  }
+  return `MD5：${record.md5Matched ? "匹配" : "未匹配"}`;
 }
 
 function getActionEmptyState(
@@ -1432,6 +1495,9 @@ function getActionEmptyState(
 ) {
   if (actionType === "delete_duplicate" && !duplicateDetectionEnabled) {
     return <Empty description="当前任务未开启重复检测" />;
+  }
+  if (actionType === "delete_path_duplicate") {
+    return <Empty description="暂无文件路径重复项" />;
   }
   return (
     <Empty

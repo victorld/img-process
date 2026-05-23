@@ -322,6 +322,72 @@ func TestProcessOneFileConcurrentAppends(t *testing.T) {
 	}
 }
 
+func TestPathDuplicateProcessRecordsImgKeyDuplicates(t *testing.T) {
+	recorder := &captureRecorder{}
+	scanner := newScannerWithRecorder(model.DoScanImgArg{}, recorder)
+	root := t.TempDir()
+	plainDir := filepath.Join(root, "2024", "2024-01", "2024-01-02")
+	namedDir := filepath.Join(root, "2024", "2024-01", "2024-01-02-trip")
+	if err := os.MkdirAll(plainDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(namedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	keep := filepath.Join(namedDir, "IMG_0001.JPG")
+	duplicate := filepath.Join(plainDir, "IMG_0001.JPG")
+	for _, file := range []string{keep, duplicate} {
+		if err := os.WriteFile(file, []byte("content"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	imgKey := "2024-01-02|IMG_0001.JPG"
+	scanner.pathDupMap[imgKey] = []string{duplicate, keep}
+	pathDuplicateMap := scanner.pathDuplicateProcess()
+
+	if len(pathDuplicateMap) != 1 {
+		t.Fatalf("pathDuplicateMap len = %d, want 1", len(pathDuplicateMap))
+	}
+	if len(recorder.items) != 1 {
+		t.Fatalf("recorded items = %d, want 1", len(recorder.items))
+	}
+	item := recorder.items[0]
+	if item.ActionType != model.ActionTypeDeletePathDup {
+		t.Fatalf("action type = %q, want %q", item.ActionType, model.ActionTypeDeletePathDup)
+	}
+	if item.SourcePath != duplicate {
+		t.Fatalf("source path = %q, want duplicate %q", item.SourcePath, duplicate)
+	}
+	if item.TargetPath != keep {
+		t.Fatalf("target path = %q, want keep %q", item.TargetPath, keep)
+	}
+	meta := parseTestMetadata(t, item.MetadataJSON)
+	if meta["matchKey"] != imgKey {
+		t.Fatalf("matchKey = %v, want %q", meta["matchKey"], imgKey)
+	}
+}
+
+func TestChoosePathDuplicateKeepPhotoPrefersEarlierDirDate(t *testing.T) {
+	root := t.TempDir()
+	earlier := filepath.Join(root, "2024", "2024-01", "2024-01-02", "IMG_0001.JPG")
+	later := filepath.Join(root, "2024", "2024-02", "2024-02-03", "IMG_0001.JPG")
+
+	if got := choosePathDuplicateKeepPhoto([]string{later, earlier}); got != earlier {
+		t.Fatalf("keep photo = %q, want earlier dir date %q", got, earlier)
+	}
+}
+
+func TestChoosePathDuplicateKeepPhotoPrefersDescribedDirForSameDate(t *testing.T) {
+	root := t.TempDir()
+	plain := filepath.Join(root, "2024", "2024-01", "2024-01-02", "IMG_0001.JPG")
+	described := filepath.Join(root, "2024", "2024-01", "2024-01-02-trip", "IMG_0001.JPG")
+
+	if got := choosePathDuplicateKeepPhoto([]string{plain, described}); got != described {
+		t.Fatalf("keep photo = %q, want described dir %q", got, described)
+	}
+}
+
 func TestScannersKeepIndependentState(t *testing.T) {
 	ensureTestLogger()
 	root := filepath.Join(t.TempDir(), "pic-new")

@@ -351,7 +351,7 @@ func isPendingDuplicateDeleteAction(item model.ScanActionItemDB) bool {
 	if item.Stage != model.ActionStageCandidate || item.Status != model.ActionStatusPending {
 		return false
 	}
-	if item.ActionType != model.ActionTypeDeleteDup {
+	if !isDuplicateActionType(item.ActionType) {
 		return false
 	}
 	metadata := parseActionItemMetadata(item)
@@ -395,6 +395,22 @@ func duplicatePathBelongsToItem(metadata actionItemMetadata, deletePath string) 
 		}
 	}
 	return sameCleanPath(metadata.CurrentPath, deletePath) || sameCleanPath(metadata.KeepPath, deletePath)
+}
+
+func recommendedDeletePathFromMetadata(item model.ScanActionItemDB) (string, bool) {
+	metadata := parseActionItemMetadata(item)
+	for _, photo := range metadata.DuplicatePhotos {
+		if photo.RecommendedDelete && photo.DeleteEligible && strings.TrimSpace(photo.Path) != "" {
+			return photo.Path, true
+		}
+	}
+	if strings.TrimSpace(metadata.CurrentPath) != "" {
+		return metadata.CurrentPath, true
+	}
+	if strings.TrimSpace(item.SourcePath) != "" {
+		return item.SourcePath, true
+	}
+	return "", false
 }
 
 func sameCleanPath(a string, b string) bool {

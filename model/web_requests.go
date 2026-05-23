@@ -22,6 +22,10 @@ type UpsertScheduleReq struct {
 	ScanArgs       DoScanImgArg `json:"scanArgs"`
 }
 
+type UpdateSystemSettingsReq struct {
+	Config map[string]map[string]any `json:"config" binding:"required"`
+}
+
 type ExecuteDuplicateDeleteReq struct {
 	Side string `json:"side" binding:"required"`
 	Path string `json:"path"`

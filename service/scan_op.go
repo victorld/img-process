@@ -88,6 +88,7 @@ type ImgRecord struct {
 	ShootDateEarlierFileCnt  int            //需要修改拍摄日期文件数，更早
 	EmptyDirCnt              int            //空文件数
 	DumpFileCnt              int            //重复md5数
+	PathDuplicateFileCnt     int            //文件路径重复项数
 	ExifDateNameSet          string         //需要删除文件数
 	ExifErrCnt               int            //exif错误数
 	IsComplete               int            //是否完整
@@ -153,6 +154,7 @@ type Scanner struct {
 	dayMapBak      map[string]int
 	imageNumMap    map[string][]string
 	imageNumRevMap map[string][]string
+	pathDupMap     map[string][]string
 	diffMap        map[string]int
 
 	imgDatabaseDBList   []*model.ImgDatabaseDB
@@ -236,6 +238,7 @@ func newScannerWithRecorder(scanArgs model.DoScanImgArg, recorder ScanRecorder) 
 		dayMapBak:                 map[string]int{},
 		imageNumMap:               map[string][]string{},
 		imageNumRevMap:            map[string][]string{},
+		pathDupMap:                map[string][]string{},
 		diffMap:                   map[string]int{},
 		imgCache:                  map[string]middleware.ImgCacheData{},
 		staleImgCache:             map[string]middleware.ImgCacheData{},
@@ -295,6 +298,7 @@ func ScanAndSaveWithRecorder(scanArgs model.DoScanImgArg, recorder ScanRecorder)
 		ShootDateEarlierFileCnt:  intPtr(imgRecord.ShootDateEarlierFileCnt),
 		EmptyDirCnt:              intPtr(imgRecord.EmptyDirCnt),
 		DumpFileCnt:              intPtr(imgRecord.DumpFileCnt),
+		PathDuplicateFileCnt:     intPtr(imgRecord.PathDuplicateFileCnt),
 		ExifErrCnt:               intPtr(imgRecord.ExifErrCnt),
 		ExifDateNameSet:          imgRecord.ExifDateNameSet,
 		IsComplete:               intPtr(imgRecord.IsComplete),
@@ -530,9 +534,10 @@ func (s *Scanner) Run() (string, error) {
 	tools.Logger.Info(tools.StrWithColor("PRINT DETAIL TYPE3(dump file): ", "red"))
 	s.setPhase("process_duplicates", nil)
 	dumpMap := s.dumpFileProcess()
+	pathDuplicateMap := s.pathDuplicateProcess()
 
 	s.setPhase("build_result", nil)
-	ret, err := s.buildResult(start1, basePathBak, dumpMap, elapsed2, elapsed3, elapsed4, start5)
+	ret, err := s.buildResult(start1, basePathBak, dumpMap, pathDuplicateMap, elapsed2, elapsed3, elapsed4, start5)
 	if err != nil {
 		return "", err
 	}
@@ -588,6 +593,7 @@ func (s *Scanner) walkPrimaryPath(p *ants.Pool) error {
 
 		parentDir := path.Base(filepath.Dir(file))
 		dumpCompareKey := parentDir + "|" + fileName
+		imgKey := tools.GetDirDate(file) + "|" + fileName
 		day := tools.GetDirDate(file)
 		year, month, hasDate := splitDateParts(day)
 		s.suffixMap[fileSuffix]++
@@ -602,6 +608,7 @@ func (s *Scanner) walkPrimaryPath(p *ants.Pool) error {
 			s.imageNumRevMap[year+"-"+head] = append(s.imageNumRevMap[year+"-"+head], fileName+","+day)
 		}
 		s.diffMap[dumpCompareKey] = 0
+		s.pathDupMap[imgKey] = append(s.pathDupMap[imgKey], file)
 
 		if count := s.fileTotalCnt.Add(1); count%1000 == 0 {
 			tools.Logger.Info("processed ", tools.StrWithColor(strconv.FormatInt(count, 10), "red"))
@@ -666,7 +673,7 @@ func (s *Scanner) walkBackupPath(p *ants.Pool) error {
 	})
 }
 
-func (s *Scanner) buildResult(start1 time.Time, basePathBak string, dumpMap map[string][]string, elapsed2, elapsed3, elapsed4 time.Duration, start5 time.Time) (string, error) {
+func (s *Scanner) buildResult(start1 time.Time, basePathBak string, dumpMap map[string][]string, pathDuplicateMap map[string][]string, elapsed2, elapsed3, elapsed4 time.Duration, start5 time.Time) (string, error) {
 	var bakNewFile []string
 	var bakDeleteFile []string
 	if backupStatEnabled(s.startPathBak) {
@@ -735,6 +742,7 @@ func (s *Scanner) buildResult(start1 time.Time, basePathBak string, dumpMap map[
 
 	tools.Logger.Info()
 	tools.Logger.Info("dump file total（重复文件组数量） : ", tools.StrWithColor(strconv.Itoa(len(dumpMap)), "red"))
+	tools.Logger.Info("path duplicate total（文件路径重复项组数量） : ", tools.StrWithColor(strconv.Itoa(len(pathDuplicateMap)), "red"))
 	if err := s.writeDumpArtifacts(dumpMap); err != nil {
 		tools.Logger.Error("write dump artifacts error : ", err)
 	}
@@ -806,6 +814,7 @@ func (s *Scanner) buildResult(start1 time.Time, basePathBak string, dumpMap map[
 		ShootDateEarlierFileCnt:  s.shootDateEarlierFileList.Cardinality(),
 		EmptyDirCnt:              len(s.deleteDirList),
 		DumpFileCnt:              len(dumpMap),
+		PathDuplicateFileCnt:     len(pathDuplicateMap),
 		ExifDateNameSet:          s.exifDateNameSet.String(),
 		ExifErrCnt:               s.getExifInfoErrorSet.Cardinality(),
 		ScanArgs:                 tools.MarshalJsonToString(s.scanArgs),
@@ -1191,6 +1200,91 @@ func (s *Scanner) dumpFileProcess() map[string][]string {
 	return dumpMap
 }
 
+func (s *Scanner) pathDuplicateProcess() map[string][]string {
+	pathDuplicateMap := make(map[string][]string)
+	for imgKey, files := range s.pathDupMap {
+		files = uniqueCleanPaths(files)
+		if len(files) <= 1 {
+			continue
+		}
+		sort.Strings(files)
+		pathDuplicateMap[imgKey] = append([]string(nil), files...)
+		keepPhoto := choosePathDuplicateKeepPhoto(files)
+		groupPhotos := buildPathDuplicateGroupPhotoMetadata(files, keepPhoto, imgKey)
+		tools.Logger.Info("path duplicate : ", tools.StrWithColor(imgKey, "blue"))
+		for _, photo := range files {
+			if photo == keepPhoto {
+				tools.Logger.Info("choose : ", photo, tools.StrWithColor(" SAVE", "green"), " SIZE: ", tools.GetFileSize(photo))
+				continue
+			}
+			s.recorder.RecordCandidateAction(model.ScanActionItemDB{
+				ActionType:     model.ActionTypeDeletePathDup,
+				ObjectType:     model.ActionObjectFile,
+				SourcePath:     photo,
+				TargetPath:     keepPhoto,
+				ReasonCode:     "duplicate_img_key",
+				ReasonText:     "文件路径重复项候选删除",
+				DuplicateGroup: imgKey,
+				MetadataJSON: tools.MarshalJsonToString(ginH(
+					"fileName", filepath.Base(photo),
+					"currentPath", photo,
+					"keepPath", keepPhoto,
+					"keepFileName", filepath.Base(keepPhoto),
+					"sizeMatch", true,
+					"deleteEligible", true,
+					"matchType", "img_key",
+					"matchKey", imgKey,
+					"duplicatePhotos", groupPhotos,
+				)),
+			})
+			tools.Logger.Info("choose : ", photo, tools.StrWithColor(" DELETE", "red"), " SIZE: ", tools.GetFileSize(photo))
+		}
+		tools.Logger.Info()
+	}
+	return pathDuplicateMap
+}
+
+func choosePathDuplicateKeepPhoto(files []string) string {
+	keepPhoto := ""
+	for _, photo := range files {
+		if keepPhoto == "" || pathDuplicateKeepLess(photo, keepPhoto) {
+			keepPhoto = photo
+		}
+	}
+	return keepPhoto
+}
+
+func pathDuplicateKeepLess(left string, right string) bool {
+	leftDirDate := tools.GetDirDate(left)
+	rightDirDate := tools.GetDirDate(right)
+	if leftDirDate != "" && rightDirDate != "" && leftDirDate != rightDirDate {
+		return leftDirDate < rightDirDate
+	}
+	if leftDirDate == "" && rightDirDate != "" {
+		return false
+	}
+	if leftDirDate != "" && rightDirDate == "" {
+		return true
+	}
+	leftHasDescription := pathDuplicateDirHasDescription(left)
+	rightHasDescription := pathDuplicateDirHasDescription(right)
+	if leftDirDate == rightDirDate && leftHasDescription != rightHasDescription {
+		return leftHasDescription
+	}
+	leftParent := tools.GetParentDir(left)
+	rightParent := tools.GetParentDir(right)
+	if len(leftParent) != len(rightParent) {
+		return len(leftParent) < len(rightParent)
+	}
+	return left < right
+}
+
+func pathDuplicateDirHasDescription(photo string) bool {
+	dirName := tools.GetParentDir(photo)
+	dirDate := tools.GetDirDate(photo)
+	return dirDate != "" && len(dirName) > len(dirDate)
+}
+
 func firstNonEmptyPath(paths []string) string {
 	for _, candidate := range paths {
 		if strings.TrimSpace(candidate) != "" {
@@ -1213,6 +1307,28 @@ func buildDuplicateGroupPhotoMetadata(files []string, recommendedDeletePath stri
 			PathSource:        "扫描记录",
 			RecommendedDelete: deleteEligible && file != recommendedDeletePath,
 			DeleteEligible:    deleteEligible,
+			CandidateIndex:    index,
+			MatchCount:        1,
+		})
+	}
+	return photos
+}
+
+func buildPathDuplicateGroupPhotoMetadata(files []string, keepPath string, imgKey string) []model.ScanActionPreview {
+	photos := make([]model.ScanActionPreview, 0, len(files))
+	for index, file := range files {
+		sizeBytes := tools.GetFileSize(file)
+		photos = append(photos, model.ScanActionPreview{
+			FileName:          filepath.Base(file),
+			Path:              file,
+			SizeBytes:         sizeBytes,
+			SizeText:          formatFileSize(sizeBytes),
+			MD5Matched:        false,
+			MatchKey:          imgKey,
+			MatchType:         "img_key",
+			PathSource:        "日期+文件名",
+			RecommendedDelete: file != keepPath,
+			DeleteEligible:    true,
 			CandidateIndex:    index,
 			MatchCount:        1,
 		})

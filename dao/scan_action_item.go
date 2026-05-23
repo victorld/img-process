@@ -48,7 +48,7 @@ func (s *ScanActionItemService) List(search model.ScanActionItemSearch) ([]model
 	case "error":
 		db = db.Where("status = ?", model.ActionStatusFailed)
 	case "duplicate":
-		db = db.Where("action_type = ?", model.ActionTypeDeleteDup)
+		db = db.Where("action_type in ?", []string{model.ActionTypeDeleteDup, model.ActionTypeDeletePathDup})
 	}
 	if search.ActionType != "" {
 		if search.ActionType == model.ActionTypeDelete {
@@ -104,6 +104,21 @@ func (s *ScanActionItemService) ListPendingDuplicateByJob(jobID uint) ([]model.S
 			model.ActionStageCandidate,
 			model.ActionStatusPending,
 			model.ActionTypeDeleteDup,
+		).
+		Order("id desc").
+		Find(&list).Error
+	return list, err
+}
+
+func (s *ScanActionItemService) ListPendingPathDuplicateByJob(jobID uint) ([]model.ScanActionItemDB, error) {
+	var list []model.ScanActionItemDB
+	err := orm.ImgMysqlDB.
+		Where(
+			"job_id = ? AND stage = ? AND status = ? AND action_type = ?",
+			jobID,
+			model.ActionStageCandidate,
+			model.ActionStatusPending,
+			model.ActionTypeDeletePathDup,
 		).
 		Order("id desc").
 		Find(&list).Error
@@ -216,10 +231,12 @@ func addActionCount(counts *model.ScanActionCounts, actionType string, total int
 		counts.ModifyTime += total
 	case model.ActionTypeDeleteDup:
 		counts.DeleteDuplicate += total
+	case model.ActionTypeDeletePathDup:
+		counts.DeletePathDup += total
 	case model.ActionTypeRename:
 		counts.Rename += total
 	default:
 		return
 	}
-	counts.Total = counts.Delete + counts.Move + counts.ModifyTime + counts.DeleteDuplicate + counts.Rename
+	counts.Total = counts.Delete + counts.Move + counts.ModifyTime + counts.DeleteDuplicate + counts.DeletePathDup + counts.Rename
 }

@@ -112,6 +112,37 @@ func TestBuildActionItemViewBuildsDuplicatePair(t *testing.T) {
 	}
 }
 
+func TestBuildActionItemViewBuildsPathDuplicatePair(t *testing.T) {
+	item := model.ScanActionItemDB{
+		CommonModel:    model.CommonModel{ID: 17},
+		ActionType:     model.ActionTypeDeletePathDup,
+		ObjectType:     model.ActionObjectFile,
+		SourcePath:     "/photos/2024-01-02-trip/IMG_0001.JPG",
+		TargetPath:     "/photos/2024-01-02/IMG_0001.JPG",
+		DuplicateGroup: "2024-01-02|IMG_0001.JPG",
+		MetadataJSON:   `{"fileName":"IMG_0001.JPG","currentPath":"/photos/2024-01-02-trip/IMG_0001.JPG","keepPath":"/photos/2024-01-02/IMG_0001.JPG","keepFileName":"IMG_0001.JPG","deleteEligible":true,"matchType":"img_key","matchKey":"2024-01-02|IMG_0001.JPG","duplicatePhotos":[{"fileName":"IMG_0001.JPG","path":"/photos/2024-01-02/IMG_0001.JPG","recommendedDelete":false,"deleteEligible":true},{"fileName":"IMG_0001.JPG","path":"/photos/2024-01-02-trip/IMG_0001.JPG","recommendedDelete":true,"deleteEligible":true}]}`,
+	}
+
+	view := buildActionItemView(item)
+	if view.Pair == nil {
+		t.Fatal("view.Pair should not be nil")
+	}
+	if view.DuplicateMeta == nil || !view.DuplicateMeta.DeleteEligible {
+		t.Fatalf("duplicate meta = %#v, want delete eligible", view.DuplicateMeta)
+	}
+	if len(view.DuplicatePhotos) != 2 {
+		t.Fatalf("duplicate photos len = %d, want 2", len(view.DuplicatePhotos))
+	}
+	for _, photo := range view.DuplicatePhotos {
+		if photo.MatchType != "img_key" {
+			t.Fatalf("photo match type = %q, want img_key", photo.MatchType)
+		}
+		if photo.MD5Matched {
+			t.Fatal("path duplicate photo should not be marked as md5 matched")
+		}
+	}
+}
+
 func TestBuildActionItemViewBuildsReviewOnlyDuplicatePair(t *testing.T) {
 	item := model.ScanActionItemDB{
 		CommonModel:    model.CommonModel{ID: 10},

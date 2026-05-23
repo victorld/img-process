@@ -34,6 +34,7 @@ type ImgRecordDB struct {
 	ShootDateEarlierFileCnt  *int       `json:"shootDateEarlierFileCnt" form:"shootDateEarlierFileCnt" gorm:"type:int(10);column:shoot_date_earlier_file_cnt;comment:拍摄日期不一致且更早;size:10;"` //需要修改拍摄日期文件数，拍摄日期更小
 	EmptyDirCnt              *int       `json:"emptyDirCnt" form:"emptyDirCnt" gorm:"type:int(10);column:empty_dir_cnt;comment:空文件数;size:10;"`                                             //空文件数
 	DumpFileCnt              *int       `json:"dumpFileCnt" form:"dumpFileCnt" gorm:"type:int(10);column:dump_file_cnt;comment:重复md5数;size:10;"`                                           //重复md5数
+	PathDuplicateFileCnt     *int       `json:"pathDuplicateFileCnt" form:"pathDuplicateFileCnt" gorm:"type:int(10);column:path_duplicate_file_cnt;comment:文件路径重复项数;size:10;"`             //文件路径重复项数
 	//DumpFileDeleteList string     `json:"dumpFileDeleteList" form:"dumpFileDeleteList" gorm:"column:dump_file_delete_list;comment:需要删除文件数;"`                       //需要删除文件数
 	ExifErrCnt      *int   `json:"exifErrCnt" form:"exifErrCnt" gorm:"type:int(10);column:exif_err_cnt;comment:exif错误数;size:10;"`        //exif错误数
 	ExifDateNameSet string `json:"exifDateNameSet" form:"exifDateNameSet" gorm:"column:exif_date_name_set;comment:exif错误3统计;type:text;"` //exif错误3统计

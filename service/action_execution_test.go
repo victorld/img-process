@@ -64,6 +64,46 @@ func TestDuplicateDeleteTargetFallsBackToTargetPath(t *testing.T) {
 	}
 }
 
+func TestPathDuplicateDeleteTargetUsesRequestedPath(t *testing.T) {
+	item := model.ScanActionItemDB{
+		ActionType: model.ActionTypeDeletePathDup,
+		MetadataJSON: `{"deleteEligible":true,"duplicatePhotos":[` +
+			`{"path":"/photos/2024-01-02/IMG_0001.JPG"},` +
+			`{"path":"/photos/2024-01-02-trip/IMG_0001.JPG"}` +
+			`]}`,
+	}
+
+	side, deletePath, _, err := duplicateDeleteTarget(item, "", "/photos/2024-01-02-trip/IMG_0001.JPG")
+	if err != nil {
+		t.Fatalf("path duplicate target error: %v", err)
+	}
+	if side != "PATH" {
+		t.Fatalf("side = %q, want PATH", side)
+	}
+	if deletePath != "/photos/2024-01-02-trip/IMG_0001.JPG" {
+		t.Fatalf("deletePath = %q", deletePath)
+	}
+}
+
+func TestRecommendedDeletePathFromMetadataUsesRecommendedPhoto(t *testing.T) {
+	item := model.ScanActionItemDB{
+		ActionType: model.ActionTypeDeletePathDup,
+		SourcePath: "/photos/2024-01-02/IMG_0001.JPG",
+		MetadataJSON: `{"duplicatePhotos":[` +
+			`{"path":"/photos/2024-01-02-trip/IMG_0001.JPG","recommendedDelete":false,"deleteEligible":true},` +
+			`{"path":"/photos/2024-01-02/IMG_0001.JPG","recommendedDelete":true,"deleteEligible":true}` +
+			`]}`,
+	}
+
+	deletePath, ok := recommendedDeletePathFromMetadata(item)
+	if !ok {
+		t.Fatal("recommended delete path should be found")
+	}
+	if deletePath != "/photos/2024-01-02/IMG_0001.JPG" {
+		t.Fatalf("deletePath = %q", deletePath)
+	}
+}
+
 func TestAppendDuplicateExecutionAudit(t *testing.T) {
 	raw := appendDuplicateExecutionAudit(`{"keepPath":"/photos/b.jpg"}`, "B", "/photos/b.jpg", "/photos/a.jpg")
 

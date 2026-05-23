@@ -281,6 +281,44 @@ func (r *AppRuntime) DeleteDuplicateFiles(jobID uint) error {
 	return nil
 }
 
+func (r *AppRuntime) DeletePathDuplicateFiles(jobID uint) (int, error) {
+	job, err := r.jobService.GetByID(jobID)
+	if err != nil {
+		return 0, err
+	}
+	if job.Status != model.JobStatusSucceeded {
+		return 0, errors.New("job is not completed successfully")
+	}
+
+	items, err := r.actionItemService.ListPendingPathDuplicateByJob(job.ID)
+	if err != nil {
+		return 0, err
+	}
+
+	successCount := 0
+	for idx := range items {
+		item := items[idx]
+		deletePath, ok := recommendedDeletePathFromMetadata(item)
+		if !ok {
+			continue
+		}
+		if err := r.executeDuplicateDeleteActionItem(&item, "PATH", deletePath); err != nil {
+			return successCount, err
+		}
+		successCount++
+	}
+
+	_ = r.eventService.Create(&model.ScanEventDB{
+		JobID:     job.ID,
+		EventType: model.EventTypeLifecycle,
+		Phase:     "post_action",
+		Level:     "info",
+		Title:     "文件路径重复项删除已执行",
+		Message:   "文件路径重复项已按建议删除",
+	})
+	return successCount, nil
+}
+
 func (r *AppRuntime) Login(username string) string {
 	token := uuid.NewString()
 	r.sessionMu.Lock()

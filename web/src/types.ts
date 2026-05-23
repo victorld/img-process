@@ -58,6 +58,7 @@ export type ScanActionCounts = {
   move: number
   modifyTime: number
   deleteDuplicate: number
+  deletePathDuplicate: number
   rename: number
   total: number
 }
@@ -89,6 +90,8 @@ export type ScanActionPhoto = {
   sizeBytes?: number
   sizeText?: string
   md5Matched?: boolean
+  matchKey?: string
+  matchType?: string
   pathSource?: string
   recommendedDelete?: boolean
   executedAction?: boolean
@@ -146,7 +149,9 @@ export type Schedule = {
 }
 
 export type SystemStatus = {
+  configSource?: string
   configFile?: string
+  readonlySections?: string[]
   config?: {
     database: Record<string, unknown>
     server: Record<string, unknown>

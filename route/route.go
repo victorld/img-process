@@ -42,6 +42,7 @@ func InitRouter(r *gin.Engine) *gin.Engine {
 	apiGroup.GET("/jobs/:id/action-preview", webAPI.PreviewJobAction)
 	apiGroup.GET("/jobs/:id/stream", webAPI.StreamJob)
 	apiGroup.POST("/jobs/:id/actions/delete-duplicates", webAPI.DeleteJobDuplicates)
+	apiGroup.POST("/jobs/:id/actions/delete-path-duplicates", webAPI.DeleteJobPathDuplicates)
 	apiGroup.POST("/jobs/:id/action-items/:itemId/delete", webAPI.DeleteJobActionItem)
 	apiGroup.POST("/jobs/:id/action-items/:itemId/delete-duplicate", webAPI.DeleteDuplicateActionItem)
 	apiGroup.POST("/jobs/:id/action-items/:itemId/modify-shoot-time", webAPI.ModifyJobShootTimeActionItem)
@@ -56,6 +57,7 @@ func InitRouter(r *gin.Engine) *gin.Engine {
 	apiGroup.POST("/schedules/:id/disable", webAPI.DisableSchedule)
 	apiGroup.POST("/schedules/:id/run", webAPI.RunSchedule)
 	apiGroup.GET("/system/status", webAPI.GetSystemStatus)
+	apiGroup.PUT("/system/settings", webAPI.UpdateSystemSettings)
 
 	registerSPA(r)
 	return r

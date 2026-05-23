@@ -37,6 +37,8 @@ type actionItemMetadata struct {
 	ExecutedDeleteSide     string                    `json:"executedDeleteSide"`
 	ExecutedDeletePath     string                    `json:"executedDeletePath"`
 	RecommendedDeletePath  string                    `json:"recommendedDeletePath"`
+	MatchKey               string                    `json:"matchKey"`
+	MatchType              string                    `json:"matchType"`
 }
 
 func (r *AppRuntime) ListActionItems(search model.ScanActionItemSearch) ([]model.ScanActionItemView, model.ScanActionCounts, model.ScanActionGroupedCounts, int64, error) {
@@ -49,7 +51,7 @@ func (r *AppRuntime) ListActionItems(search model.ScanActionItemSearch) ([]model
 		return nil, model.ScanActionCounts{}, model.ScanActionGroupedCounts{}, 0, err
 	}
 
-	if search.ActionType == model.ActionTypeDeleteDup {
+	if isDuplicateActionType(search.ActionType) {
 		views, total, groupedCounts, err := r.listDuplicateActionItemViews(search, groupedCounts)
 		if err != nil {
 			return nil, model.ScanActionCounts{}, model.ScanActionGroupedCounts{}, 0, err
@@ -81,7 +83,7 @@ func (r *AppRuntime) listDuplicateActionItemViews(search model.ScanActionItemSea
 
 	var excludedPaths map[string]struct{}
 	if search.Tab == "pending" {
-		excludedPaths, err = r.executedDuplicateDeletePaths(search.JobID)
+		excludedPaths, err = r.executedDuplicateDeletePaths(search.JobID, search.ActionType)
 		if err != nil {
 			return nil, 0, groupedCounts, err
 		}
@@ -100,15 +102,15 @@ func (r *AppRuntime) listDuplicateActionItemViews(search model.ScanActionItemSea
 	viewTotal := countDuplicateViews(views)
 	switch search.Tab {
 	case "pending":
-		replaceDeleteDuplicateCount(&groupedCounts.Pending, viewTotal)
+		replaceDuplicateCountForType(&groupedCounts.Pending, search.ActionType, viewTotal)
 	case "executed":
-		replaceDeleteDuplicateCount(&groupedCounts.Executed, viewTotal)
+		replaceDuplicateCountForType(&groupedCounts.Executed, search.ActionType, viewTotal)
 	case "error":
-		replaceDeleteDuplicateCount(&groupedCounts.Error, viewTotal)
+		replaceDuplicateCountForType(&groupedCounts.Error, search.ActionType, viewTotal)
 	}
 
 	pagedViews, pagedTotal := paginateActionViews(views, search.Page, search.PageSize)
-	if search.ActionType == model.ActionTypeDeleteDup {
+	if isDuplicateActionType(search.ActionType) {
 		pagedTotal = viewTotal
 	}
 	return pagedViews, pagedTotal, groupedCounts, nil
@@ -176,41 +178,53 @@ func (r *AppRuntime) refineDuplicateGroupedCounts(jobID uint, groupedCounts mode
 		return groupedCounts, nil
 	}
 
-	excludedPaths := duplicateExecutedDeletePaths(list)
-	pendingItems := make([]model.ScanActionItemDB, 0, len(list))
-	executedItems := make([]model.ScanActionItemDB, 0, len(list))
-	errorItems := make([]model.ScanActionItemDB, 0, len(list))
-	for _, item := range list {
-		if item.Stage == model.ActionStageCandidate && item.Status == model.ActionStatusPending {
-			pendingItems = append(pendingItems, item)
+	for _, actionType := range []string{model.ActionTypeDeleteDup, model.ActionTypeDeletePathDup} {
+		typeItems := filterActionItemsByType(list, actionType)
+		excludedPaths := duplicateExecutedDeletePaths(typeItems)
+		pendingItems := make([]model.ScanActionItemDB, 0, len(typeItems))
+		executedItems := make([]model.ScanActionItemDB, 0, len(typeItems))
+		errorItems := make([]model.ScanActionItemDB, 0, len(typeItems))
+		for _, item := range typeItems {
+			if item.Stage == model.ActionStageCandidate && item.Status == model.ActionStatusPending {
+				pendingItems = append(pendingItems, item)
+			}
+			if item.Stage == model.ActionStageExecuted {
+				executedItems = append(executedItems, item)
+			}
+			if item.Status == model.ActionStatusFailed {
+				errorItems = append(errorItems, item)
+			}
 		}
-		if item.Stage == model.ActionStageExecuted {
-			executedItems = append(executedItems, item)
-		}
-		if item.Status == model.ActionStatusFailed {
-			errorItems = append(errorItems, item)
-		}
-	}
 
-	replaceDeleteDuplicateCount(&groupedCounts.Pending, countDuplicateViews(buildDuplicateGroupViewsWithExcludedPaths(pendingItems, excludedPaths)))
-	replaceDeleteDuplicateCount(&groupedCounts.Executed, countDuplicateViews(buildDuplicateGroupViews(executedItems)))
-	replaceDeleteDuplicateCount(&groupedCounts.Error, countDuplicateViews(buildDuplicateGroupViews(errorItems)))
+		replaceDuplicateCountForType(&groupedCounts.Pending, actionType, countDuplicateViews(buildDuplicateGroupViewsWithExcludedPaths(pendingItems, excludedPaths)))
+		replaceDuplicateCountForType(&groupedCounts.Executed, actionType, countDuplicateViews(buildDuplicateGroupViews(executedItems)))
+		replaceDuplicateCountForType(&groupedCounts.Error, actionType, countDuplicateViews(buildDuplicateGroupViews(errorItems)))
+	}
 	return groupedCounts, nil
 }
 
-func (r *AppRuntime) executedDuplicateDeletePaths(jobID uint) (map[string]struct{}, error) {
+func filterActionItemsByType(items []model.ScanActionItemDB, actionType string) []model.ScanActionItemDB {
+	filtered := make([]model.ScanActionItemDB, 0, len(items))
+	for _, item := range items {
+		if item.ActionType == actionType {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
+func (r *AppRuntime) executedDuplicateDeletePaths(jobID uint, actionType string) (map[string]struct{}, error) {
 	list, err := r.allDuplicateActionItems(jobID)
 	if err != nil {
 		return nil, err
 	}
-	return duplicateExecutedDeletePaths(list), nil
+	return duplicateExecutedDeletePaths(filterActionItemsByType(list, actionType)), nil
 }
 
 func (r *AppRuntime) allDuplicateActionItems(jobID uint) ([]model.ScanActionItemDB, error) {
 	search := model.ScanActionItemSearch{
-		JobID:      jobID,
-		Tab:        "duplicate",
-		ActionType: model.ActionTypeDeleteDup,
+		JobID: jobID,
+		Tab:   "duplicate",
 	}
 	list, _, err := r.actionItemService.List(search)
 	return list, err
@@ -270,6 +284,24 @@ func mergeDuplicateGroupView(base model.ScanActionItemView, next model.ScanActio
 func replaceDeleteDuplicateCount(counts *model.ScanActionCounts, groupTotal int64) {
 	counts.Total = counts.Total - counts.DeleteDuplicate + groupTotal
 	counts.DeleteDuplicate = groupTotal
+}
+
+func replaceDeletePathDuplicateCount(counts *model.ScanActionCounts, groupTotal int64) {
+	counts.Total = counts.Total - counts.DeletePathDup + groupTotal
+	counts.DeletePathDup = groupTotal
+}
+
+func replaceDuplicateCountForType(counts *model.ScanActionCounts, actionType string, groupTotal int64) {
+	switch actionType {
+	case model.ActionTypeDeletePathDup:
+		replaceDeletePathDuplicateCount(counts, groupTotal)
+	default:
+		replaceDeleteDuplicateCount(counts, groupTotal)
+	}
+}
+
+func isDuplicateActionType(actionType string) bool {
+	return actionType == model.ActionTypeDeleteDup || actionType == model.ActionTypeDeletePathDup
 }
 
 func countsForActionTab(groupedCounts model.ScanActionGroupedCounts, tab string) model.ScanActionCounts {
@@ -356,7 +388,7 @@ func buildActionItemView(item model.ScanActionItemDB) model.ScanActionItemView {
 	}
 
 	switch item.ActionType {
-	case model.ActionTypeDeleteDup:
+	case model.ActionTypeDeleteDup, model.ActionTypeDeletePathDup:
 		keepPath := metadata.KeepPath
 		if keepPath == "" {
 			keepPath = item.TargetPath
@@ -367,6 +399,10 @@ func buildActionItemView(item model.ScanActionItemDB) model.ScanActionItemView {
 		}
 		duplicatePhotos = duplicatePhotosForActionState(item, metadata, duplicatePhotos)
 		duplicatePhotos = enrichDuplicatePhotos(duplicatePhotos, item.DuplicateGroup, true)
+		if item.ActionType == model.ActionTypeDeletePathDup {
+			duplicatePhotos = markPathDuplicatePhotos(duplicatePhotos, firstNonEmpty(metadata.MatchKey, item.DuplicateGroup))
+			duplicatePhotos = applyPathDuplicateRecommendation(duplicatePhotos)
+		}
 		view.Pair = &model.ScanActionPair{
 			PhotoA: model.ScanActionPreview{
 				FileName:    firstNonEmpty(metadata.FileName, filepath.Base(sourcePath)),
@@ -705,9 +741,49 @@ func enrichDuplicatePhotos(photos []model.ScanActionPreview, group string, defau
 			photo.DeleteEligible = true
 		}
 		photo.PreviewSlot = "duplicate_" + strconv.Itoa(index)
+		if photo.MatchKey == "" {
+			photo.MatchKey = group
+		}
 		enriched = append(enriched, photo)
 	}
 	return enriched
+}
+
+func markPathDuplicatePhotos(photos []model.ScanActionPreview, matchKey string) []model.ScanActionPreview {
+	ret := make([]model.ScanActionPreview, 0, len(photos))
+	for _, photo := range photos {
+		photo.MD5Matched = false
+		photo.MatchType = "img_key"
+		if photo.MatchKey == "" {
+			photo.MatchKey = matchKey
+		}
+		if photo.PathSource == "" || photo.PathSource == "扫描记录" {
+			photo.PathSource = "日期+文件名"
+		}
+		ret = append(ret, photo)
+	}
+	return ret
+}
+
+func applyPathDuplicateRecommendation(photos []model.ScanActionPreview) []model.ScanActionPreview {
+	paths := make([]string, 0, len(photos))
+	for _, photo := range photos {
+		if strings.TrimSpace(photo.Path) != "" {
+			paths = append(paths, photo.Path)
+		}
+	}
+	keepPath := choosePathDuplicateKeepPhoto(paths)
+	if keepPath == "" {
+		return photos
+	}
+
+	ret := make([]model.ScanActionPreview, 0, len(photos))
+	for _, photo := range photos {
+		photo.RecommendedDelete = !sameCleanPath(photo.Path, keepPath)
+		photo.DeleteEligible = strings.TrimSpace(photo.Path) != ""
+		ret = append(ret, photo)
+	}
+	return ret
 }
 
 func duplicatePairFromPhotos(photos []model.ScanActionPreview) (model.ScanActionPreview, model.ScanActionPreview) {

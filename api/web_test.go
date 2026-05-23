@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -580,7 +581,8 @@ func TestGetSystemStatusReturnsGroupedMaskedConfig(t *testing.T) {
 				Gis      map[string]any `json:"gis"`
 				Batch    map[string]any `json:"batch"`
 			} `json:"config"`
-			Server struct {
+			ReadonlySections []string `json:"readonlySections"`
+			Server           struct {
 				HttpPort  string `json:"httpPort"`
 				StartPath string `json:"startPath"`
 				PoolSize  int    `json:"poolSize"`
@@ -621,9 +623,37 @@ func TestGetSystemStatusReturnsGroupedMaskedConfig(t *testing.T) {
 	if resp.Data.Config.Batch["GDUpdateBatchSize"] != float64(2000) {
 		t.Fatalf("GDUpdateBatchSize = %v, want 2000", resp.Data.Config.Batch["GDUpdateBatchSize"])
 	}
+	if !containsString(resp.Data.ReadonlySections, "database") || !containsString(resp.Data.ReadonlySections, "server") {
+		t.Fatalf("readonlySections = %v, want database and server", resp.Data.ReadonlySections)
+	}
 	if resp.Data.Server.HttpPort != "8081" || resp.Data.Server.StartPath != "/data/pic-lab" || resp.Data.Server.PoolSize != 8 || !resp.Data.Server.SqlDebug {
 		t.Fatalf("legacy server fields mismatch: %+v", resp.Data.Server)
 	}
+}
+
+func TestUpdateSystemSettingsRejectsReadonlySections(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodPut, "/api/system/settings", strings.NewReader(`{"config":{"server":{"HttpPort":"9090"}}}`))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	new(WebAPI).UpdateSystemSettings(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 func modelErr(message string) error {

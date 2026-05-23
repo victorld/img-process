@@ -288,6 +288,7 @@
 | `shoot_date_earlier_file_cnt` | `int` | 是 | 拍摄日期更早文件数 |
 | `empty_dir_cnt` | `int` | 是 | 空目录数 |
 | `dump_file_cnt` | `int` | 是 | 重复文件数 |
+| `path_duplicate_file_cnt` | `int` | 是 | 文件路径重复项数 |
 | `exif_err_cnt` | `int` | 是 | EXIF 解析错误数 |
 | `exif_date_name_set` | `text` | 是 | EXIF 相关异常统计 |
 | `is_complete` | `int` | 是 | 是否完整 |

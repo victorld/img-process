@@ -70,7 +70,17 @@ export const api = {
     id: string | number,
     itemId: number,
     slot = "source",
-  ) => `/api/jobs/${id}/action-preview?itemId=${itemId}&slot=${slot}`,
+    quality?: "thumb" | "full",
+  ) => {
+    const params = new URLSearchParams({
+      itemId: String(itemId),
+      slot,
+    });
+    if (quality) {
+      params.set("quality", quality);
+    }
+    return `/api/jobs/${id}/action-preview?${params.toString()}`;
+  },
   executeDeleteActionItem: (id: string | number, itemId: number) =>
     request<{ jobId: number; itemId: number }>(
       `/api/jobs/${id}/action-items/${itemId}/delete`,
@@ -113,6 +123,11 @@ export const api = {
     request<{ jobId: number }>(`/api/jobs/${id}/actions/delete-duplicates`, {
       method: "POST",
     }),
+  executePathDuplicateDelete: (id: string | number) =>
+    request<{ jobId: number; count: number }>(
+      `/api/jobs/${id}/actions/delete-path-duplicates`,
+      { method: "POST" },
+    ),
   getSchedules: (params: URLSearchParams) =>
     request<{ list: Schedule[]; total: number }>(
       `/api/schedules?${params.toString()}`,
@@ -140,4 +155,12 @@ export const api = {
   runSchedule: (id: number) =>
     request<{ job: Job }>(`/api/schedules/${id}/run`, { method: "POST" }),
   getSystemStatus: () => request<SystemStatus>("/api/system/status"),
+  updateSystemSettings: (config: Record<string, Record<string, unknown>>) =>
+    request<Pick<SystemStatus, "config" | "configFile" | "configSource" | "readonlySections">>(
+      "/api/system/settings",
+      {
+        method: "PUT",
+        body: JSON.stringify({ config }),
+      },
+    ),
 };

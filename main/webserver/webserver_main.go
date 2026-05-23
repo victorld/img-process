@@ -20,6 +20,9 @@ func main() {
 	if err := middleware.RegisterTable(); err != nil {
 		tools.Logger.Fatal("register table error : ", err)
 	}
+	if err := service.InitSystemSettings(); err != nil {
+		tools.Logger.Fatal("init system settings error : ", err)
+	}
 	if err := service.Runtime.Start(); err != nil {
 		tools.Logger.Fatal("runtime start error : ", err)
 	}

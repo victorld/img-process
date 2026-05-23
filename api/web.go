@@ -249,7 +249,7 @@ func (api *WebAPI) PreviewJobAction(c *gin.Context) {
 	c.Header("Cache-Control", "private, max-age=60")
 	previewPath := path
 	if !isBrowserImagePreview(path) {
-		thumbPath, err := ensurePreviewThumbnail(path)
+		thumbPath, err := ensurePreviewImage(path, c.Query("quality"))
 		if err != nil {
 			tools.FailWithStatus(c, http.StatusBadRequest, "图片预览失败", gin.H{"error": err.Error()})
 			return
@@ -269,7 +269,19 @@ func isBrowserImagePreview(path string) bool {
 	}
 }
 
-func ensurePreviewThumbnail(sourcePath string) (string, error) {
+type previewImageQuality struct {
+	suffix   string
+	maxWidth int
+}
+
+func previewQualityFromQuery(raw string) previewImageQuality {
+	if raw == "full" {
+		return previewImageQuality{suffix: "full", maxWidth: 2048}
+	}
+	return previewImageQuality{suffix: "thumb", maxWidth: 320}
+}
+
+func ensurePreviewImage(sourcePath string, qualityRaw string) (string, error) {
 	previewThumbMu.Lock()
 	defer previewThumbMu.Unlock()
 
@@ -277,14 +289,23 @@ func ensurePreviewThumbnail(sourcePath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	hash := sha1.Sum([]byte(sourcePath + "|" + stat.ModTime().Format(time.RFC3339Nano) + "|" + strconv.FormatInt(stat.Size(), 10)))
+	quality := previewQualityFromQuery(qualityRaw)
+	hash := sha1.Sum([]byte(sourcePath + "|" + stat.ModTime().Format(time.RFC3339Nano) + "|" + strconv.FormatInt(stat.Size(), 10) + "|" + quality.suffix))
 	dir := filepath.Join(cons.WorkDir, "log", "preview_cache")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
-	thumbPath := filepath.Join(dir, hex.EncodeToString(hash[:])+".jpg")
+	thumbPath := filepath.Join(dir, hex.EncodeToString(hash[:])+"_"+quality.suffix+".jpg")
 	if _, err := os.Stat(thumbPath); err == nil {
 		return thumbPath, nil
+	}
+
+	if isHEICPreview(sourcePath) {
+		if output, err := runPreviewSips("-s", "format", "jpeg", "-Z", strconv.Itoa(quality.maxWidth), sourcePath, "--out", thumbPath); err == nil {
+			return thumbPath, nil
+		} else {
+			tools.Logger.Warn("sips 生成预览失败，改用 ffmpeg：", strings.TrimSpace(string(output)))
+		}
 	}
 
 	args := []string{
@@ -293,7 +314,7 @@ func ensurePreviewThumbnail(sourcePath string) (string, error) {
 		"-y",
 		"-i", sourcePath,
 		"-frames:v", "1",
-		"-vf", "scale='min(320,iw)':-1",
+		"-vf", "scale='min(" + strconv.Itoa(quality.maxWidth) + ",iw)':-1",
 		thumbPath,
 	}
 	output, err := runPreviewFFmpeg(args...)
@@ -301,6 +322,19 @@ func ensurePreviewThumbnail(sourcePath string) (string, error) {
 		return "", errors.New("生成预览缩略图失败：" + strings.TrimSpace(string(output)))
 	}
 	return thumbPath, nil
+}
+
+func isHEICPreview(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".heic", ".heif":
+		return true
+	default:
+		return false
+	}
+}
+
+var runPreviewSips = func(args ...string) ([]byte, error) {
+	return execCommandCombinedOutput("sips", args...)
 }
 
 var runPreviewFFmpeg = func(args ...string) ([]byte, error) {
@@ -369,6 +403,20 @@ func (api *WebAPI) DeleteJobDuplicates(c *gin.Context) {
 		return
 	}
 	tools.Success(c, gin.H{"jobId": jobID}, "重复文件删除已执行")
+}
+
+func (api *WebAPI) DeleteJobPathDuplicates(c *gin.Context) {
+	jobID, err := parseUintParam(c, "id")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "任务ID错误", gin.H{"error": err.Error()})
+		return
+	}
+	count, err := service.Runtime.DeletePathDuplicateFiles(jobID)
+	if err != nil {
+		tools.Fail(c, "执行文件路径重复项删除失败", gin.H{"error": err.Error()})
+		return
+	}
+	tools.Success(c, gin.H{"jobId": jobID, "count": count}, "文件路径重复项删除已执行")
 }
 
 func (api *WebAPI) DeleteJobActionItem(c *gin.Context) {
@@ -618,59 +666,10 @@ func (api *WebAPI) RunSchedule(c *gin.Context) {
 
 func (api *WebAPI) GetSystemStatus(c *gin.Context) {
 	tools.Success(c, gin.H{
-		"configFile": tools.ConfigFileUsed(),
-		"config": gin.H{
-			"database": gin.H{
-				"DbUsername": cons.DbUsername,
-				"DbPassword": maskConfigSecret(cons.DbPassword),
-				"DbHost":     cons.DbHost,
-				"DbPort":     cons.DbPort,
-				"DbName":     cons.DbName,
-				"DbConfig":   cons.DbConfig,
-			},
-			"server": gin.H{
-				"HttpPort":     cons.HttpPort,
-				"HttpUsername": cons.HttpUsername,
-				"HttpPassword": maskConfigSecret(cons.HttpPassword),
-			},
-			"scanArgs": gin.H{
-				"StartPath":        cons.StartPath,
-				"DeleteShow":       cons.DeleteShow,
-				"MoveFileShow":     cons.MoveFileShow,
-				"ModifyDateShow":   cons.ModifyDateShow,
-				"RenameFileShow":   cons.RenameFileShow,
-				"Md5Show":          cons.Md5Show,
-				"DeleteAction":     cons.DeleteAction,
-				"MoveFileAction":   cons.MoveFileAction,
-				"ModifyDateAction": cons.ModifyDateAction,
-				"RenameFileAction": cons.RenameFileAction,
-			},
-			"basic": gin.H{
-				"ColorOutput": cons.AppConfig.Basic.ColorOutput,
-				"SqlDebug":    cons.SqlDebug,
-			},
-			"cache": gin.H{
-				"ImgCache":      cons.ImgCache,
-				"SyncTable":     cons.SyncTable,
-				"TruncateTable": cons.TruncateTable,
-			},
-			"dump": gin.H{
-				"PoolSize":       cons.PoolSize,
-				"Md5Retry":       cons.Md5Retry,
-				"Md5CountLength": cons.Md5CountLength,
-			},
-			"bak": gin.H{
-				"StartPathBak": cons.StartPathBak,
-			},
-			"gis": gin.H{
-				"key": maskConfigSecret(cons.GisKey),
-			},
-			"batch": gin.H{
-				"IDInsertBatchSize": cons.IDInsertBatchSize,
-				"IDDeleteBatchSize": cons.IDDeleteBatchSize,
-				"GDUpdateBatchSize": cons.GDUpdateBatchSize,
-			},
-		},
+		"configSource":     "database",
+		"configFile":       tools.ConfigFileUsed(),
+		"config":           service.GetSystemSettingSnapshot(true),
+		"readonlySections": service.ReadonlySystemSettingSections(),
 		"server": gin.H{
 			"httpPort":     cons.HttpPort,
 			"startPath":    cons.StartPath,
@@ -693,6 +692,25 @@ func (api *WebAPI) GetSystemStatus(c *gin.Context) {
 			},
 		},
 	}, "ok")
+}
+
+func (api *WebAPI) UpdateSystemSettings(c *gin.Context) {
+	var req model.UpdateSystemSettingsReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "参数错误", gin.H{"error": err.Error()})
+		return
+	}
+	config, err := service.UpdateSystemSettings(service.SystemSettingSnapshot(req.Config))
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "保存设置失败", gin.H{"error": err.Error()})
+		return
+	}
+	tools.Success(c, gin.H{
+		"configSource":     "database",
+		"configFile":       tools.ConfigFileUsed(),
+		"config":           config,
+		"readonlySections": service.ReadonlySystemSettingSections(),
+	}, "设置已保存")
 }
 
 func maskConfigSecret(value string) string {

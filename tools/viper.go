@@ -56,3 +56,10 @@ func UnmarshalConfig(rawVal any) error {
 	}
 	return VP.Unmarshal(rawVal)
 }
+
+func ConfigKeySet(key string) bool {
+	if VP == nil {
+		return false
+	}
+	return VP.IsSet(key)
+}

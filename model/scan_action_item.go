@@ -9,6 +9,7 @@ const (
 	ActionTypeModifyTime     = "modify_time"
 	ActionTypeDeleteEmptyDir = "delete_empty_dir"
 	ActionTypeDeleteDup      = "delete_duplicate"
+	ActionTypeDeletePathDup  = "delete_path_duplicate"
 
 	ActionObjectFile = "file"
 	ActionObjectDir  = "dir"
@@ -59,6 +60,7 @@ type ScanActionCounts struct {
 	Move            int64 `json:"move"`
 	ModifyTime      int64 `json:"modifyTime"`
 	DeleteDuplicate int64 `json:"deleteDuplicate"`
+	DeletePathDup   int64 `json:"deletePathDuplicate"`
 	Rename          int64 `json:"rename"`
 	Total           int64 `json:"total"`
 }
@@ -76,6 +78,8 @@ type ScanActionPreview struct {
 	SizeBytes         int64  `json:"sizeBytes,omitempty"`
 	SizeText          string `json:"sizeText,omitempty"`
 	MD5Matched        bool   `json:"md5Matched"`
+	MatchKey          string `json:"matchKey,omitempty"`
+	MatchType         string `json:"matchType,omitempty"`
 	PathSource        string `json:"pathSource,omitempty"`
 	RecommendedDelete bool   `json:"recommendedDelete"`
 	ExecutedAction    bool   `json:"executedAction"`

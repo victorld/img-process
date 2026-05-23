@@ -13,6 +13,7 @@ var scanActionItemService = dao.ScanActionItemService{}
 var scanEventService = dao.ScanEventService{}
 var scanJobLogService = dao.ScanJobLogService{}
 var scanScheduleService = dao.ScanScheduleService{}
+var systemSettingService = dao.SystemSettingService{}
 
 // RegisterTable 根据gorm配置同步表结构
 func RegisterTable() error {
@@ -53,6 +54,11 @@ func RegisterTable() error {
 
 	var scanScheduleDB model.ScanScheduleDB
 	if err := scanScheduleService.RegisterScanSchedule(&scanScheduleDB); err != nil {
+		return err
+	}
+
+	var systemSettingDB model.SystemSettingDB
+	if err := systemSettingService.RegisterSystemSetting(&systemSettingDB); err != nil {
 		return err
 	}
 	return nil
