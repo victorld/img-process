@@ -415,6 +415,19 @@
 | `counts` | 当前 tab 下的动作统计 |
 | `groupedCounts` | 按待执行/已执行/错误分组的动作统计 |
 
+动作统计对象主要结构：
+
+| 字段 | 说明 |
+| --- | --- |
+| `delete` | 删除文件数 |
+| `deleteEmptyDir` | 删除空文件夹数 |
+| `move` | 移动数 |
+| `modifyTime` | 修改时间数 |
+| `deleteDuplicate` | 重复项数 |
+| `deletePathDuplicate` | 文件路径重复项数 |
+| `rename` | 重命名数 |
+| `total` | 动作总数，包含删除空文件夹数 |
+
 动作明细对象主要结构：
 
 | 字段 | 说明 |

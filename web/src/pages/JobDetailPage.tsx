@@ -109,6 +109,7 @@ type BackupDiffDateNode = {
 
 const actionTypeOptions = [
   { key: "delete", label: "删除" },
+  { key: "delete_empty_dir", label: "删除空文件夹" },
   { key: "move", label: "移动" },
   { key: "modify_time", label: "修改时间" },
   { key: "delete_duplicate", label: "重复项" },
@@ -118,6 +119,7 @@ const actionTypeOptions = [
 
 const EMPTY_COUNTS: ScanActionCounts = {
   delete: 0,
+  deleteEmptyDir: 0,
   move: 0,
   modifyTime: 0,
   deleteDuplicate: 0,
@@ -522,17 +524,19 @@ export function JobDetailPage() {
     emptyGroupedCounts();
   const pendingActionTotal = groupedCounts.pending.total;
   const executedActionTotal = groupedCounts.executed.total;
+  const backupNewCount = backupDiffSummaryCount(summary, "BakNewFile", "bakNewFile");
+  const backupMissingCount = backupDiffSummaryCount(summary, "BakDeleteFile", "bakDeleteFile");
   const tabItems = useMemo(
     () => [
       { key: "pending", label: `待执行动作 (${pendingActionTotal})` },
       { key: "executed", label: `已执行动作 (${executedActionTotal})` },
+      { key: "backup-diff", label: `备份对比（新增 ${backupNewCount} / 缺少 ${backupMissingCount}）` },
       { key: "events", label: "实时事件" },
       { key: "logs", label: "运行日志" },
-      { key: "backup-diff", label: "备份对比" },
       { key: "stats", label: "统计" },
       { key: "raw", label: "原始参数" },
     ],
-    [executedActionTotal, pendingActionTotal],
+    [backupMissingCount, backupNewCount, executedActionTotal, pendingActionTotal],
   );
 
   return (
@@ -881,8 +885,8 @@ function renderActionTab(
                 <Row justify="end">
                   <Col>
                     <Popconfirm
-                      title="确认全部删除"
-                      description="将立即执行当前任务下全部待删除项，是否继续？"
+                      title="确认全部执行删除类动作"
+                      description="将立即执行当前任务下全部待删除文件和待删除空文件夹，是否继续？"
                       okText="确认"
                       cancelText="取消"
                       onConfirm={context.onDeleteAll}
@@ -890,9 +894,9 @@ function renderActionTab(
                       <Button
                         danger
                         loading={context.isDeletingAll}
-                        disabled={context.actionTotal === 0}
+                        disabled={deleteActionCount(tabCounts) === 0}
                       >
-                        全部删除
+                        全部执行删除类动作
                       </Button>
                     </Popconfirm>
                   </Col>
@@ -1059,6 +1063,7 @@ function getActionColumns(
         tab,
         historyColumns,
       );
+    case "delete_empty_dir":
     case "delete":
     default: {
       const baseColumns: ColumnsType<ScanActionItem> = [
@@ -1515,20 +1520,26 @@ function shouldShowDeleteRecommendedButton(
 function countForType(counts: ScanActionCounts, type: string) {
   switch (type) {
     case "delete":
-      return counts.delete;
+      return counts.delete ?? 0;
+    case "delete_empty_dir":
+      return counts.deleteEmptyDir ?? 0;
     case "move":
-      return counts.move;
+      return counts.move ?? 0;
     case "modify_time":
-      return counts.modifyTime;
+      return counts.modifyTime ?? 0;
     case "delete_duplicate":
-      return counts.deleteDuplicate;
+      return counts.deleteDuplicate ?? 0;
     case "delete_path_duplicate":
-      return counts.deletePathDuplicate;
+      return counts.deletePathDuplicate ?? 0;
     case "rename":
-      return counts.rename;
+      return counts.rename ?? 0;
     default:
       return 0;
   }
+}
+
+function deleteActionCount(counts: ScanActionCounts) {
+  return (counts.delete ?? 0) + (counts.deleteEmptyDir ?? 0);
 }
 
 function isDuplicateActionType(actionType: string) {
@@ -2139,6 +2150,29 @@ function numberFromSummaryKey(
     }
   }
   return undefined;
+}
+
+function backupDiffSummaryCount(
+  summary: SummaryRecord | undefined,
+  ...keys: string[]
+) {
+  for (const key of keys) {
+    const value = valueFromSummaryKey(summary, key);
+    if (value === undefined) {
+      continue;
+    }
+    if (typeof value === "object" && value !== null && "count" in value) {
+      return numberFromSummary((value as { count?: unknown }).count);
+    }
+    if (typeof value === "string") {
+      const parsed = parseJsonString(value.trim());
+      if (typeof parsed === "object" && parsed !== null && "count" in parsed) {
+        return numberFromSummary((parsed as { count?: unknown }).count);
+      }
+    }
+    return numberFromSummary(value);
+  }
+  return 0;
 }
 
 function numberFromSummary(value: unknown) {

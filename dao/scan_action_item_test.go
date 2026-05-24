@@ -6,7 +6,7 @@ import (
 	"img_process/model"
 )
 
-func TestCountRowsByTypeTreatsDeleteEmptyDirAsDelete(t *testing.T) {
+func TestCountRowsByTypeSeparatesDeleteEmptyDir(t *testing.T) {
 	rows := []actionCountRow{
 		{ActionType: model.ActionTypeDelete, Total: 2},
 		{ActionType: model.ActionTypeDeleteEmptyDir, Total: 3},
@@ -14,8 +14,11 @@ func TestCountRowsByTypeTreatsDeleteEmptyDirAsDelete(t *testing.T) {
 	}
 
 	counts := countRowsByType(rows)
-	if counts.Delete != 5 {
-		t.Fatalf("delete counts = %d, want 5", counts.Delete)
+	if counts.Delete != 2 {
+		t.Fatalf("delete counts = %d, want 2", counts.Delete)
+	}
+	if counts.DeleteEmptyDir != 3 {
+		t.Fatalf("delete empty dir counts = %d, want 3", counts.DeleteEmptyDir)
 	}
 	if counts.Rename != 1 {
 		t.Fatalf("rename counts = %d, want 1", counts.Rename)
@@ -30,6 +33,9 @@ func TestCountGroupedRowsSeparatesPendingExecutedAndError(t *testing.T) {
 		{Stage: model.ActionStageCandidate, Status: model.ActionStatusPending, ActionType: model.ActionTypeRename, Total: 1},
 		{Stage: model.ActionStageExecuted, Status: model.ActionStatusSucceeded, ActionType: model.ActionTypeRename, Total: 2},
 		{Stage: model.ActionStageExecuted, Status: model.ActionStatusFailed, ActionType: model.ActionTypeRename, Total: 3},
+		{Stage: model.ActionStageCandidate, Status: model.ActionStatusPending, ActionType: model.ActionTypeDeleteEmptyDir, Total: 4},
+		{Stage: model.ActionStageExecuted, Status: model.ActionStatusSucceeded, ActionType: model.ActionTypeDeleteEmptyDir, Total: 5},
+		{Stage: model.ActionStageExecuted, Status: model.ActionStatusFailed, ActionType: model.ActionTypeDeleteEmptyDir, Total: 6},
 	}
 
 	grouped := model.ScanActionGroupedCounts{}
@@ -45,6 +51,15 @@ func TestCountGroupedRowsSeparatesPendingExecutedAndError(t *testing.T) {
 	}
 	if grouped.Error.Rename != 3 {
 		t.Fatalf("error rename = %d, want 3", grouped.Error.Rename)
+	}
+	if grouped.Pending.DeleteEmptyDir != 4 {
+		t.Fatalf("pending delete empty dir = %d, want 4", grouped.Pending.DeleteEmptyDir)
+	}
+	if grouped.Executed.DeleteEmptyDir != 11 {
+		t.Fatalf("executed delete empty dir = %d, want 11", grouped.Executed.DeleteEmptyDir)
+	}
+	if grouped.Error.DeleteEmptyDir != 6 {
+		t.Fatalf("error delete empty dir = %d, want 6", grouped.Error.DeleteEmptyDir)
 	}
 }
 

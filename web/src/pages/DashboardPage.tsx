@@ -8,15 +8,10 @@ import type { Job } from '../types'
 import { formatDurationBetween } from '../utils/dateTime'
 import { formatJobSource, formatJobStatus, formatPhase, formatScheduleMode } from '../utils/displayText'
 
-function renderShortUuid(value?: string | null) {
-  const fullUuid = value ?? ''
-  if (!fullUuid) {
-    return '-'
-  }
-
+function renderJobIdWithUuid(record: Job) {
   return (
-    <Tooltip title={fullUuid}>
-      <Typography.Text>{fullUuid.slice(0, 8)}</Typography.Text>
+    <Tooltip title={record.jobUuid || '无任务UUID'}>
+      <Typography.Text>{record.id}</Typography.Text>
     </Tooltip>
   )
 }
@@ -37,7 +32,7 @@ export function DashboardPage() {
   const failedCount = jobs.filter((item) => item.status === 'failed').length
   const jobColumns: ColumnsType<Job> = useMemo(
     () => [
-      { title: '任务UUID', dataIndex: 'jobUuid', width: 96, render: renderShortUuid },
+      { title: '任务ID', dataIndex: 'id', width: 96, render: (_: unknown, record: Job) => renderJobIdWithUuid(record) },
       { title: '任务类型', dataIndex: 'source', width: 88, render: (value) => formatJobSource(String(value ?? '')) },
       { title: '阶段', dataIndex: 'currentPhase', width: 108, render: (value) => formatPhase(String(value || 'queued')) },
       { title: '状态', dataIndex: 'status', width: 84, render: (value) => <Tag>{formatJobStatus(String(value ?? ''))}</Tag> },

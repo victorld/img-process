@@ -40,15 +40,10 @@ type ScanFormValues = {
   renameFileAction?: boolean
 }
 
-function renderShortUuid(value?: string | null) {
-  const fullUuid = value ?? ''
-  if (!fullUuid) {
-    return '-'
-  }
-
+function renderJobIdWithUuid(record: Job) {
   return (
-    <Tooltip title={fullUuid}>
-      <Typography.Text>{fullUuid.slice(0, 8)}</Typography.Text>
+    <Tooltip title={record.jobUuid || '无任务UUID'}>
+      <Typography.Text>{record.id}</Typography.Text>
     </Tooltip>
   )
 }
@@ -104,8 +99,7 @@ export function JobsPage() {
 
   const columns: ColumnsType<Job> = useMemo(
     () => [
-      { title: '任务ID', dataIndex: 'id', width: 76 },
-      { title: '任务UUID', dataIndex: 'jobUuid', width: 96, render: renderShortUuid },
+      { title: '任务ID', dataIndex: 'id', width: 76, render: (_: unknown, record: Job) => renderJobIdWithUuid(record) },
       { title: '状态', dataIndex: 'status', width: 88, render: (value) => <Tag>{formatJobStatus(String(value ?? ''))}</Tag> },
       { title: '来源', dataIndex: 'source', width: 72, render: (value) => formatJobSource(String(value ?? '')) },
       { title: '总文件夹数', dataIndex: 'totalFolderCount', width: 96, render: (value) => Number(value ?? 0) },
@@ -114,7 +108,9 @@ export function JobsPage() {
       { title: '备份总文件数', dataIndex: 'totalBackupFileCount', width: 108, render: (value) => Number(value ?? 0) },
       { title: '待执行动作', dataIndex: 'pendingActionCount', width: 96, render: (value) => Number(value ?? 0) },
       { title: '已执行动作', dataIndex: 'executedActionCount', width: 96, render: (value) => Number(value ?? 0) },
-      { title: '开始时间', dataIndex: 'startAt', width: 132, render: (value) => formatDateTime(value) },
+      { title: '备份多', dataIndex: 'backupExtraCount', width: 80, render: (value) => Number(value ?? 0) },
+      { title: '备份缺', dataIndex: 'backupMissingCount', width: 80, render: (value) => Number(value ?? 0) },
+      { title: '开始时间', dataIndex: 'startAt', width: 132, render: (value) => formatDateTime(value as string | null | undefined) },
       { title: '执行时长', dataIndex: 'endAt', width: 96, render: (_: unknown, record: Job) => formatDurationBetween(record.startAt, record.endAt ?? record.lastHeartbeatAt) },
       {
         title: '操作',

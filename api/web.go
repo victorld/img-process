@@ -1467,6 +1467,8 @@ func serializeJob(job model.ScanJobDB, groupedCounts model.ScanActionGroupedCoun
 		"totalFolderCount":       summaryInt(summary, "dirTotal", "DirTotal"),
 		"totalBackupFileCount":   summaryInt(summary, "fileTotalBak", "FileTotalBak"),
 		"totalBackupFolderCount": summaryInt(summary, "dirTotalBak", "DirTotalBak"),
+		"backupExtraCount":       backupDiffCount(summary, "BakDeleteFile", "bakDeleteFile"),
+		"backupMissingCount":     backupDiffCount(summary, "BakNewFile", "bakNewFile"),
 		"hasAction":              job.HasAction,
 		"scanArgs":               parseJSON(job.ScanArgs),
 		"summary":                summary,
@@ -1499,6 +1501,22 @@ func summaryInt(summary any, keys ...string) int64 {
 		if value, exists := obj[key]; exists {
 			return numberFromAny(value)
 		}
+	}
+	return 0
+}
+
+func backupDiffCount(summary any, keys ...string) int64 {
+	obj, ok := summary.(map[string]any)
+	if !ok {
+		return 0
+	}
+	for _, key := range keys {
+		value, exists := obj[key]
+		if !exists {
+			continue
+		}
+		diffSummary := parseBackupDiffSummary(value)
+		return int64(diffSummary.Count)
 	}
 	return 0
 }

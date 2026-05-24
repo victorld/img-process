@@ -39,7 +39,7 @@ func TestListJobsReturnsActionAndFolderCounts(t *testing.T) {
 				Source:      model.JobSourceManual,
 				TotalCount:  463,
 				StartAt:     &startAt,
-				SummaryJSON: `{"dirTotal":28,"dirTotalBak":19,"fileTotalBak":431}`,
+				SummaryJSON: `{"dirTotal":28,"dirTotalBak":19,"fileTotalBak":431,"BakDeleteFile":{"count":7},"BakNewFile":{"count":9}}`,
 			},
 		}, 1, nil
 	}
@@ -80,6 +80,8 @@ func TestListJobsReturnsActionAndFolderCounts(t *testing.T) {
 				TotalBackupFolderCount int64 `json:"totalBackupFolderCount"`
 				PendingActionCount     int64 `json:"pendingActionCount"`
 				ExecutedActionCount    int64 `json:"executedActionCount"`
+				BackupExtraCount       int64 `json:"backupExtraCount"`
+				BackupMissingCount     int64 `json:"backupMissingCount"`
 			} `json:"list"`
 		} `json:"data"`
 	}
@@ -113,6 +115,78 @@ func TestListJobsReturnsActionAndFolderCounts(t *testing.T) {
 	}
 	if item.ExecutedActionCount != 2 {
 		t.Fatalf("executedActionCount = %d, want 2", item.ExecutedActionCount)
+	}
+	if item.BackupExtraCount != 7 {
+		t.Fatalf("backupExtraCount = %d, want 7", item.BackupExtraCount)
+	}
+	if item.BackupMissingCount != 9 {
+		t.Fatalf("backupMissingCount = %d, want 9", item.BackupMissingCount)
+	}
+}
+
+func TestListJobsReturnsBackupDiffCountsFromCamelCaseSummary(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	oldListJobs := listJobsFunc
+	oldCountGrouped := countGroupedActionItemsByJobsFunc
+	listJobsFunc = func(search model.ScanJobSearch) ([]model.ScanJobDB, int64, error) {
+		return []model.ScanJobDB{
+			{
+				CommonModel: model.CommonModel{ID: 13},
+				JobUUID:     "job-uuid-13",
+				Status:      model.JobStatusSucceeded,
+				Source:      model.JobSourceManual,
+				SummaryJSON: `{"bakDeleteFile":{"count":3},"bakNewFile":{"count":5}}`,
+			},
+			{
+				CommonModel: model.CommonModel{ID: 14},
+				JobUUID:     "job-uuid-14",
+				Status:      model.JobStatusSucceeded,
+				Source:      model.JobSourceManual,
+				SummaryJSON: `{}`,
+			},
+		}, 2, nil
+	}
+	countGroupedActionItemsByJobsFunc = func(jobIDs []uint) (map[uint]model.ScanActionGroupedCounts, error) {
+		return map[uint]model.ScanActionGroupedCounts{}, nil
+	}
+	t.Cleanup(func() {
+		listJobsFunc = oldListJobs
+		countGroupedActionItemsByJobsFunc = oldCountGrouped
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/jobs?page=1&pageSize=20", nil)
+
+	new(WebAPI).ListJobs(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	var resp struct {
+		Data struct {
+			List []struct {
+				ID                 uint  `json:"id"`
+				BackupExtraCount   int64 `json:"backupExtraCount"`
+				BackupMissingCount int64 `json:"backupMissingCount"`
+			} `json:"list"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if len(resp.Data.List) != 2 {
+		t.Fatalf("list len = %d, want 2", len(resp.Data.List))
+	}
+	first := resp.Data.List[0]
+	if first.ID != 13 || first.BackupExtraCount != 3 || first.BackupMissingCount != 5 {
+		t.Fatalf("first item = %+v, want id 13 backup counts 3/5", first)
+	}
+	second := resp.Data.List[1]
+	if second.ID != 14 || second.BackupExtraCount != 0 || second.BackupMissingCount != 0 {
+		t.Fatalf("second item = %+v, want id 14 backup counts 0/0", second)
 	}
 }
 

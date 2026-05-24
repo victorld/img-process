@@ -51,11 +51,7 @@ func (s *ScanActionItemService) List(search model.ScanActionItemSearch) ([]model
 		db = db.Where("action_type in ?", []string{model.ActionTypeDeleteDup, model.ActionTypeDeletePathDup})
 	}
 	if search.ActionType != "" {
-		if search.ActionType == model.ActionTypeDelete {
-			db = db.Where("action_type in ?", []string{model.ActionTypeDelete, model.ActionTypeDeleteEmptyDir})
-		} else {
-			db = db.Where("action_type = ?", search.ActionType)
-		}
+		db = db.Where("action_type = ?", search.ActionType)
 	}
 	if search.Status != "" {
 		db = db.Where("status = ?", search.Status)
@@ -223,8 +219,10 @@ func countRowsByType(rows []actionCountRow) model.ScanActionCounts {
 
 func addActionCount(counts *model.ScanActionCounts, actionType string, total int64) {
 	switch actionType {
-	case model.ActionTypeDelete, model.ActionTypeDeleteEmptyDir:
+	case model.ActionTypeDelete:
 		counts.Delete += total
+	case model.ActionTypeDeleteEmptyDir:
+		counts.DeleteEmptyDir += total
 	case model.ActionTypeMove:
 		counts.Move += total
 	case model.ActionTypeModifyTime:
@@ -238,5 +236,5 @@ func addActionCount(counts *model.ScanActionCounts, actionType string, total int
 	default:
 		return
 	}
-	counts.Total = counts.Delete + counts.Move + counts.ModifyTime + counts.DeleteDuplicate + counts.DeletePathDup + counts.Rename
+	counts.Total = counts.Delete + counts.DeleteEmptyDir + counts.Move + counts.ModifyTime + counts.DeleteDuplicate + counts.DeletePathDup + counts.Rename
 }

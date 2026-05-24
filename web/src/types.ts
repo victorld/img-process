@@ -23,6 +23,8 @@ export type Job = {
   totalBackupFolderCount?: number
   pendingActionCount?: number
   executedActionCount?: number
+  backupExtraCount?: number
+  backupMissingCount?: number
   hasAction: boolean
   scanArgs?: Record<string, unknown>
   summary?: Record<string, unknown>
@@ -55,6 +57,7 @@ export type ScanActionItem = {
 
 export type ScanActionCounts = {
   delete: number
+  deleteEmptyDir: number
   move: number
   modifyTime: number
   deleteDuplicate: number

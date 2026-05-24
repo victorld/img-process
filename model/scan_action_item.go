@@ -57,6 +57,7 @@ type ScanActionItemSearch struct {
 
 type ScanActionCounts struct {
 	Delete          int64 `json:"delete"`
+	DeleteEmptyDir  int64 `json:"deleteEmptyDir"`
 	Move            int64 `json:"move"`
 	ModifyTime      int64 `json:"modifyTime"`
 	DeleteDuplicate int64 `json:"deleteDuplicate"`

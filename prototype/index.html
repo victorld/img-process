@@ -933,7 +933,7 @@
               <div class="card-head"><h3>最近任务</h3><button class="link" data-page-link="jobs">查看全部</button></div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>任务UUID</th><th>任务类型</th><th>阶段</th><th>状态</th><th>运行时间</th><th>操作</th></tr></thead>
+                  <thead><tr><th>任务ID</th><th>任务类型</th><th>阶段</th><th>状态</th><th>运行时间</th><th>操作</th></tr></thead>
                   <tbody id="dashboard-jobs"></tbody>
                 </table>
               </div>
@@ -960,7 +960,7 @@
           <article class="card">
             <div class="table-wrap">
               <table>
-                <thead><tr><th>任务ID</th><th>任务UUID</th><th>状态</th><th>来源</th><th>总文件夹数</th><th>总文件数</th><th>待执行动作</th><th>已执行动作</th><th>开始时间</th><th>执行时长</th><th>操作</th></tr></thead>
+                <thead><tr><th>任务ID</th><th>状态</th><th>来源</th><th>总文件夹数</th><th>总文件数</th><th>待执行动作</th><th>已执行动作</th><th>备份多</th><th>备份缺</th><th>开始时间</th><th>执行时长</th><th>操作</th></tr></thead>
                 <tbody id="jobs-table"></tbody>
               </table>
             </div>
@@ -996,9 +996,9 @@
             <div class="tabs" data-tabs="detail">
               <button class="active" data-tab="pending">待执行动作 (436)</button>
               <button data-tab="executed">已执行动作 (92)</button>
+              <button data-tab="backup-diff">备份对比（新增 36 / 缺少 12）</button>
               <button data-tab="events">实时事件</button>
               <button data-tab="logs">运行日志</button>
-              <button data-tab="backup-diff">备份对比</button>
               <button data-tab="stats">统计</button>
               <button data-tab="raw">原始参数</button>
             </div>
@@ -1124,10 +1124,10 @@
 
   <script>
     const jobs = [
-      { id: 42, uuid: "8d3f2a91-4e02-4a58-b780-1a2b39f09f20", status: "成功", statusType: "ok", source: "手动", phase: "已完成", folders: 1482, files: 43912, pending: 436, executed: 92, start: "2026-05-23 08:42:11", duration: "18 秒" },
-      { id: 41, uuid: "a13d7b5c-9856-4d7e-8d60-6e7341b7d813", status: "运行中", statusType: "warn", source: "计划", phase: "扫描备份目录", folders: 932, files: 27160, pending: 0, executed: 0, start: "2026-05-23 07:30:00", duration: "12 秒" },
-      { id: 40, uuid: "cc3a6e90-2f83-49d5-bc6d-b237d7d8d101", status: "失败", statusType: "danger", source: "手动", phase: "处理重复项", folders: 601, files: 18620, pending: 0, executed: 0, start: "2026-05-22 21:18:03", duration: "7 秒" },
-      { id: 39, uuid: "e6046f01-1bb4-41f7-b373-4c9395873ef0", status: "成功", statusType: "ok", source: "计划", phase: "已完成", folders: 1478, files: 43876, pending: 12, executed: 615, start: "2026-05-22 03:00:00", duration: "16 秒" }
+      { id: 42, uuid: "8d3f2a91-4e02-4a58-b780-1a2b39f09f20", status: "成功", statusType: "ok", source: "手动", phase: "已完成", folders: 1482, files: 43912, pending: 436, executed: 92, backupExtra: 12, backupMissing: 36, start: "2026-05-23 08:42:11", duration: "18 秒" },
+      { id: 41, uuid: "a13d7b5c-9856-4d7e-8d60-6e7341b7d813", status: "运行中", statusType: "warn", source: "计划", phase: "扫描备份目录", folders: 932, files: 27160, pending: 0, executed: 0, backupExtra: 0, backupMissing: 0, start: "2026-05-23 07:30:00", duration: "12 秒" },
+      { id: 40, uuid: "cc3a6e90-2f83-49d5-bc6d-b237d7d8d101", status: "失败", statusType: "danger", source: "手动", phase: "处理重复项", folders: 601, files: 18620, pending: 0, executed: 0, backupExtra: 0, backupMissing: 0, start: "2026-05-22 21:18:03", duration: "7 秒" },
+      { id: 39, uuid: "e6046f01-1bb4-41f7-b373-4c9395873ef0", status: "成功", statusType: "ok", source: "计划", phase: "已完成", folders: 1478, files: 43876, pending: 12, executed: 615, backupExtra: 3, backupMissing: 8, start: "2026-05-22 03:00:00", duration: "16 秒" }
     ];
 
     const schedules = [
@@ -1137,12 +1137,13 @@
     ];
 
     const actionCounts = {
-      pending: { delete: 128, move: 64, modify_time: 53, delete_duplicate: 118, delete_path_duplicate: 48, rename: 25 },
-      executed: { delete: 34, move: 18, modify_time: 10, delete_duplicate: 22, delete_path_duplicate: 6, rename: 2 }
+      pending: { delete: 104, delete_empty_dir: 24, move: 64, modify_time: 53, delete_duplicate: 118, delete_path_duplicate: 48, rename: 25 },
+      executed: { delete: 28, delete_empty_dir: 6, move: 18, modify_time: 10, delete_duplicate: 22, delete_path_duplicate: 6, rename: 2 }
     };
 
     const actionLabels = {
       delete: "删除",
+      delete_empty_dir: "删除空文件夹",
       move: "移动",
       modify_time: "修改时间",
       delete_duplicate: "重复项",
@@ -1155,6 +1156,11 @@
         ["DSC_0000.tmp", "/Photos/pic-new/2024/2024-01/2024-01-18", "文件大小为 0"],
         [".DS_Store", "/Photos/pic-new/2024/2024-02", "文件名以 . 开头"],
         ["IMG_E9381.JPG", "/Photos/pic-new/2023/2023-11/2023-11-02", "文件名以 IMG_E 开头"]
+      ],
+      delete_empty_dir: [
+        ["2024-01-18", "/Photos/pic-new/2024/2024-01/2024-01-18", "空目录"],
+        ["未命名文件夹", "/Photos/pic-new/2024/2024-02/未命名文件夹", "空目录"],
+        ["export", "/Photos/pic-new/2023/2023-11/export", "空目录"]
       ],
       move: [
         ["IMG_8912.HEIC", "/Photos/pic-new/2025/2025-03/2025-03-21", "/Photos/pic-new/2024/2024-12/2024-12-31"],
@@ -1418,7 +1424,7 @@
     function renderDashboard() {
       document.querySelector("#dashboard-jobs").innerHTML = jobs.slice(0, 4).map((job) => `
         <tr>
-          <td>${shortUuid(job.uuid)}</td><td>${job.source}</td><td>${job.phase}</td><td>${tag(job.status, job.statusType)}</td><td>${job.duration}</td>
+          <td><span title="${job.uuid}">${job.id}</span></td><td>${job.source}</td><td>${job.phase}</td><td>${tag(job.status, job.statusType)}</td><td>${job.duration}</td>
           <td><button class="link" data-page-link="job-detail">查看详情</button></td>
         </tr>
       `).join("");
@@ -1434,8 +1440,8 @@
     function renderJobs() {
       document.querySelector("#jobs-table").innerHTML = jobs.map((job) => `
         <tr>
-          <td>${job.id}</td><td>${shortUuid(job.uuid)}</td><td>${tag(job.status, job.statusType)}</td><td>${job.source}</td>
-          <td>${job.folders}</td><td>${job.files}</td><td>${job.pending}</td><td>${job.executed}</td><td>${job.start}</td><td>${job.duration}</td>
+          <td><span title="${job.uuid}">${job.id}</span></td><td>${tag(job.status, job.statusType)}</td><td>${job.source}</td>
+          <td>${job.folders}</td><td>${job.files}</td><td>${job.pending}</td><td>${job.executed}</td><td>${job.backupExtra}</td><td>${job.backupMissing}</td><td>${job.start}</td><td>${job.duration}</td>
           <td>
             <button class="link" data-page-link="job-detail">查看详情</button>
             <button class="link" data-confirm="删除任务" data-confirm-text="会删除该任务及其事件、日志和动作明细，是否继续？" data-confirm-message="扫描任务已删除">删除</button>
@@ -1503,7 +1509,7 @@
         `<button class="${key === type ? "active" : ""}" data-action-tab="${tab}" data-action-type="${key}">${actionLabels[key]} (${actionCounts[tab][key]})</button>`
       ).join("");
       const bulk = tab === "pending" && (type === "delete" || type.includes("duplicate"))
-        ? `<div class="row"><span></span><button class="danger" data-confirm="批量执行" data-confirm-text="将按当前建议批量执行 ${actionLabels[type]} 动作，是否继续？" data-confirm-message="批量动作已执行">${type === "delete" ? "全部删除" : "按建议删除所有照片"}</button></div>`
+        ? `<div class="row"><span></span><button class="danger" data-confirm="批量执行" data-confirm-text="${type === "delete" ? "将立即执行当前任务下全部待删除文件和待删除空文件夹，是否继续？" : `将按当前建议批量执行 ${actionLabels[type]} 动作，是否继续？`}" data-confirm-message="批量动作已执行">${type === "delete" ? "全部执行删除类动作" : "按建议删除所有照片"}</button></div>`
         : "";
 
       target.innerHTML = `
@@ -1539,16 +1545,17 @@
       const history = tab === "pending" ? "" : "<th>状态</th><th>执行时间</th><th>错误</th>";
       const action = tab === "pending" ? "<th>操作</th>" : history;
       const body = rows.map((row, index) => {
-        const preview = type === "delete" ? "" : `<td><div class="photo ${index % 2 ? "alt" : ""}">照片</div></td>`;
+        const preview = (type === "delete" || type === "delete_empty_dir") ? "" : `<td><div class="photo ${index % 2 ? "alt" : ""}">照片</div></td>`;
         const cells = row.map((cell) => `<td>${cell}</td>`).join("");
         const op = tab === "pending"
-          ? `<td><button class="link" data-confirm="确认变更" data-confirm-text="将立即执行当前 ${actionLabels[type]} 动作，是否继续？" data-confirm-message="${actionLabels[type]}动作已执行">${type === "delete" ? "删除" : "变更"}</button></td>`
+          ? `<td><button class="link" data-confirm="确认变更" data-confirm-text="将立即执行当前 ${actionLabels[type]} 动作，是否继续？" data-confirm-message="${actionLabels[type]}动作已执行">${(type === "delete" || type === "delete_empty_dir") ? "删除" : "变更"}</button></td>`
           : `<td>${tag("成功", "ok")}</td><td>2026-05-23 08:44:${String(index + 10).padStart(2, "0")}</td><td>-</td>`;
         return `<tr>${preview}${cells}${op}</tr>`;
       }).join("");
-      const photoHead = type === "delete" ? "" : "<th>照片</th>";
+      const photoHead = (type === "delete" || type === "delete_empty_dir") ? "" : "<th>照片</th>";
       const heads = {
         delete: "<th>文件名</th><th>位置</th><th>原因</th>",
+        delete_empty_dir: "<th>文件夹名</th><th>位置</th><th>原因</th>",
         move: "<th>文件名</th><th>当前位置</th><th>移动位置</th>",
         modify_time: "<th>文件名</th><th>目录日期</th><th>文件修改时间</th><th>最小日期</th>",
         rename: "<th>原文件名</th><th>新文件名</th><th>当前位置</th>"

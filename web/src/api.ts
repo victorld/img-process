@@ -26,7 +26,14 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const text = await response.text();
   const payload = text ? (JSON.parse(text) as ApiEnvelope<T>) : undefined;
   if (!response.ok) {
-    throw new Error(payload?.msg || "请求失败");
+    const detail =
+      payload?.data &&
+      typeof payload.data === "object" &&
+      "error" in payload.data &&
+      typeof (payload.data as { error?: unknown }).error === "string"
+        ? (payload.data as { error: string }).error
+        : "";
+    throw new Error(detail || payload?.msg || "请求失败");
   }
   return payload!.data;
 }
