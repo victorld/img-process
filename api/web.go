@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -31,8 +33,10 @@ import (
 type WebAPI struct{}
 
 var previewThumbMu sync.Mutex
+var backupDiffDatePattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}`)
 
 var listJobsFunc = service.Runtime.ListJobs
+var getJobFunc = service.Runtime.GetJob
 var countGroupedActionItemsByJobsFunc = service.Runtime.CountActionItemsGroupedByJobs
 var listActionItemsFunc = func(search model.ScanActionItemSearch) ([]model.ScanActionItemView, model.ScanActionCounts, model.ScanActionGroupedCounts, int64, error) {
 	return service.Runtime.ListActionItems(search)
@@ -146,7 +150,7 @@ func (api *WebAPI) GetJob(c *gin.Context) {
 		tools.FailWithStatus(c, http.StatusBadRequest, "任务ID错误", gin.H{"error": err.Error()})
 		return
 	}
-	job, err := service.Runtime.GetJob(jobID)
+	job, err := getJobFunc(jobID)
 	if err != nil {
 		tools.FailWithStatus(c, http.StatusNotFound, "任务不存在", gin.H{"error": err.Error()})
 		return
@@ -242,6 +246,23 @@ func (api *WebAPI) ListJobActionItems(c *gin.Context) {
 		return
 	}
 	tools.Success(c, gin.H{"list": list, "total": total, "counts": counts, "groupedCounts": groupedCounts}, "ok")
+}
+
+func (api *WebAPI) GetJobBackupDiff(c *gin.Context) {
+	jobID, err := parseUintParam(c, "id")
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusBadRequest, "任务ID错误", gin.H{"error": err.Error()})
+		return
+	}
+	job, err := getJobFunc(jobID)
+	if err != nil {
+		tools.FailWithStatus(c, http.StatusNotFound, "任务不存在", gin.H{"error": err.Error()})
+		return
+	}
+	summary, _ := parseJSON(job.SummaryJSON).(map[string]any)
+	newFiles := buildBackupDiffGroup(summary, job.ScanUUID, "BakNewFile", "bakNewFile", "bak_new_file_list", "主目录新增，备份缺少", "这些文件已在主目录出现，但备份目录还没有匹配记录，后续需要补齐备份。", "备份目录未找到同名目录标识和文件名")
+	deletedFiles := buildBackupDiffGroup(summary, job.ScanUUID, "BakDeleteFile", "bakDeleteFile", "bak_delete_file_list", "备份多余，主目录缺少", "这些文件仍在备份目录，但主目录已经没有匹配记录，建议人工核对后再处理。", "主目录未匹配到同名目录标识和文件名")
+	tools.Success(c, gin.H{"newFiles": newFiles, "deletedFiles": deletedFiles}, "ok")
 }
 
 func (api *WebAPI) GetFileAnalysis(c *gin.Context) {
@@ -561,6 +582,229 @@ func splitFileAnalysisKey(imgKey string) (string, string) {
 		return "", ""
 	}
 	return parts[0], parts[1]
+}
+
+type backupDiffSummaryView struct {
+	Count        int      `json:"count"`
+	Sample       []string `json:"sample"`
+	SampleLimit  int      `json:"sampleLimit"`
+	Truncated    bool     `json:"truncated"`
+	ArtifactPath string   `json:"artifactPath"`
+}
+
+type backupDiffItemView struct {
+	Key            string `json:"key"`
+	RawLine        string `json:"rawLine"`
+	DirectoryLabel string `json:"directoryLabel"`
+	FileName       string `json:"fileName"`
+	Date           string `json:"date"`
+	Reason         string `json:"reason"`
+}
+
+type backupDiffGroupView struct {
+	Label        string               `json:"label"`
+	Field        string               `json:"field"`
+	Count        int                  `json:"count"`
+	ArtifactPath string               `json:"artifactPath"`
+	Complete     bool                 `json:"complete"`
+	Note         string               `json:"note"`
+	Items        []backupDiffItemView `json:"items"`
+}
+
+func buildBackupDiffGroup(summary map[string]any, scanUUID string, primaryKey string, aliasKey string, fileName string, label string, note string, reason string) backupDiffGroupView {
+	group := backupDiffGroupView{
+		Label:    label,
+		Field:    aliasKey,
+		Note:     note,
+		Complete: true,
+		Items:    []backupDiffItemView{},
+	}
+	summaryValue := valueFromMapKeys(summary, primaryKey, aliasKey)
+	diffSummary := parseBackupDiffSummary(summaryValue)
+	group.Count = diffSummary.Count
+	group.ArtifactPath = diffSummary.ArtifactPath
+
+	lines, err := readBackupDiffArtifactLines(scanUUID, diffSummary.ArtifactPath, fileName)
+	if err != nil {
+		group.Complete = false
+		lines = diffSummary.Sample
+	} else if len(lines) > 0 {
+		group.Complete = true
+	}
+	if len(lines) == 0 && len(diffSummary.Sample) > 0 {
+		group.Complete = false
+		lines = diffSummary.Sample
+	}
+	group.Items = buildBackupDiffItems(lines, reason)
+	if group.Count == 0 {
+		group.Count = len(group.Items)
+	}
+	return group
+}
+
+func parseBackupDiffSummary(value any) backupDiffSummaryView {
+	switch current := value.(type) {
+	case nil:
+		return backupDiffSummaryView{Sample: []string{}}
+	case backupDiffSummaryView:
+		return current
+	case map[string]any:
+		return backupDiffSummaryView{
+			Count:        int(numberFromAny(current["count"])),
+			Sample:       stringsFromAny(current["sample"]),
+			SampleLimit:  int(numberFromAny(current["sampleLimit"])),
+			Truncated:    boolFromAny(current["truncated"]),
+			ArtifactPath: stringFromAny(current["artifactPath"]),
+		}
+	case string:
+		trimmed := strings.TrimSpace(current)
+		if trimmed == "" || trimmed == "null" {
+			return backupDiffSummaryView{Sample: []string{}}
+		}
+		var decoded backupDiffSummaryView
+		if err := json.Unmarshal([]byte(trimmed), &decoded); err == nil {
+			if decoded.Sample == nil {
+				decoded.Sample = []string{}
+			}
+			return decoded
+		}
+		var legacy []string
+		if err := json.Unmarshal([]byte(trimmed), &legacy); err == nil {
+			return backupDiffSummaryView{Count: len(legacy), Sample: legacy}
+		}
+		return backupDiffSummaryView{Count: 1, Sample: []string{trimmed}}
+	case []any:
+		sample := stringsFromAny(current)
+		return backupDiffSummaryView{Count: len(sample), Sample: sample}
+	case []string:
+		return backupDiffSummaryView{Count: len(current), Sample: current}
+	default:
+		return backupDiffSummaryView{Sample: []string{}}
+	}
+}
+
+func readBackupDiffArtifactLines(scanUUID string, artifactPath string, allowedFileName string) ([]string, error) {
+	artifactPath = strings.TrimSpace(artifactPath)
+	if artifactPath == "" || scanUUID == "" {
+		return nil, fs.ErrNotExist
+	}
+	if filepath.Base(artifactPath) != allowedFileName {
+		return nil, errors.New("invalid backup diff artifact name")
+	}
+	root := filepath.Join(cons.WorkDir, "log", "dump_delete_file", scanUUID)
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
+	absPath, err := filepath.Abs(artifactPath)
+	if err != nil {
+		return nil, err
+	}
+	rel, err := filepath.Rel(absRoot, absPath)
+	if err != nil {
+		return nil, err
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return nil, errors.New("backup diff artifact is outside scan artifact root")
+	}
+	file, err := os.Open(absPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	lines := make([]string, 0)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return lines, nil
+}
+
+func buildBackupDiffItems(lines []string, reason string) []backupDiffItemView {
+	items := make([]backupDiffItemView, 0, len(lines))
+	for _, line := range lines {
+		directoryLabel, fileName := splitBackupDiffLine(line)
+		items = append(items, backupDiffItemView{
+			Key:            line,
+			RawLine:        line,
+			DirectoryLabel: directoryLabel,
+			FileName:       fileName,
+			Date:           backupDiffDateFromDirectory(directoryLabel),
+			Reason:         reason,
+		})
+	}
+	return items
+}
+
+func splitBackupDiffLine(line string) (string, string) {
+	parts := strings.SplitN(strings.TrimSpace(line), "|", 2)
+	if len(parts) != 2 {
+		return strings.TrimSpace(line), ""
+	}
+	return parts[0], parts[1]
+}
+
+func backupDiffDateFromDirectory(directoryLabel string) string {
+	match := backupDiffDatePattern.FindString(strings.TrimSpace(directoryLabel))
+	return match
+}
+
+func valueFromMapKeys(values map[string]any, keys ...string) any {
+	for _, key := range keys {
+		if values != nil {
+			if value, ok := values[key]; ok {
+				return value
+			}
+		}
+	}
+	return nil
+}
+
+func stringsFromAny(value any) []string {
+	switch current := value.(type) {
+	case []string:
+		return append([]string(nil), current...)
+	case []any:
+		ret := make([]string, 0, len(current))
+		for _, item := range current {
+			text := strings.TrimSpace(stringFromAny(item))
+			if text != "" {
+				ret = append(ret, text)
+			}
+		}
+		return ret
+	default:
+		return []string{}
+	}
+}
+
+func stringFromAny(value any) string {
+	switch current := value.(type) {
+	case string:
+		return current
+	case nil:
+		return ""
+	default:
+		return strings.TrimSpace(tools.MarshalJsonToString(current))
+	}
+}
+
+func boolFromAny(value any) bool {
+	switch current := value.(type) {
+	case bool:
+		return current
+	case string:
+		return current == "true"
+	default:
+		return false
+	}
 }
 
 func isPathInRoots(path string, roots []string) bool {

@@ -441,6 +441,69 @@
 - 普通动作会返回 `detail`
 - 重复删除动作会返回 `pair`
 
+#### `GET /api/jobs/:id/backup-diff`
+
+用途：查询任务的备份对比差异清单，用于扫描详情页“备份对比”页签。
+
+鉴权：需要登录。
+
+路径参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `id` | 任务 ID，必须为正整数 |
+
+成功响应：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "newFiles": {
+      "label": "主目录新增，备份缺少",
+      "field": "bakNewFile",
+      "count": 2,
+      "artifactPath": "/path/to/bak_new_file_list",
+      "complete": true,
+      "note": "这些文件已在主目录出现，但备份目录还没有匹配记录，后续需要补齐备份。",
+      "items": [
+        {
+          "key": "2024-02-02|IMG_0001.JPG",
+          "rawLine": "2024-02-02|IMG_0001.JPG",
+          "directoryLabel": "2024-02-02",
+          "fileName": "IMG_0001.JPG",
+          "date": "2024-02-02",
+          "reason": "备份目录未找到同名目录标识和文件名"
+        }
+      ]
+    },
+    "deletedFiles": {
+      "label": "备份多余，主目录缺少",
+      "field": "bakDeleteFile",
+      "count": 0,
+      "artifactPath": "",
+      "complete": false,
+      "note": "这些文件仍在备份目录，但主目录已经没有匹配记录，建议人工核对后再处理。",
+      "items": []
+    }
+  },
+  "msg": "ok"
+}
+```
+
+说明：
+
+- `newFiles` 来自任务汇总中的 `BakNewFile` / `bakNewFile`。
+- `deletedFiles` 来自任务汇总中的 `BakDeleteFile` / `bakDeleteFile`。
+- 优先读取汇总内 `artifactPath` 指向的完整清单；路径必须位于当前任务 `scanUuid` 对应的 `log/dump_delete_file/<scanUuid>/` 目录下，且文件名只允许 `bak_new_file_list` 或 `bak_delete_file_list`。
+- 如果完整清单不存在或路径校验失败，但汇总内有 `sample`，则返回 `sample`，并将 `complete` 置为 `false`。
+- 清单行按 `目录标识|文件名` 解析；`date` 为目录标识开头匹配到的 `YYYY-MM-DD`，无法解析时为空字符串。
+
+失败场景：
+
+- `id` 非法 -> `400`
+- 任务不存在 -> `404`
+
 #### `GET /api/jobs/:id/action-preview`
 
 用途：预览动作相关图片文件，直接返回文件流，不是 JSON。

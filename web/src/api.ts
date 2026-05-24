@@ -1,5 +1,6 @@
 import type {
   ApiEnvelope,
+  BackupDiffResult,
   Job,
   ScanActionCounts,
   ScanActionGroupedCounts,
@@ -68,6 +69,8 @@ export const api = {
       counts: ScanActionCounts;
       groupedCounts: ScanActionGroupedCounts;
     }>(`/api/jobs/${id}/action-items?${params.toString()}`),
+  getJobBackupDiff: (id: string | number) =>
+    request<BackupDiffResult>(`/api/jobs/${id}/backup-diff`),
   getJobActionPreviewUrl: (
     id: string | number,
     itemId: number,

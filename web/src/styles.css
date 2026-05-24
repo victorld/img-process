@@ -230,6 +230,114 @@ body {
   overflow-wrap: anywhere;
 }
 
+.backup-diff-card .ant-card-body {
+  display: grid;
+  gap: 10px;
+}
+
+.backup-diff-card-success {
+  border-color: #b7dfc8;
+}
+
+.backup-diff-card-warning {
+  border-color: #ecd6a2;
+}
+
+.backup-diff-note {
+  margin: 0;
+}
+
+.backup-diff-sample-alert {
+  padding: 6px 10px;
+}
+
+.backup-diff-artifact {
+  display: block;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.backup-diff-detail-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.backup-diff-date-filter {
+  border: 1px solid #d9e1dd;
+  border-radius: 8px;
+  background: #fbfdfb;
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.backup-diff-date-filter-title {
+  padding: 0 2px 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.backup-diff-date-row {
+  width: 100%;
+  min-height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #1b2632;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.backup-diff-date-row-month {
+  padding-left: 22px;
+}
+
+.backup-diff-date-row-day {
+  padding-left: 40px;
+}
+
+.backup-diff-date-row:hover,
+.backup-diff-date-row.active {
+  background: #e8f3ed;
+}
+
+.backup-diff-date-row.active {
+  color: #1d6f55;
+  font-weight: 700;
+}
+
+.backup-diff-date-toggle {
+  color: #6f7f77;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.backup-diff-date-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backup-diff-date-count {
+  min-width: 28px;
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: #eef4f1;
+  color: #5f6f67;
+  font-size: 12px;
+  text-align: center;
+}
+
 .app-table {
   width: 100%;
 }
@@ -256,6 +364,12 @@ body {
 
 .app-table .ant-table-cell::before {
   display: none !important;
+}
+
+@media (max-width: 760px) {
+  .backup-diff-detail-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 .app-table .ant-table-pagination {

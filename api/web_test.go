@@ -18,6 +18,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func escapeJSONString(value string) string {
+	encoded, _ := json.Marshal(value)
+	return strings.Trim(string(encoded), `"`)
+}
+
 func TestListJobsReturnsActionAndFolderCounts(t *testing.T) {
 	ensureLogger()
 	gin.SetMode(gin.TestMode)
@@ -291,6 +296,183 @@ func TestListJobActionItemsReturnsGroupedCounts(t *testing.T) {
 	}
 	if resp.Data.GroupedCounts.Error.Rename != 1 {
 		t.Fatalf("error rename = %d, want 1", resp.Data.GroupedCounts.Error.Rename)
+	}
+}
+
+func TestGetJobBackupDiffReturnsArtifactItems(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	oldWorkDir := cons.WorkDir
+	cons.WorkDir = t.TempDir()
+	t.Cleanup(func() {
+		cons.WorkDir = oldWorkDir
+	})
+	scanUUID := "2026-05-24-09-00-23_testscan"
+	artifactDir := filepath.Join(cons.WorkDir, "log", "dump_delete_file", scanUUID)
+	if err := os.MkdirAll(artifactDir, 0o755); err != nil {
+		t.Fatalf("mkdir artifact dir: %v", err)
+	}
+	newPath := filepath.Join(artifactDir, "bak_new_file_list")
+	deletePath := filepath.Join(artifactDir, "bak_delete_file_list")
+	if err := os.WriteFile(newPath, []byte("2024-02-02|IMG_0001.JPG\n2024-02-02-trip|IMG_0002.JPG\nbad-key\n"), 0o644); err != nil {
+		t.Fatalf("write new artifact: %v", err)
+	}
+	if err := os.WriteFile(deletePath, []byte("2020-08-09|VID_0001.MP4\n"), 0o644); err != nil {
+		t.Fatalf("write delete artifact: %v", err)
+	}
+
+	oldGetJob := getJobFunc
+	getJobFunc = func(jobID uint) (model.ScanJobDB, error) {
+		if jobID != 42 {
+			t.Fatalf("jobID = %d, want 42", jobID)
+		}
+		return model.ScanJobDB{
+			CommonModel: model.CommonModel{ID: 42},
+			ScanUUID:    scanUUID,
+			SummaryJSON: `{"BakNewFile":{"count":3,"sample":["sample-only|IMG.JPG"],"artifactPath":"` + escapeJSONString(newPath) + `"},"BakDeleteFile":{"count":1,"sample":[],"artifactPath":"` + escapeJSONString(deletePath) + `"}}`,
+		}, nil
+	}
+	t.Cleanup(func() {
+		getJobFunc = oldGetJob
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "42"}}
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/jobs/42/backup-diff", nil)
+
+	new(WebAPI).GetJobBackupDiff(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body=%s", w.Code, http.StatusOK, w.Body.String())
+	}
+	var resp struct {
+		Data struct {
+			NewFiles struct {
+				Count    int  `json:"count"`
+				Complete bool `json:"complete"`
+				Items    []struct {
+					Key            string `json:"key"`
+					DirectoryLabel string `json:"directoryLabel"`
+					FileName       string `json:"fileName"`
+					Date           string `json:"date"`
+				} `json:"items"`
+			} `json:"newFiles"`
+			DeletedFiles struct {
+				Count int `json:"count"`
+			} `json:"deletedFiles"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if !resp.Data.NewFiles.Complete {
+		t.Fatal("newFiles should be complete")
+	}
+	if resp.Data.NewFiles.Count != 3 || len(resp.Data.NewFiles.Items) != 3 {
+		t.Fatalf("newFiles count/items = %d/%d, want 3/3", resp.Data.NewFiles.Count, len(resp.Data.NewFiles.Items))
+	}
+	first := resp.Data.NewFiles.Items[0]
+	if first.DirectoryLabel != "2024-02-02" || first.FileName != "IMG_0001.JPG" || first.Date != "2024-02-02" {
+		t.Fatalf("first item = %+v", first)
+	}
+	if resp.Data.NewFiles.Items[2].Date != "" {
+		t.Fatalf("invalid date item date = %q, want empty", resp.Data.NewFiles.Items[2].Date)
+	}
+	if resp.Data.DeletedFiles.Count != 1 {
+		t.Fatalf("deleted count = %d, want 1", resp.Data.DeletedFiles.Count)
+	}
+}
+
+func TestGetJobBackupDiffFallsBackToSampleForUnsafeArtifact(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	oldWorkDir := cons.WorkDir
+	cons.WorkDir = t.TempDir()
+	t.Cleanup(func() {
+		cons.WorkDir = oldWorkDir
+	})
+
+	oldGetJob := getJobFunc
+	getJobFunc = func(jobID uint) (model.ScanJobDB, error) {
+		return model.ScanJobDB{
+			CommonModel: model.CommonModel{ID: jobID},
+			ScanUUID:    "2026-05-24-09-00-23_testscan",
+			SummaryJSON: `{"bakNewFile":{"count":2,"sample":["2025-05-01|IMG_1.JPG"],"artifactPath":"` + escapeJSONString(filepath.Join(cons.WorkDir, "log", "dump_delete_file", "other", "bak_new_file_list")) + `"}}`,
+		}, nil
+	}
+	t.Cleanup(func() {
+		getJobFunc = oldGetJob
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "42"}}
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/jobs/42/backup-diff", nil)
+
+	new(WebAPI).GetJobBackupDiff(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body=%s", w.Code, http.StatusOK, w.Body.String())
+	}
+	var resp struct {
+		Data struct {
+			NewFiles struct {
+				Complete bool `json:"complete"`
+				Items    []struct {
+					Key string `json:"key"`
+				} `json:"items"`
+			} `json:"newFiles"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if resp.Data.NewFiles.Complete {
+		t.Fatal("newFiles should be incomplete when artifact path is unsafe")
+	}
+	if len(resp.Data.NewFiles.Items) != 1 || resp.Data.NewFiles.Items[0].Key != "2025-05-01|IMG_1.JPG" {
+		t.Fatalf("items = %+v", resp.Data.NewFiles.Items)
+	}
+}
+
+func TestGetJobBackupDiffReturnsEmptyGroups(t *testing.T) {
+	ensureLogger()
+	gin.SetMode(gin.TestMode)
+
+	oldGetJob := getJobFunc
+	getJobFunc = func(jobID uint) (model.ScanJobDB, error) {
+		return model.ScanJobDB{CommonModel: model.CommonModel{ID: jobID}, ScanUUID: "scan-empty", SummaryJSON: `{}`}, nil
+	}
+	t.Cleanup(func() {
+		getJobFunc = oldGetJob
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "42"}}
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/jobs/42/backup-diff", nil)
+
+	new(WebAPI).GetJobBackupDiff(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	var resp struct {
+		Data struct {
+			NewFiles struct {
+				Count int      `json:"count"`
+				Items []string `json:"items"`
+			} `json:"newFiles"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if resp.Data.NewFiles.Count != 0 || len(resp.Data.NewFiles.Items) != 0 {
+		t.Fatalf("newFiles = %+v", resp.Data.NewFiles)
 	}
 }
 

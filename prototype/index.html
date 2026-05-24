@@ -538,6 +538,137 @@
       white-space: pre-wrap;
     }
 
+    .backup-diff-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .backup-diff-stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fbfdfb;
+      display: grid;
+      grid-template-rows: auto auto auto auto 1fr auto;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .backup-diff-stat.warn {
+      background: #fffaf0;
+      border-color: #edd7a4;
+    }
+
+    .backup-diff-stat .value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1.1;
+    }
+
+    .artifact-note {
+      display: block;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #f1f5f3;
+      color: #3c4c44;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .backup-diff-detail-table td {
+      vertical-align: top;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .backup-diff-detail-table .tag {
+      white-space: normal;
+      line-height: 1.4;
+    }
+
+    .backup-diff-detail-layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .backup-diff-date-filter {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdfb;
+      padding: 10px;
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .backup-diff-date-filter-title {
+      padding: 0 2px 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .date-filter-row {
+      width: 100%;
+      min-height: 32px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr) auto;
+      gap: 6px;
+      align-items: center;
+      padding: 6px 8px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .date-filter-row.level-month {
+      padding-left: 22px;
+    }
+
+    .date-filter-row.level-day {
+      padding-left: 40px;
+    }
+
+    .date-filter-row:hover,
+    .date-filter-row.active {
+      background: #e8f3ed;
+    }
+
+    .date-filter-row.active {
+      color: var(--brand-strong);
+      font-weight: 700;
+    }
+
+    .date-filter-toggle {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1;
+    }
+
+    .date-filter-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .date-filter-count {
+      min-width: 28px;
+      border-radius: 999px;
+      padding: 2px 7px;
+      background: #eef4f1;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
     .photo {
       width: 72px;
       height: 72px;
@@ -730,6 +861,8 @@
       .stats,
       .grid-two,
       .analysis-grid,
+      .backup-diff-stats,
+      .backup-diff-detail-layout,
       .filters,
       .form-grid,
       .form-grid.two,
@@ -865,6 +998,7 @@
               <button data-tab="executed">已执行动作 (92)</button>
               <button data-tab="events">实时事件</button>
               <button data-tab="logs">运行日志</button>
+              <button data-tab="backup-diff">备份对比</button>
               <button data-tab="stats">统计</button>
               <button data-tab="raw">原始参数</button>
             </div>
@@ -873,6 +1007,7 @@
               <div id="detail-executed" class="detail-panel stack" hidden></div>
               <div id="detail-events" class="detail-panel" hidden></div>
               <div id="detail-logs" class="detail-panel" hidden></div>
+              <div id="detail-backup-diff" class="detail-panel stack" hidden></div>
               <div id="detail-stats" class="detail-panel" hidden></div>
               <div id="detail-raw" class="detail-panel" hidden></div>
             </div>
@@ -1033,6 +1168,99 @@
         ["IMG_20240202_093012.JPG", "2024-02-02_093012.JPG", "/Photos/pic-new/2024/2024-02/2024-02-02"],
         ["VID_20240101_210010.MP4", "2024-01-01_210010.MP4", "/Photos/pic-new/2024/2024-01/2024-01-01"]
       ]
+    };
+
+    const backupDiff = {
+      newFiles: {
+        label: "主目录新增，备份缺少",
+        field: "bak_new_file",
+        count: 36,
+        artifactPath: "/Users/ld/my-file/workspace/personal/img-process/log/dump_delete_file/scan-20260523-001/bak_new_file_list",
+        note: "这些文件已在主目录出现，但备份目录还没有匹配记录，后续需要补齐备份。",
+        items: [
+          {
+            key: "2026-05-18|IMG_6120.HEIC",
+            fileName: "IMG_6120.HEIC",
+            path: "/Photos/pic-new/2026/2026-05/2026-05-18",
+            reason: "备份目录未找到同名 img_key"
+          },
+          {
+            key: "2026-05-18|IMG_6121.HEIC",
+            fileName: "IMG_6121.HEIC",
+            path: "/Photos/pic-new/2026/2026-05/2026-05-18",
+            reason: "主目录扫描新增"
+          },
+          {
+            key: "2025-12-31|VID_203012.MP4",
+            fileName: "VID_203012.MP4",
+            path: "/Photos/pic-new/2025/2025-12/跨年",
+            reason: "备份目录缺少该视频"
+          },
+          {
+            key: "2025-05-02|IMG_4508.JPG",
+            fileName: "IMG_4508.JPG",
+            path: "/Photos/pic-new/2025/2025-05/苏州",
+            reason: "主目录新增照片"
+          },
+          {
+            key: "2024-10-06|PXL_20241006_080212.jpg",
+            fileName: "PXL_20241006_080212.jpg",
+            path: "/Photos/pic-new/2024/2024-10/2024-10-06",
+            reason: "备份目录未同步"
+          },
+          {
+            key: "2024-02-02|IMG_20240202_093012.JPG",
+            fileName: "IMG_20240202_093012.JPG",
+            path: "/Photos/pic-new/2024/2024-02/2024-02-02",
+            reason: "备份缺少重命名后文件"
+          }
+        ]
+      },
+      deletedFiles: {
+        label: "备份多余，主目录缺少",
+        field: "bak_delete_file",
+        count: 12,
+        artifactPath: "/Users/ld/my-file/workspace/personal/img-process/log/dump_delete_file/scan-20260523-001/bak_delete_file_list",
+        note: "这些文件仍在备份目录，但主目录已经没有匹配记录，建议人工核对后再处理。",
+        items: [
+          {
+            key: "2021-02-14|IMG_0901.JPG",
+            fileName: "IMG_0901.JPG",
+            path: "/Volumes/photo-bak/pic-new/2021/2021-02/2021-02-14",
+            reason: "主目录缺少该 img_key"
+          },
+          {
+            key: "2020-09-30|MOV_2218.MOV",
+            fileName: "MOV_2218.MOV",
+            path: "/Volumes/photo-bak/pic-new/2020/2020-09/旧整理",
+            reason: "仅备份目录存在"
+          },
+          {
+            key: "2019-07-08|DSC_4400.JPG",
+            fileName: "DSC_4400.JPG",
+            path: "/Volumes/photo-bak/pic-new/2019/2019-07/2019-07-08",
+            reason: "主目录对比缺失"
+          },
+          {
+            key: "2018-11-21|IMG_0012.JPG",
+            fileName: "IMG_0012.JPG",
+            path: "/Volumes/photo-bak/pic-new/2018/2018-11/旧手机导入",
+            reason: "备份目录历史残留"
+          },
+          {
+            key: "2017-04-30|VID_0044.MP4",
+            fileName: "VID_0044.MP4",
+            path: "/Volumes/photo-bak/pic-new/2017/2017-04/2017-04-30",
+            reason: "主目录未匹配到视频"
+          },
+          {
+            key: "2016-01-01|DSC_8890.JPG",
+            fileName: "DSC_8890.JPG",
+            path: "/Volumes/photo-bak/pic-new/2016/2016-01/2016-01-01",
+            reason: "仅备份目录保留"
+          }
+        ]
+      }
     };
 
     const cacheRows = [
@@ -1328,6 +1556,170 @@
       return `<table><thead><tr>${photoHead}${heads[type] || heads.delete}${action}</tr></thead><tbody>${body}</tbody></table>`;
     }
 
+    function renderBackupDiff() {
+      const newFiles = backupDiff.newFiles;
+      const deletedFiles = backupDiff.deletedFiles;
+      document.querySelector("#detail-backup-diff").innerHTML = `
+        <div class="backup-diff-stats">
+          ${renderBackupDiffStat(newFiles, "")}
+          ${renderBackupDiffStat(deletedFiles, "warn")}
+        </div>
+        <div class="artifact-note">
+          当前页只展示差异汇总。点击“查看详情”可打开完整文件清单，完整数据分别来自 ${newFiles.field} 和 ${deletedFiles.field}。
+        </div>
+      `;
+    }
+
+    function renderBackupDiffStat(group, tone) {
+      const key = group === backupDiff.newFiles ? "newFiles" : "deletedFiles";
+      return `
+        <div class="backup-diff-stat ${tone}">
+          <div class="row"><b>${group.label}</b>${tag(group.field, tone === "warn" ? "warn" : "ok")}</div>
+          <div class="value">${group.count}</div>
+          <div class="muted">${group.note}</div>
+          <div class="muted">详情清单共 ${group.count} 条，原型中展示完整列表结构。</div>
+          <div class="muted">${group.artifactPath}</div>
+          <div></div>
+          <div class="row"><span></span><button class="primary" data-backup-diff-detail="${key}">查看详情</button></div>
+        </div>
+      `;
+    }
+
+    function renderBackupDiffDetailTable(group, tone, items = group.items) {
+      return `
+        <div class="table-wrap backup-diff-detail-table">
+          <table>
+            <thead><tr><th>文件名 / key</th><th>目录或完整路径</th><th>差异说明</th></tr></thead>
+            <tbody>${items.map((item) => `
+              <tr>
+                <td><b>${item.fileName}</b><br><span class="muted">${item.key}</span></td>
+                <td>${item.path}</td>
+                <td>${tag(item.reason, tone === "warn" ? "warn" : "ok")}</td>
+              </tr>
+            `).join("") || `<tr><td colspan="3"><span class="muted">当前筛选下暂无文件。</span></td></tr>`}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function getBackupDiffItemDate(item) {
+      const date = String(item.key || "").split("|")[0];
+      return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
+    }
+
+    function buildBackupDiffDateTree(items) {
+      const yearMap = new Map();
+      items.forEach((item) => {
+        const date = getBackupDiffItemDate(item);
+        if (!date) return;
+        const [year, month, day] = date.split("-");
+        if (!yearMap.has(year)) {
+          yearMap.set(year, { key: year, label: year, count: 0, months: new Map() });
+        }
+        const yearNode = yearMap.get(year);
+        const monthKey = `${year}-${month}`;
+        if (!yearNode.months.has(monthKey)) {
+          yearNode.months.set(monthKey, { key: monthKey, label: `${month}月`, count: 0, days: new Map() });
+        }
+        const monthNode = yearNode.months.get(monthKey);
+        const dayKey = `${year}-${month}-${day}`;
+        if (!monthNode.days.has(dayKey)) {
+          monthNode.days.set(dayKey, { key: dayKey, label: `${day}日`, count: 0 });
+        }
+        yearNode.count += 1;
+        monthNode.count += 1;
+        monthNode.days.get(dayKey).count += 1;
+      });
+
+      return Array.from(yearMap.values())
+        .sort((a, b) => a.key.localeCompare(b.key))
+        .map((year) => ({
+          ...year,
+          months: Array.from(year.months.values())
+            .sort((a, b) => a.key.localeCompare(b.key))
+            .map((month) => ({
+              ...month,
+              days: Array.from(month.days.values()).sort((a, b) => a.key.localeCompare(b.key))
+            }))
+        }));
+    }
+
+    function filterBackupDiffItems(items, selected) {
+      if (!selected || selected.type === "all") return items;
+      return items.filter((item) => getBackupDiffItemDate(item).startsWith(selected.value));
+    }
+
+    function renderDateFilterRow({ level, type, value, label, count, active, expanded, expandable }) {
+      return `
+        <button class="date-filter-row level-${level} ${active ? "active" : ""}" data-date-filter-type="${type}" data-date-filter-value="${value}">
+          <span class="date-filter-toggle">${expandable ? (expanded ? "▾" : "▸") : ""}</span>
+          <span class="date-filter-label">${label}</span>
+          <span class="date-filter-count">${count}</span>
+        </button>
+      `;
+    }
+
+    function renderBackupDiffDateFilter(group, tree, state) {
+      const rows = [
+        renderDateFilterRow({
+          level: "all",
+          type: "all",
+          value: "all",
+          label: "全部",
+          count: group.items.length,
+          active: state.selected.type === "all"
+        })
+      ];
+
+      tree.forEach((year) => {
+        const yearExpanded = state.expandedYears.has(year.key);
+        rows.push(renderDateFilterRow({
+          level: "year",
+          type: "year",
+          value: year.key,
+          label: `${year.label}年`,
+          count: year.count,
+          active: state.selected.type === "year" && state.selected.value === year.key,
+          expanded: yearExpanded,
+          expandable: year.months.length > 0
+        }));
+        if (!yearExpanded) return;
+
+        year.months.forEach((month) => {
+          const monthExpanded = state.expandedMonths.has(month.key);
+          rows.push(renderDateFilterRow({
+            level: "month",
+            type: "month",
+            value: month.key,
+            label: month.label,
+            count: month.count,
+            active: state.selected.type === "month" && state.selected.value === month.key,
+            expanded: monthExpanded,
+            expandable: month.days.length > 0
+          }));
+          if (!monthExpanded) return;
+
+          month.days.forEach((day) => {
+            rows.push(renderDateFilterRow({
+              level: "day",
+              type: "day",
+              value: day.key,
+              label: day.label,
+              count: day.count,
+              active: state.selected.type === "day" && state.selected.value === day.key
+            }));
+          });
+        });
+      });
+
+      return `
+        <nav class="backup-diff-date-filter" aria-label="按年月日筛选">
+          <div class="backup-diff-date-filter-title">按日期筛选</div>
+          ${rows.join("")}
+        </nav>
+      `;
+    }
+
     function renderDetailExtras() {
       document.querySelector("#detail-events").innerHTML = `
         <ul class="timeline">
@@ -1503,6 +1895,56 @@
       drawer.setAttribute("aria-hidden", "false");
     }
 
+    function drawerBackupDiffDetail(type) {
+      const isDeleted = type === "deletedFiles";
+      const group = isDeleted ? backupDiff.deletedFiles : backupDiff.newFiles;
+      const dateTree = buildBackupDiffDateTree(group.items);
+      const state = {
+        selected: { type: "all", value: "all" },
+        expandedYears: new Set(dateTree[0] ? [dateTree[0].key] : []),
+        expandedMonths: new Set(dateTree[0]?.months[0] ? [dateTree[0].months[0].key] : [])
+      };
+      const renderFilteredDetail = () => {
+        const filteredItems = filterBackupDiffItems(group.items, state.selected);
+        const host = drawerBody.querySelector("[data-backup-diff-detail-layout]");
+        if (!host) return;
+        host.innerHTML = `
+          ${renderBackupDiffDateFilter(group, dateTree, state)}
+          ${renderBackupDiffDetailTable(group, isDeleted ? "warn" : "", filteredItems)}
+        `;
+      };
+      drawerTitle.textContent = `${group.label}详情`;
+      drawerBody.innerHTML = `
+        <div class="stack">
+          <div class="alert">${group.note}</div>
+          <div class="backup-diff-stat ${isDeleted ? "warn" : ""}">
+            <div class="row"><b>${group.label}</b>${tag(group.field, isDeleted ? "warn" : "ok")}</div>
+            <div class="value">${group.count}</div>
+            <div class="muted">完整清单产物路径</div>
+            <div class="muted">${group.artifactPath}</div>
+          </div>
+          <div class="backup-diff-detail-layout" data-backup-diff-detail-layout></div>
+        </div>`;
+      renderFilteredDetail();
+      drawerBody.querySelector("[data-backup-diff-detail-layout]").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-date-filter-type]");
+        if (!button) return;
+        const filterType = button.dataset.dateFilterType;
+        const value = button.dataset.dateFilterValue;
+        state.selected = { type: filterType, value };
+        if (filterType === "year") {
+          state.expandedYears.has(value) ? state.expandedYears.delete(value) : state.expandedYears.add(value);
+        }
+        if (filterType === "month") {
+          state.expandedMonths.has(value) ? state.expandedMonths.delete(value) : state.expandedMonths.add(value);
+        }
+        renderFilteredDetail();
+      });
+      drawer.classList.add("open");
+      drawerBackdrop.classList.add("open");
+      drawer.setAttribute("aria-hidden", "false");
+    }
+
     function openDrawer(type) {
       type === "schedule" ? drawerSchedule() : drawerScan();
       drawer.classList.add("open");
@@ -1552,6 +1994,7 @@
           drawerCacheDetail(target.dataset.cacheDetail);
         }
         if (target.dataset.statMore) drawerStatMore(target.dataset.statMore);
+        if (target.dataset.backupDiffDetail) drawerBackupDiffDetail(target.dataset.backupDiffDetail);
         if (target.dataset.closeDrawer !== undefined) closeDrawer();
         if (target.dataset.saveDrawer !== undefined) {
           closeDrawer();
@@ -1587,6 +2030,7 @@
     renderCacheAnalysis();
     renderActions("pending", "delete");
     renderActions("executed", "delete");
+    renderBackupDiff();
     renderDetailExtras();
     renderSettings();
     bindEvents();

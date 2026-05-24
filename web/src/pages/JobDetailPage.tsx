@@ -5,6 +5,7 @@ import {
   Card,
   Col,
   Descriptions,
+  Drawer,
   Empty,
   Image,
   Popconfirm,
@@ -24,6 +25,9 @@ import { useParams } from "react-router-dom";
 import { api } from "../api";
 import { configSections, type ConfigSectionKey } from "../configSections";
 import type {
+  BackupDiffGroup,
+  BackupDiffItem,
+  BackupDiffResult,
   Job,
   ScanActionCounts,
   ScanActionGroupedCounts,
@@ -88,6 +92,19 @@ type RawArgTableRow = {
   name: string;
   value: unknown;
   description: string;
+};
+
+type BackupDiffDateFilter = {
+  type: "all" | "year" | "month" | "day";
+  value: string;
+};
+
+type BackupDiffDateNode = {
+  key: string;
+  label: string;
+  count: number;
+  months?: BackupDiffDateNode[];
+  days?: BackupDiffDateNode[];
 };
 
 const actionTypeOptions = [
@@ -277,6 +294,10 @@ export function JobDetailPage() {
   const [selectedActionType, setSelectedActionType] =
     useState<string>("delete");
   const [actionPage, setActionPage] = useState({ current: 1, pageSize: 20 });
+  const [backupDiffDrawer, setBackupDiffDrawer] = useState<{
+    key: "newFiles" | "deletedFiles";
+    group: BackupDiffGroup;
+  } | null>(null);
 
   const jobQuery = useQuery({
     queryKey: ["job", id],
@@ -330,6 +351,12 @@ export function JobDetailPage() {
         .status ?? "") as string;
       return status === "running" || status === "pending" ? 2000 : false;
     },
+  });
+
+  const backupDiffQuery = useQuery({
+    queryKey: ["job-backup-diff", id],
+    enabled: activeTab === "backup-diff",
+    queryFn: () => api.getJobBackupDiff(id),
   });
 
   useEffect(() => {
@@ -501,6 +528,7 @@ export function JobDetailPage() {
       { key: "executed", label: `已执行动作 (${executedActionTotal})` },
       { key: "events", label: "实时事件" },
       { key: "logs", label: "运行日志" },
+      { key: "backup-diff", label: "备份对比" },
       { key: "stats", label: "统计" },
       { key: "raw", label: "原始参数" },
     ],
@@ -595,6 +623,9 @@ export function JobDetailPage() {
               summary,
               events,
               logs,
+              backupDiff: backupDiffQuery.data,
+              backupDiffLoading: backupDiffQuery.isLoading,
+              backupDiffError: backupDiffQuery.error,
               actions: actionQuery.data?.list ?? [],
               groupedCounts,
               actionTotal: actionQuery.data?.total ?? 0,
@@ -638,10 +669,17 @@ export function JobDetailPage() {
               },
               setActionPage,
               setActiveTab,
+              onOpenBackupDiffDetail: (key, group) =>
+                setBackupDiffDrawer({ key, group }),
             }),
           }))}
         />
       </Card>
+      <BackupDiffDrawer
+        open={Boolean(backupDiffDrawer)}
+        group={backupDiffDrawer?.group}
+        onClose={() => setBackupDiffDrawer(null)}
+      />
     </Space>
   );
 }
@@ -654,6 +692,9 @@ function renderTab(
     summary?: SummaryRecord;
     events: ScanEvent[];
     logs: ScanJobLog[];
+    backupDiff?: BackupDiffResult;
+    backupDiffLoading: boolean;
+    backupDiffError: unknown;
     actions: ScanActionItem[];
     groupedCounts: ScanActionGroupedCounts;
     actionTotal: number;
@@ -677,6 +718,10 @@ function renderTab(
     setActionType: (value: string) => void;
     setActionPage: (page: { current: number; pageSize: number }) => void;
     setActiveTab: (key: string) => void;
+    onOpenBackupDiffDetail: (
+      key: "newFiles" | "deletedFiles",
+      group: BackupDiffGroup,
+    ) => void;
   },
 ) {
   if (key === "events") {
@@ -705,6 +750,15 @@ function renderTab(
               })
               .join("\n")}
       </pre>
+    );
+  }
+
+  if (key === "backup-diff") {
+    return renderBackupDiffTab(
+      context.backupDiff,
+      context.backupDiffLoading,
+      context.backupDiffError,
+      context.onOpenBackupDiffDetail,
     );
   }
 
@@ -1510,6 +1564,365 @@ function getActionEmptyState(
       }
     />
   );
+}
+
+function renderBackupDiffTab(
+  backupDiff: BackupDiffResult | undefined,
+  loading: boolean,
+  error: unknown,
+  onOpenDetail: (key: "newFiles" | "deletedFiles", group: BackupDiffGroup) => void,
+) {
+  if (error) {
+    return (
+      <Alert
+        type="error"
+        showIcon
+        message="备份对比加载失败"
+        description={error instanceof Error ? error.message : "请求失败"}
+      />
+    );
+  }
+
+  const groups = backupDiff
+    ? [
+        { key: "newFiles" as const, tone: "success" as const, group: backupDiff.newFiles },
+        { key: "deletedFiles" as const, tone: "warning" as const, group: backupDiff.deletedFiles },
+      ]
+    : [];
+
+  return (
+    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+      <Row gutter={[16, 16]}>
+        {groups.map((item) => (
+          <Col xs={24} lg={12} key={item.key}>
+            <Card
+              className={`backup-diff-card backup-diff-card-${item.tone}`}
+              title={
+                <Space>
+                  <span>{item.group.label}</span>
+                  <Tag color={item.tone === "warning" ? "warning" : "success"}>
+                    {item.group.field}
+                  </Tag>
+                </Space>
+              }
+              extra={
+                <Button
+                  type="primary"
+                  disabled={item.group.items.length === 0}
+                  onClick={() => onOpenDetail(item.key, item.group)}
+                >
+                  查看详情
+                </Button>
+              }
+              loading={loading}
+            >
+              <Statistic value={item.group.count} />
+              <Typography.Paragraph type="secondary" className="backup-diff-note">
+                {item.group.note}
+              </Typography.Paragraph>
+              {!item.group.complete ? (
+                <Alert
+                  type="info"
+                  showIcon
+                  message="仅展示摘要样例"
+                  className="backup-diff-sample-alert"
+                />
+              ) : null}
+              <Typography.Text type="secondary" className="backup-diff-artifact">
+                {item.group.artifactPath || "暂无完整清单产物路径"}
+              </Typography.Text>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+      {!loading && groups.length === 0 ? <Empty description="暂无备份对比数据" /> : null}
+    </Space>
+  );
+}
+
+function BackupDiffDrawer({
+  open,
+  group,
+  onClose,
+}: {
+  open: boolean;
+  group?: BackupDiffGroup;
+  onClose: () => void;
+}) {
+  const [selected, setSelected] = useState<BackupDiffDateFilter>({
+    type: "all",
+    value: "all",
+  });
+  const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+
+  const dateTree = useMemo(
+    () => buildBackupDiffDateTree(group?.items ?? []),
+    [group],
+  );
+
+  useEffect(() => {
+    setSelected({ type: "all", value: "all" });
+    setExpandedYears(new Set(dateTree[0] ? [dateTree[0].key] : []));
+    setExpandedMonths(
+      new Set(dateTree[0]?.months?.[0] ? [dateTree[0].months[0].key] : []),
+    );
+  }, [group, dateTree]);
+
+  const filteredItems = useMemo(
+    () => filterBackupDiffItems(group?.items ?? [], selected),
+    [group, selected],
+  );
+
+  const handleSelectDate = (next: BackupDiffDateFilter) => {
+    setSelected(next);
+    if (next.type === "year") {
+      setExpandedYears((current) => toggleSetValue(current, next.value));
+    }
+    if (next.type === "month") {
+      setExpandedMonths((current) => toggleSetValue(current, next.value));
+    }
+  };
+
+  return (
+    <Drawer
+      title={group ? `${group.label}详情` : "备份对比详情"}
+      open={open}
+      width={860}
+      onClose={onClose}
+      destroyOnClose
+    >
+      {group ? (
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Alert type="info" showIcon message={group.note} />
+          {!group.complete ? (
+            <Alert type="warning" showIcon message="完整清单不可用，当前仅展示摘要样例。" />
+          ) : null}
+          <Card size="small">
+            <Statistic title={group.label} value={group.count} />
+            <Typography.Text type="secondary" className="backup-diff-artifact">
+              {group.artifactPath || "暂无完整清单产物路径"}
+            </Typography.Text>
+          </Card>
+          <div className="backup-diff-detail-layout">
+            <BackupDiffDateFilterPanel
+              total={group.items.length}
+              tree={dateTree}
+              selected={selected}
+              expandedYears={expandedYears}
+              expandedMonths={expandedMonths}
+              onSelect={handleSelectDate}
+            />
+            <div className={NO_SCROLL_TABLE_CLASS}>
+              <Table
+                rowKey={(record) => record.rawLine}
+                tableLayout="fixed"
+                columns={backupDiffDetailColumns}
+                dataSource={filteredItems}
+                pagination={{ pageSize: 20, showSizeChanger: true }}
+                locale={{ emptyText: <Empty description="当前筛选下暂无文件" /> }}
+              />
+            </div>
+          </div>
+        </Space>
+      ) : null}
+    </Drawer>
+  );
+}
+
+function BackupDiffDateFilterPanel({
+  total,
+  tree,
+  selected,
+  expandedYears,
+  expandedMonths,
+  onSelect,
+}: {
+  total: number;
+  tree: BackupDiffDateNode[];
+  selected: BackupDiffDateFilter;
+  expandedYears: Set<string>;
+  expandedMonths: Set<string>;
+  onSelect: (filter: BackupDiffDateFilter) => void;
+}) {
+  return (
+    <nav className="backup-diff-date-filter" aria-label="按年月日筛选">
+      <Typography.Text type="secondary" className="backup-diff-date-filter-title">
+        按日期筛选
+      </Typography.Text>
+      <BackupDiffDateButton
+        level="all"
+        label="全部"
+        count={total}
+        active={selected.type === "all"}
+        onClick={() => onSelect({ type: "all", value: "all" })}
+      />
+      {tree.map((year) => {
+        const yearExpanded = expandedYears.has(year.key);
+        return (
+          <div key={year.key}>
+            <BackupDiffDateButton
+              level="year"
+              label={`${year.label}年`}
+              count={year.count}
+              active={selected.type === "year" && selected.value === year.key}
+              expanded={yearExpanded}
+              expandable={Boolean(year.months?.length)}
+              onClick={() => onSelect({ type: "year", value: year.key })}
+            />
+            {yearExpanded
+              ? year.months?.map((month) => {
+                  const monthExpanded = expandedMonths.has(month.key);
+                  return (
+                    <div key={month.key}>
+                      <BackupDiffDateButton
+                        level="month"
+                        label={month.label}
+                        count={month.count}
+                        active={selected.type === "month" && selected.value === month.key}
+                        expanded={monthExpanded}
+                        expandable={Boolean(month.days?.length)}
+                        onClick={() => onSelect({ type: "month", value: month.key })}
+                      />
+                      {monthExpanded
+                        ? month.days?.map((day) => (
+                            <BackupDiffDateButton
+                              key={day.key}
+                              level="day"
+                              label={day.label}
+                              count={day.count}
+                              active={selected.type === "day" && selected.value === day.key}
+                              onClick={() => onSelect({ type: "day", value: day.key })}
+                            />
+                          ))
+                        : null}
+                    </div>
+                  );
+                })
+              : null}
+          </div>
+        );
+      })}
+    </nav>
+  );
+}
+
+function BackupDiffDateButton({
+  level,
+  label,
+  count,
+  active,
+  expanded,
+  expandable,
+  onClick,
+}: {
+  level: "all" | "year" | "month" | "day";
+  label: string;
+  count: number;
+  active: boolean;
+  expanded?: boolean;
+  expandable?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`backup-diff-date-row backup-diff-date-row-${level} ${active ? "active" : ""}`}
+      onClick={onClick}
+    >
+      <span className="backup-diff-date-toggle">
+        {expandable ? (expanded ? "▾" : "▸") : ""}
+      </span>
+      <span className="backup-diff-date-label">{label}</span>
+      <span className="backup-diff-date-count">{count}</span>
+    </button>
+  );
+}
+
+const backupDiffDetailColumns: ColumnsType<BackupDiffItem> = [
+  {
+    title: "文件名 / key",
+    width: 220,
+    render: (_, record) => (
+      <Space direction="vertical" size={0}>
+        <Typography.Text strong>{record.fileName || "-"}</Typography.Text>
+        <Typography.Text type="secondary">{record.key}</Typography.Text>
+      </Space>
+    ),
+  },
+  {
+    title: "目录标识",
+    dataIndex: "directoryLabel",
+    width: 220,
+    render: (value: string) => value || "-",
+  },
+  {
+    title: "差异说明",
+    dataIndex: "reason",
+    render: (value: string) => <Tag>{value || "-"}</Tag>,
+  },
+];
+
+function buildBackupDiffDateTree(items: BackupDiffItem[]): BackupDiffDateNode[] {
+  const yearMap = new Map<string, BackupDiffDateNode & { months: BackupDiffDateNode[] }>();
+  items.forEach((item) => {
+    if (!item.date) return;
+    const [year, month, day] = item.date.split("-");
+    if (!year || !month || !day) return;
+    const yearKey = year;
+    const monthKey = `${year}-${month}`;
+    const dayKey = `${year}-${month}-${day}`;
+    let yearNode = yearMap.get(yearKey);
+    if (!yearNode) {
+      yearNode = { key: yearKey, label: yearKey, count: 0, months: [] };
+      yearMap.set(yearKey, yearNode);
+    }
+    let monthNode = yearNode.months.find((current) => current.key === monthKey);
+    if (!monthNode) {
+      monthNode = { key: monthKey, label: `${month}月`, count: 0, days: [] };
+      yearNode.months.push(monthNode);
+    }
+    let dayNode = monthNode.days?.find((current) => current.key === dayKey);
+    if (!dayNode) {
+      dayNode = { key: dayKey, label: `${day}日`, count: 0 };
+      monthNode.days = [...(monthNode.days ?? []), dayNode];
+    }
+    yearNode.count += 1;
+    monthNode.count += 1;
+    dayNode.count += 1;
+  });
+
+  return Array.from(yearMap.values())
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map((year) => ({
+      ...year,
+      months: year.months
+        ?.sort((a, b) => a.key.localeCompare(b.key))
+        .map((month) => ({
+          ...month,
+          days: month.days?.sort((a, b) => a.key.localeCompare(b.key)),
+        })),
+    }));
+}
+
+function filterBackupDiffItems(
+  items: BackupDiffItem[],
+  selected: BackupDiffDateFilter,
+) {
+  if (selected.type === "all") {
+    return items;
+  }
+  return items.filter((item) => item.date.startsWith(selected.value));
+}
+
+function toggleSetValue(values: Set<string>, value: string) {
+  const next = new Set(values);
+  if (next.has(value)) {
+    next.delete(value);
+  } else {
+    next.add(value);
+  }
+  return next;
 }
 
 function renderStatsTab(summary?: SummaryRecord) {

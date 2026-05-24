@@ -133,6 +133,30 @@ export type ScanJobLog = {
   createdAt: string
 }
 
+export type BackupDiffItem = {
+  key: string
+  rawLine: string
+  directoryLabel: string
+  fileName: string
+  date: string
+  reason: string
+}
+
+export type BackupDiffGroup = {
+  label: string
+  field: string
+  count: number
+  artifactPath: string
+  complete: boolean
+  note: string
+  items: BackupDiffItem[]
+}
+
+export type BackupDiffResult = {
+  newFiles: BackupDiffGroup
+  deletedFiles: BackupDiffGroup
+}
+
 export type Schedule = {
   id: number
   name: string
