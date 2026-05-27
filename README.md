@@ -171,8 +171,8 @@ Docker 默认配置：
 
 1. 根目录 `config.yaml` 会复制进镜像，并通过 compose 挂载到 `/app/config.yaml`。
 2. 默认数据库连接为 `host.docker.internal:33060`，需要宿主机或其他容器已经对外提供 MySQL。
-3. 默认扫描目录为 `/data/pic-new`，对应 `docker-compose.yml` 中的宿主机照片目录挂载。
-4. 默认备份目录为 `/data/pic-new-bak`，对应 `docker-compose.yml` 中的备份目录挂载；如果宿主机无法挂载该目录，需要先调整 compose 中的 volume。
+3. 仓库默认 `config.yaml` 不写扫描目录和备份目录，未配置项由代码运行时默认值兜底。
+4. 如果 Docker 环境需要使用容器内挂载路径，需要在 `config.yaml` 中补充 `scanArgs.StartPath`、`bak.StartPathBak`，并确保它们和 `docker-compose.yml` 的 volume 目标一致。
 
 查看服务状态并验证访问：
 
