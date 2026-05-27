@@ -1,248 +1,581 @@
 <!doctype html>
-<html lang="zh-CN"><head>
+<html lang="zh-CN">
+<head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>img-process 管理台登录</title>
   <style>
-    :root {
-      --bg: oklch(97.5% 0.008 245);
-      --surface: oklch(100% 0 0);
-      --surface-soft: oklch(98.2% 0.006 245);
-      --fg: oklch(20% 0.025 250);
-      --muted: oklch(52% 0.02 250);
-      --border: oklch(89% 0.01 250);
-      --accent: oklch(56% 0.13 158);
-      --accent-strong: oklch(43% 0.12 158);
-      --accent-soft: oklch(94% 0.035 158);
-      --danger: oklch(58% 0.16 28);
-      --nav: oklch(21% 0.035 250);
-      --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-      --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-      --font-mono: "SFMono-Regular", ui-monospace, Menlo, monospace;
-    }
+:root {
+  --bg: oklch(97.6% 0.008 245);
+  --surface: oklch(100% 0 0);
+  --surface-soft: oklch(98.4% 0.006 245);
+  --surface-strong: oklch(94.5% 0.01 245);
+  --fg: oklch(20% 0.025 250);
+  --muted: oklch(52% 0.02 250);
+  --border: oklch(90% 0.009 250);
+  --border-strong: oklch(82% 0.014 250);
+  --accent: oklch(56% 0.13 158);
+  --accent-strong: oklch(45% 0.12 158);
+  --accent-soft: oklch(94% 0.035 158);
+  --info: oklch(58% 0.13 235);
+  --info-soft: oklch(94% 0.035 235);
+  --warn: oklch(66% 0.14 72);
+  --warn-soft: oklch(96% 0.045 78);
+  --danger: oklch(57% 0.18 28);
+  --danger-soft: oklch(95% 0.045 28);
+  --nav: oklch(21% 0.035 250);
+  --nav-muted: oklch(75% 0.025 250);
+  --shadow: 0 16px 45px rgba(20, 30, 45, 0.08);
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: "SFMono-Regular", "Cascadia Code", "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
 
-    * { box-sizing: border-box; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { color-scheme: light; }
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 16% -8%, color-mix(in oklch, var(--accent-soft), transparent 18%), transparent 36%),
+    linear-gradient(180deg, oklch(98.5% 0.006 245), var(--bg));
+  color: var(--fg);
+  font: 14px/1.55 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
 
-    body {
-      margin: 0;
-      min-width: 320px;
-      min-height: 100vh;
-      color: var(--fg);
-      font: 14px/1.55 var(--font-body);
-      -webkit-font-smoothing: antialiased;
-      background:
-        linear-gradient(135deg, color-mix(in oklch, var(--bg), white 70%) 0%, var(--bg) 52%, oklch(95% 0.014 235) 100%),
-        radial-gradient(circle at 30% 18%, color-mix(in oklch, var(--accent-soft), transparent 4%), transparent 31%),
-        radial-gradient(circle at 76% 72%, color-mix(in oklch, oklch(92% 0.035 230), transparent 16%), transparent 34%),
-        var(--bg);
-    }
+body.login-page {
+  min-height: 100vh;
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--bg), white 70%) 0%, var(--bg) 52%, oklch(95% 0.014 235) 100%),
+    radial-gradient(circle at 30% 18%, color-mix(in oklch, var(--accent-soft), transparent 4%), transparent 31%),
+    radial-gradient(circle at 76% 72%, color-mix(in oklch, oklch(92% 0.035 230), transparent 16%), transparent 34%),
+    var(--bg);
+}
 
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background-image:
-        linear-gradient(color-mix(in oklch, var(--border), transparent 54%) 1px, transparent 1px),
-        linear-gradient(90deg, color-mix(in oklch, var(--border), transparent 54%) 1px, transparent 1px);
-      background-size: 42px 42px;
-      mask-image: radial-gradient(circle at center, black, transparent 72%);
-      opacity: 0.36;
-    }
+body.login-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(color-mix(in oklch, var(--border), transparent 54%) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklch, var(--border), transparent 54%) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at center, black, transparent 72%);
+  opacity: 0.36;
+}
 
-    button, input { font: inherit; }
+button, input, select { font: inherit; }
+button {
+  min-height: 34px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  padding: 7px 11px;
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+  transition: background 0.16s, border-color 0.16s, color 0.16s, transform 0.16s;
+}
+button:hover { border-color: color-mix(in oklch, var(--accent), var(--border) 20%); color: var(--accent-strong); }
+button:active { transform: translateY(1px); }
+button:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
+button.primary, .primary { border-color: var(--accent); background: var(--accent); color: white; font-weight: 700; }
+button.primary:hover, .primary:hover { background: var(--accent-strong); color: white; }
+button.danger { border-color: color-mix(in oklch, var(--danger), white 52%); color: var(--danger); background: var(--danger-soft); }
+button.link { min-height: auto; border: 0; padding: 0; background: transparent; color: var(--accent-strong); font-weight: 700; }
+input, select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--fg);
+  outline: none;
+  transition: border-color 0.16s, box-shadow 0.16s;
+}
+input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent-soft), transparent 15%); }
+label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 650; }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; }
+h2 { font-size: 24px; line-height: 1.2; }
+h3 { font-size: 15px; line-height: 1.25; }
+table { width: 100%; min-width: 780px; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 11px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+th { position: sticky; top: 0; z-index: 1; background: var(--surface-soft); color: color-mix(in oklch, var(--fg), var(--muted) 32%); font-size: 12px; font-weight: 750; white-space: nowrap; }
+td { color: color-mix(in oklch, var(--fg), var(--muted) 8%); word-break: break-word; overflow-wrap: anywhere; }
+tr:last-child td { border-bottom: 0; }
+tr:hover td { background: color-mix(in oklch, var(--accent-soft), white 52%); }
 
-    .login-shell {
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: clamp(22px, 4vw, 44px);
-    }
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: clamp(22px, 4vw, 44px);
+}
+.form-panel {
+  width: min(488px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 22px;
+  position: relative;
+  z-index: 1;
+}
+.login-stack { width: 100%; display: grid; justify-items: center; gap: 22px; }
+.brand-lockup { display: inline-flex; align-items: center; gap: 12px; width: 100%; color: var(--fg); }
+.login-logo, .logo-mark {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--accent), var(--info));
+  color: white;
+  font-family: var(--font-mono);
+  font-weight: 850;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
+  flex: 0 0 auto;
+}
+.login-logo { width: 46px; height: 46px; border-radius: 8px; font-size: 14px; box-shadow: 0 12px 28px rgba(30, 115, 91, 0.18); }
+.logo-mark { width: 34px; height: 34px; border-radius: 10px; }
+.brand-text { display: grid; gap: 4px; min-width: 0; }
+.brand-text strong { font: 850 20px/1.1 var(--font-display); }
+.brand-text span { color: var(--muted); font-size: 13px; font-weight: 650; line-height: 1.35; }
+.login-card {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--surface), transparent 2%);
+  box-shadow: 0 24px 70px rgba(20, 30, 45, 0.12);
+  overflow: hidden;
+}
+.card-head {
+  min-height: 48px;
+  padding: 13px 15px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: color-mix(in oklch, var(--surface-soft), white 45%);
+}
+.login-card .card-head {
+  display: grid;
+  justify-items: start;
+  padding: 30px 34px 24px;
+  background:
+    linear-gradient(180deg, color-mix(in oklch, white, var(--accent-soft) 12%), var(--surface-soft)),
+    linear-gradient(90deg, var(--accent), oklch(58% 0.13 225));
+  background-size: 100% 100%, 100% 4px;
+  background-repeat: no-repeat;
+  background-position: 0 0, 0 0;
+}
+.login-form { display: grid; gap: 17px; padding: 30px 34px 34px; }
+.login-form input { min-height: 44px; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.login-form .row { justify-content: space-between; gap: 14px; }
+.remember { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.remember input { width: 16px; height: 16px; min-height: 16px; accent-color: var(--accent-strong); }
+.login-form .primary { min-height: 46px; border: 0; border-radius: 7px; cursor: pointer; transition: transform 0.15s, background 0.15s; }
+.login-form .primary:hover { transform: translateY(-1px); background: color-mix(in oklch, var(--accent-strong), black 8%); }
+.error {
+  display: none;
+  border: 1px solid color-mix(in oklch, var(--danger), white 38%);
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: color-mix(in oklch, var(--danger), white 88%);
+  color: color-mix(in oklch, var(--danger), black 12%);
+  font-size: 13px;
+  font-weight: 700;
+}
+.error.visible { display: block; }
 
-    .form-panel {
-      width: min(488px, 100%);
-      display: grid;
-      justify-items: center;
-      gap: 22px;
-      position: relative;
-      z-index: 1;
-    }
+.app { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
+.sider {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 18px;
+  padding: 18px 14px;
+  background: var(--nav);
+  color: white;
+  z-index: 12;
+}
+.brand { display: flex; align-items: center; gap: 11px; padding: 4px 8px 8px; min-width: 0; }
+.brand b { display: block; font-size: 16px; }
+.brand span { display: block; color: var(--nav-muted); font-size: 12px; }
+.nav { display: grid; gap: 4px; align-content: start; }
+.nav a {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 9px;
+  padding: 9px 11px;
+  color: var(--nav-muted);
+  text-align: left;
+  text-decoration: none;
+}
+.nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+.nav a.active { background: rgba(255,255,255,0.12); color: white; font-weight: 800; }
+.nav-icon { width: 22px; text-align: center; font-family: var(--font-mono); font-size: 12px; color: color-mix(in oklch, var(--accent), white 20%); }
+.main { min-width: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklch, var(--surface), transparent 6%);
+  backdrop-filter: blur(18px);
+}
+.header-left, .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.header-left { min-width: 0; }
+.header-title { display: grid; gap: 1px; min-width: 0; }
+.header-title b { font-size: 14px; }
+.header-title span { color: var(--muted); font-size: 12px; }
+.content {
+  min-width: 0;
+  padding: 22px 24px 34px;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; min-width: 0; }
+.page-kicker { color: var(--muted); font-size: 12px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.08em; }
+.page-head p { margin-top: 5px; color: var(--muted); max-width: 70ch; }
+.card {
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 1px 0 rgba(20,30,45,0.02);
+  overflow: hidden;
+}
+.card-body { padding: 15px; min-width: 0; }
+.stack { display: grid; gap: 14px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.stat {
+  position: relative;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.stat::after { content: ""; position: absolute; inset: auto 0 0; height: 3px; background: var(--accent); opacity: 0.8; }
+.stat.warn::after { background: var(--warn); }
+.stat.danger::after { background: var(--danger); }
+.stat.info::after { background: var(--info); }
+.stat .label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+.stat .value { font: 800 29px/1 var(--font-display); }
+.stat .hint { margin-top: 7px; color: var(--muted); font-size: 12px; }
+.stats.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.stats.compact .stat {
+  min-height: 68px;
+  display: grid;
+  align-content: center;
+  padding: 10px 14px 12px;
+}
+.stats.compact .stat .label { margin-bottom: 4px; line-height: 1.25; }
+.stats.compact .stat .value { font-size: 24px; }
+.stats.compact .stat .hint { margin-top: 4px; line-height: 1.25; }
+.stats.four-up { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.stats.four-up .stat {
+  min-height: 70px;
+  display: grid;
+  align-content: center;
+  padding: 10px 14px 12px;
+}
+.stats.four-up .stat .label { margin-bottom: 4px; line-height: 1.25; }
+.stats.four-up .stat .value { font-size: 24px; }
+.stats.four-up .stat .hint { margin-top: 4px; line-height: 1.25; }
+.grid-two { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr); gap: 14px; align-items: start; }
+.analysis-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.filters, .form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.job-filters { grid-template-columns: minmax(160px, 0.8fr) minmax(160px, 0.8fr) minmax(260px, 1.4fr) auto; align-items: end; }
+.filter-submit { min-width: 92px; align-self: end; }
+.form-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.detail { min-width: 0; padding: 10px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-soft); }
+.detail span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+.detail b { display: block; overflow-wrap: anywhere; }
+.table-wrap { width: 100%; overflow: auto; max-height: min(620px, calc(100vh - 220px)); }
+.muted { color: var(--muted); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 23px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.tag.ok { border-color: color-mix(in oklch, var(--accent), white 50%); background: var(--accent-soft); color: var(--accent-strong); }
+.tag.warn { border-color: color-mix(in oklch, var(--warn), white 48%); background: var(--warn-soft); color: oklch(43% 0.11 68); }
+.tag.danger { border-color: color-mix(in oklch, var(--danger), white 48%); background: var(--danger-soft); color: var(--danger); }
+.tag.info { border-color: color-mix(in oklch, var(--info), white 50%); background: var(--info-soft); color: oklch(43% 0.11 235); }
+.alert {
+  border: 1px solid color-mix(in oklch, var(--accent), white 55%);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--accent-soft);
+  color: oklch(36% 0.08 158);
+  line-height: 1.65;
+}
+.alert.warn { border-color: color-mix(in oklch, var(--warn), white 45%); background: var(--warn-soft); color: oklch(38% 0.1 70); }
+.tabs, .subtabs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tabs { padding: 10px 12px 0; border-bottom: 1px solid var(--border); background: var(--surface); }
+.tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--muted); padding: 11px 6px 10px; min-height: 38px; }
+.tabs button.active { color: var(--accent-strong); border-bottom-color: var(--accent); font-weight: 800; }
+.subtabs button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); font-weight: 800; }
+.bar-list { display: grid; gap: 11px; }
+.bar-row { display: grid; grid-template-columns: 72px minmax(0, 1fr) 104px; gap: 10px; align-items: center; font-size: 12px; }
+.bar-track { height: 9px; border-radius: 999px; overflow: hidden; background: var(--surface-strong); }
+.bar-fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--info)); }
+.schedule-list { display: grid; gap: 10px; }
+.schedule-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-soft); }
+body[data-page="dashboard"] .content {
+  gap: 14px;
+}
+body[data-page="dashboard"] .page-head {
+  margin-bottom: 2px;
+}
+body[data-page="dashboard"] .stats.compact {
+  margin-top: -2px;
+}
+body[data-page="schedules"] .content,
+body[data-page="jobs"] .content {
+  gap: 14px;
+}
+body[data-page="schedules"] .page-head,
+body[data-page="jobs"] .page-head {
+  align-items: center;
+  padding-bottom: 0;
+}
+body[data-page="schedules"] .page-head {
+  min-height: 0;
+}
+body[data-page="schedules"] .table-wrap {
+  max-height: min(560px, calc(100vh - 230px));
+}
+body[data-page="jobs"] .job-filter-card .card-body {
+  padding: 10px 12px 12px;
+}
+body[data-page="jobs"] .job-filters {
+  grid-template-columns: minmax(150px, 0.75fr) minmax(150px, 0.75fr) minmax(280px, 1.35fr) 92px;
+  align-items: end;
+  gap: 10px;
+}
+body[data-page="jobs"] .job-filters label {
+  gap: 5px;
+}
+body[data-page="jobs"] .job-filters input,
+body[data-page="jobs"] .job-filters select {
+  min-height: 34px;
+}
+body[data-page="jobs"] .filter-submit {
+  min-width: 92px;
+  min-height: 34px;
+}
+body[data-page="cache-analysis"] .content,
+body[data-page="job-detail"] .content {
+  gap: 14px;
+}
+body[data-page="cache-analysis"] .stats.four-up,
+body[data-page="job-detail"] .stats.four-up {
+  margin-top: -2px;
+}
+body[data-page="cache-analysis"] .stats.four-up .stat {
+  min-height: 68px;
+  padding-top: 9px;
+  padding-bottom: 11px;
+}
+body[data-page="cache-analysis"] .stats.four-up .stat .value {
+  font-size: 23px;
+}
+body[data-page="cache-analysis"] .filters {
+  grid-template-columns: minmax(240px, 1fr) minmax(190px, 1fr) minmax(220px, 1fr);
+}
+body[data-page="cache-analysis"] .card-body.filters {
+  padding: 13px 15px 15px;
+}
+body[data-page="job-detail"] .details {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+body[data-page="job-detail"] .detail {
+  padding: 9px 11px;
+}
+.photo {
+  width: 62px;
+  height: 62px;
+  border-radius: 8px;
+  display: grid;
+  place-items: end start;
+  padding: 6px;
+  border: 1px solid color-mix(in oklch, var(--border-strong), white 20%);
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  background:
+    linear-gradient(135deg, rgba(16, 31, 43, 0.08), rgba(16, 31, 43, 0.32)),
+    linear-gradient(150deg, #66a987, #d6b75f 54%, #597ea6);
+}
+.photo.alt { background: linear-gradient(135deg, rgba(16,31,43,0.16), rgba(16,31,43,0.25)), linear-gradient(150deg, #6da6c8, #d5c56b 50%, #72a468); }
+.photo.dup { background: linear-gradient(135deg, rgba(16,31,43,0.16), rgba(16,31,43,0.28)), linear-gradient(150deg, #b96f63, #d9bd62 48%, #4f8c90); }
+.cache-preview { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; align-items: center; }
+.cache-preview .photo { width: 96px; height: 96px; }
+.timeline { display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
+.timeline li { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.log-block, .json-block {
+  margin: 0;
+  max-height: 460px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 14px;
+  background: oklch(22% 0.03 250);
+  color: oklch(91% 0.018 150);
+  font: 12px/1.7 var(--font-mono);
+  white-space: pre-wrap;
+}
+.json-block.light { background: var(--surface-soft); color: var(--fg); }
+.check-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 12px; }
+.check { display: flex; align-items: center; gap: 8px; color: var(--fg); font-size: 13px; font-weight: 650; }
+.check input { width: auto; min-height: auto; accent-color: var(--accent); }
+.path-input { display: flex; align-items: center; gap: 8px; }
+.path-input input { min-width: 0; flex: 1 1 auto; }
+.path-input button { flex: 0 0 auto; white-space: nowrap; }
+.setting-section + .setting-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.setting-desc { margin-top: 4px; color: var(--muted); font-size: 12px; }
+.setting-scan-row { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; justify-items: start; }
+.setting-scan-row.path { grid-template-columns: minmax(280px, 760px); justify-items: stretch; }
+.setting-section.readonly input { background: var(--surface-strong); color: var(--muted); }
+.backup-diff-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.backup-diff-stat { display: grid; gap: 8px; min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-soft); }
+.backup-diff-stat.warn { background: var(--warn-soft); border-color: color-mix(in oklch, var(--warn), white 50%); }
+.backup-diff-stat .value { font: 850 30px/1 var(--font-display); }
+.artifact-note { display: block; padding: 11px 12px; border-radius: 9px; background: var(--surface-soft); color: var(--muted); overflow-wrap: anywhere; }
+.backup-diff-detail-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 14px; align-items: start; }
+.backup-diff-date-filter { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-soft); }
+.backup-diff-date-filter-title { padding: 0 2px 6px; color: var(--muted); font-size: 12px; font-weight: 800; }
+.date-filter-row { width: 100%; display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 6px; align-items: center; min-height: 30px; border: 0; border-radius: 7px; padding: 5px 7px; background: transparent; text-align: left; }
+.date-filter-row.level-month { padding-left: 20px; }
+.date-filter-row.level-day { padding-left: 36px; }
+.date-filter-row:hover, .date-filter-row.active { background: var(--accent-soft); }
+.date-filter-row.active { color: var(--accent-strong); font-weight: 800; }
+.date-filter-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.date-filter-count { min-width: 26px; border-radius: 999px; padding: 1px 7px; background: var(--surface); color: var(--muted); font-size: 12px; text-align: center; }
+.drawer-backdrop, .modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: none;
+  background: rgba(17, 24, 39, 0.38);
+  backdrop-filter: blur(2px);
+}
+.drawer-backdrop.open, .modal-backdrop.open { display: block; }
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 41;
+  width: min(620px, 100%);
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--surface);
+  box-shadow: -26px 0 70px rgba(20,30,45,0.18);
+  transform: translateX(100%);
+  transition: transform 0.22s ease;
+}
+.drawer.open { transform: translateX(0); }
+.drawer-head { padding: 16px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.drawer-body { overflow: auto; padding: 18px; }
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 51;
+  width: min(430px, calc(100% - 32px));
+  display: none;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.modal.open { display: grid; gap: 14px; }
+.toast {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 60;
+  max-width: min(420px, calc(100% - 32px));
+  border-radius: 10px;
+  padding: 11px 14px;
+  background: var(--nav);
+  color: white;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: 0.2s ease;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.mobile-menu { display: none; }
 
-    .login-stack {
-      width: 100%;
-      display: grid;
-      justify-items: center;
-      gap: 22px;
-    }
+@media (max-width: 1180px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-two, .analysis-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 860px) {
+  body.login-page { background: var(--bg); }
+  .login-shell { padding: 22px; }
+  .login-stack { gap: 18px; }
+  .brand-lockup { justify-content: flex-start; }
+  .login-card .card-head { padding: 26px 24px 22px; }
+  .login-form { padding: 24px; }
+  .app { grid-template-columns: 1fr; }
+  .sider {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 260px;
+    transform: translateX(-100%);
+    box-shadow: var(--shadow);
+  }
+  .sider.open { transform: translateX(0); }
+  .mobile-menu { display: inline-flex; }
+  .header { height: auto; min-height: 62px; padding: 12px 16px; align-items: flex-start; flex-direction: column; }
+  .header-actions { justify-content: flex-end; }
+  .content { padding: 16px; }
+  .page-head { flex-direction: column; }
+  .stats, .filters, .job-filters, .form-grid, .form-grid.two, .details, .backup-diff-stats, .backup-diff-detail-layout { grid-template-columns: 1fr; }
+  .setting-scan-row { grid-template-columns: 1fr; justify-items: stretch; }
+  .timeline li, .cache-preview { grid-template-columns: 1fr; }
+}
 
-    .brand-lockup {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      color: var(--fg);
-      width: 100%;
-    }
-
-    .login-logo {
-      flex: 0 0 auto;
-      width: 46px;
-      height: 46px;
-      border-radius: 8px;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(135deg, var(--accent), oklch(59% 0.13 230));
-      color: white;
-      font: 850 14px/1 var(--font-mono);
-      box-shadow: 0 12px 28px rgba(30, 115, 91, 0.18);
-    }
-
-    .brand-text {
-      display: grid;
-      gap: 4px;
-      min-width: 0;
-    }
-
-    .brand-text strong {
-      font: 850 20px/1.1 var(--font-display);
-      letter-spacing: 0;
-    }
-
-    .brand-text span {
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 650;
-      line-height: 1.35;
-    }
-
-    .login-card {
-      width: 100%;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: color-mix(in oklch, var(--surface), transparent 2%);
-      box-shadow: 0 24px 70px rgba(20, 30, 45, 0.12);
-      overflow: hidden;
-    }
-
-    .card-head {
-      display: grid;
-      justify-items: start;
-      text-align: left;
-      padding: 30px 34px 24px;
-      border-bottom: 1px solid var(--border);
-      background:
-        linear-gradient(180deg, color-mix(in oklch, white, var(--accent-soft) 12%), var(--surface-soft)),
-        linear-gradient(90deg, var(--accent), oklch(58% 0.13 225));
-      background-size: 100% 100%, 100% 4px;
-      background-repeat: no-repeat;
-      background-position: 0 0, 0 0;
-    }
-
-    .card-head h2 {
-      margin: 0;
-      font: 850 25px/1.15 var(--font-display);
-      letter-spacing: 0;
-    }
-
-    .card-head p {
-      margin: 10px auto 0;
-      color: var(--muted);
-      max-width: 25em;
-    }
-
-    .login-form {
-      display: grid;
-      gap: 17px;
-      padding: 30px 34px 34px;
-    }
-
-    label {
-      display: grid;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 650;
-    }
-
-    input {
-      width: 100%;
-      min-height: 44px;
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      padding: 10px 12px;
-      background: white;
-      color: var(--fg);
-      outline: 0;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-
-    input:focus {
-      border-color: color-mix(in oklch, var(--accent), white 18%);
-      box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent-soft), transparent 20%);
-    }
-
-    .row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-    }
-
-    .remember {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 600;
-    }
-
-    .remember input {
-      width: 16px;
-      height: 16px;
-      min-height: 16px;
-      accent-color: var(--accent-strong);
-    }
-
-    .primary {
-      min-height: 46px;
-      border: 0;
-      border-radius: 7px;
-      color: white;
-      background: var(--accent-strong);
-      font-weight: 800;
-      cursor: pointer;
-      transition: transform 0.15s, background 0.15s;
-    }
-
-    .primary:hover {
-      transform: translateY(-1px);
-      background: color-mix(in oklch, var(--accent-strong), black 8%);
-    }
-
-    .error {
-      display: none;
-      border: 1px solid color-mix(in oklch, var(--danger), white 38%);
-      border-radius: 8px;
-      padding: 11px 12px;
-      background: color-mix(in oklch, var(--danger), white 88%);
-      color: color-mix(in oklch, var(--danger), black 12%);
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .error.visible { display: block; }
-
-    @media (max-width: 860px) {
-      body { background: var(--bg); }
-      .login-shell { padding: 22px; }
-      .login-stack { gap: 18px; }
-      .brand-lockup { justify-content: flex-start; }
-      .card-head { padding: 26px 24px 22px; }
-      .login-form { padding: 24px; }
-    }
   </style>
 </head>
-<body>
+<body class="login-page">
   <main class="login-shell" data-od-id="path-0">
     <section class="form-panel" aria-label="登录">
       <div class="login-stack">
@@ -280,31 +613,640 @@
   </main>
 
   <script>
-    (function () {
-      var form = document.getElementById('login-form');
-      var user = document.getElementById('username');
-      var pass = document.getElementById('password');
-      var error = document.getElementById('error');
-      var button = document.getElementById('login-button');
+(function () {
+  const basePath = ".";
+  let currentPage = "";
+  const pages = {
+    dashboard: { title: "工作台", href: "dashboard.html", index: "01" },
+    jobs: { title: "扫描历史", href: "jobs.html", index: "02" },
+    "cache-analysis": { title: "文件分析", href: "cache-analysis.html", index: "03" },
+    schedules: { title: "计划任务", href: "schedules.html", index: "04" },
+    settings: { title: "系统设置", href: "settings.html", index: "05" }
+  };
 
-      function enterDashboard() {
-        window.location.assign('screens/dashboard.html');
-      }
+  const jobs = [
+    { id: 42, uuid: "8d3f2a91-4e02-4a58-b780-1a2b39f09f20", status: "成功", statusType: "ok", source: "手动", phase: "已完成", folders: 1482, files: 43912, backupFolders: 1470, backupFiles: 43876, pending: 436, executed: 92, backupExtra: 12, backupMissing: 36, start: "2026-05-23 08:42:11", duration: "18 秒" },
+    { id: 41, uuid: "a13d7b5c-9856-4d7e-8d60-6e7341b7d813", status: "运行中", statusType: "warn", source: "计划", phase: "扫描备份目录", folders: 932, files: 27160, backupFolders: 928, backupFiles: 27092, pending: 0, executed: 0, backupExtra: 0, backupMissing: 0, start: "2026-05-23 07:30:00", duration: "12 秒" },
+    { id: 40, uuid: "cc3a6e90-2f83-49d5-bc6d-b237d7d8d101", status: "失败", statusType: "danger", source: "手动", phase: "处理重复项", folders: 601, files: 18620, backupFolders: 599, backupFiles: 18570, pending: 0, executed: 0, backupExtra: 0, backupMissing: 0, start: "2026-05-22 21:18:03", duration: "7 秒" },
+    { id: 39, uuid: "e6046f01-1bb4-41f7-b373-4c9395873ef0", status: "成功", statusType: "ok", source: "计划", phase: "已完成", folders: 1478, files: 43876, backupFolders: 1473, backupFiles: 43820, pending: 12, executed: 615, backupExtra: 3, backupMissing: 8, start: "2026-05-22 03:00:00", duration: "16 秒" }
+  ];
+  const schedules = [
+    { id: 1, name: "每日凌晨扫描", mode: "每天", cron: "30 2 * * *", enabled: true, next: "2026-05-24 02:30:00", last: "成功" },
+    { id: 2, name: "每周备份校验", mode: "每周", cron: "15 3 * * 1", enabled: true, next: "2026-05-25 03:15:00", last: "成功" },
+    { id: 3, name: "高频测试扫描", mode: "高级 Cron", cron: "*/10 * * * *", enabled: false, next: "-", last: "已跳过" }
+  ];
+  const actionCounts = {
+    pending: { delete: 104, delete_empty_dir: 24, move: 64, modify_time: 53, delete_duplicate: 118, delete_path_duplicate: 48, rename: 25 },
+    executed: { delete: 28, delete_empty_dir: 6, move: 18, modify_time: 10, delete_duplicate: 22, delete_path_duplicate: 6, rename: 2 }
+  };
+  const actionLabels = { delete: "删除", delete_empty_dir: "删除空文件夹", move: "移动", modify_time: "修改时间", delete_duplicate: "重复项", delete_path_duplicate: "路径重复项", rename: "重命名" };
+  const actionRows = {
+    delete: [["DSC_0000.tmp", "/Photos/pic-new/2024/2024-01/2024-01-18", "文件大小为 0"], [".DS_Store", "/Photos/pic-new/2024/2024-02", "系统隐藏文件"], ["IMG_E9381.JPG", "/Photos/pic-new/2023/2023-11/2023-11-02", "文件名以 IMG_E 开头"]],
+    delete_empty_dir: [["2024-01-18", "/Photos/pic-new/2024/2024-01/2024-01-18", "空目录"], ["未命名文件夹", "/Photos/pic-new/2024/2024-02/未命名文件夹", "空目录"], ["export", "/Photos/pic-new/2023/2023-11/export", "空目录"]],
+    move: [["IMG_8912.HEIC", "/Photos/pic-new/2025/2025-03/2025-03-21", "/Photos/pic-new/2024/2024-12/2024-12-31"], ["MVI_3312.MP4", "/Photos/pic-new/2022/2022-09/2022-09-02", "/Photos/pic-new/2022/2022-08/2022-08-30"]],
+    modify_time: [["IMG_2268.JPG", "目录 2023-08-19", "修改时间 2026-05-20", "最小日期 2023-08-19"], ["PXL_20221105.jpg", "EXIF 2022-11-05", "修改时间 2024-01-01", "最小日期 2022-11-05"]],
+    rename: [["IMG_20240202_093012.JPG", "2024-02-02_093012.JPG", "/Photos/pic-new/2024/2024-02/2024-02-02"], ["VID_20240101_210010.MP4", "2024-01-01_210010.MP4", "/Photos/pic-new/2024/2024-01/2024-01-01"]]
+  };
+  const backupDiff = {
+    newFiles: { label: "主目录新增，备份缺少", field: "bak_new_file", count: 36, artifactPath: "/Users/ld/my-file/workspace/personal/img-process/log/dump_delete_file/scan-20260523-001/bak_new_file_list", note: "这些文件已在主目录出现，但备份目录还没有匹配记录，后续需要补齐备份。", items: [
+      { key: "2026-05-18|IMG_6120.HEIC", fileName: "IMG_6120.HEIC", path: "/Photos/pic-new/2026/2026-05/2026-05-18", reason: "备份目录未找到同名 img_key" },
+      { key: "2026-05-18|IMG_6121.HEIC", fileName: "IMG_6121.HEIC", path: "/Photos/pic-new/2026/2026-05/2026-05-18", reason: "主目录扫描新增" },
+      { key: "2025-12-31|VID_203012.MP4", fileName: "VID_203012.MP4", path: "/Photos/pic-new/2025/2025-12/跨年", reason: "备份目录缺少该视频" },
+      { key: "2024-10-06|PXL_20241006_080212.jpg", fileName: "PXL_20241006_080212.jpg", path: "/Photos/pic-new/2024/2024-10/2024-10-06", reason: "备份目录未同步" }
+    ] },
+    deletedFiles: { label: "备份多余，主目录缺少", field: "bak_delete_file", count: 12, artifactPath: "/Users/ld/my-file/workspace/personal/img-process/log/dump_delete_file/scan-20260523-001/bak_delete_file_list", note: "这些文件仍在备份目录，但主目录已经没有匹配记录，建议人工核对后再处理。", items: [
+      { key: "2021-02-14|IMG_0901.JPG", fileName: "IMG_0901.JPG", path: "/Volumes/photo-bak/pic-new/2021/2021-02/2021-02-14", reason: "主目录缺少该 img_key" },
+      { key: "2020-09-30|MOV_2218.MOV", fileName: "MOV_2218.MOV", path: "/Volumes/photo-bak/pic-new/2020/2020-09/旧整理", reason: "仅备份目录存在" },
+      { key: "2019-07-08|DSC_4400.JPG", fileName: "DSC_4400.JPG", path: "/Volumes/photo-bak/pic-new/2019/2019-07/2019-07-08", reason: "主目录对比缺失" },
+      { key: "2018-11-21|IMG_0012.JPG", fileName: "IMG_0012.JPG", path: "/Volumes/photo-bak/pic-new/2018/2018-11/旧手机导入", reason: "备份目录历史残留" }
+    ] }
+  };
+  const cacheRows = [
+    { imgKey: "2024-01-01|IMG_8801.JPG", shootDate: "2024:01:01 19:32:18", locNum: "31.230416,121.473701", locStreet: "黄浦区中山东一路", locAddr: "上海市黄浦区外滩街道", state: 1, remark: "exiftool: DateTimeOriginal", updatedAt: "2026-05-23 08:42:20" },
+    { imgKey: "2023-08-19|IMG_1240.JPG", shootDate: "2023:08:19 09:12:04", locNum: "", locStreet: "", locAddr: "", state: 1, remark: "EXIF 无 GPS 信息", updatedAt: "2026-05-23 08:42:21" },
+    { imgKey: "2022-11-05|PXL_20221105.jpg", shootDate: "", locNum: "30.274084,120.155070", locStreet: "西湖区北山街", locAddr: "浙江省杭州市西湖区", state: 2, remark: "go-exif 未读取到拍摄时间", updatedAt: "2026-05-23 08:42:22" },
+    { imgKey: "2021-06-12|VID_0091.MP4", shootDate: "2021:06:12 14:08:51", locNum: "", locStreet: "", locAddr: "", state: 1, remark: "视频文件无地理信息", updatedAt: "2026-05-23 08:42:23" },
+    { imgKey: "2020-09-30|MOV_2218.MOV", shootDate: "2020:09:30 17:20:10", locNum: "22.543099,114.057868", locStreet: "福田区深南大道", locAddr: "广东省深圳市福田区", state: 1, remark: "video metadata: creation_time", updatedAt: "2026-05-23 08:42:24" },
+    { imgKey: "2020-02-01|IMG_BROKEN.JPG", shootDate: "", locNum: "", locStreet: "", locAddr: "", state: 0, remark: "EXIF 解析失败：invalid format", updatedAt: "2026-05-23 08:42:25" }
+  ];
+  const yearStats = [["2026", 22, "2,984"], ["2025", 58, "7,612"], ["2024", 95, "12,430"], ["2023", 78, "10,286"], ["2022", 61, "8,012"], ["2021", 39, "5,104"], ["2020", 32, "4,218"], ["2019", 18, "2,361"], ["2018", 16, "2,105"], ["2017", 13, "1,724"]];
+  const suffixStats = [[".jpg", 88, "25,640 / 58.4%"], [".heic", 46, "9,214 / 21.0%"], [".mp4", 24, "4,806 / 11.0%"], [".png", 12, "2,316 / 5.3%"], [".mov", 10, "1,900 / 4.3%"], [".jpeg", 7, "1,160 / 2.6%"], [".dng", 4, "620 / 1.4%"]];
+  const configSections = [
+    { title: "database 数据库参数", readonly: true, fields: [["DbUsername", "img_user"], ["DbPassword", "******"], ["DbHost", "127.0.0.1"], ["DbPort", "3306"], ["DbName", "img_process"]] },
+    { title: "server Web 服务参数", readonly: true, fields: [["HttpPort", "8081"], ["HttpUsername", "admin"], ["HttpPassword", "******"]] },
+    { title: "scanArgs 默认扫描参数", desc: "用于调整扫描任务默认填写值", layout: "scanArgs", fields: [["StartPath", "扫描目录", "/Volumes/photo/pic-new", "path"], ["DeleteShow", "显示删除项", true, "show"], ["MoveFileShow", "显示移动项", true, "show"], ["ModifyDateShow", "显示修改时间项", false, "show"], ["RenameFileShow", "显示重命名项", true, "show"], ["Md5Show", "计算 MD5", true, "show"], ["DeleteAction", "执行删除", false, "action"], ["MoveFileAction", "执行移动", false, "action"], ["ModifyDateAction", "执行修改时间", false, "action"], ["RenameFileAction", "执行重命名", false, "action"]] },
+    { title: "dump 扫描执行配置", fields: [["PoolSize", 12], ["Md5Retry", 2], ["Md5CountLength", 1048576]] },
+    { title: "bak 备份配置", fields: [["StartPathBak", "显示的默认备份目录", "/Volumes/photo-bak/pic-new", "path"]] },
+    { title: "gis 地理编码配置", fields: [["key", "******"]] }
+  ];
 
-      function clearError() {
-        error.classList.remove('visible');
-      }
+  let drawer;
+  let drawerBackdrop;
+  let drawerTitle;
+  let drawerBody;
+  let modal;
+  let modalBackdrop;
+  let modalTitle;
+  let modalText;
+  let toast;
+  let sider;
+  let confirmMessage = "操作已完成";
 
-      form.addEventListener('submit', function (event) {
-        event.preventDefault();
-        enterDashboard();
+  function tag(text, type = "") { return `<span class="tag ${type}">${text}</span>`; }
+  function shortUuid(uuid) { return `<span class="mono" title="${uuid}">${uuid.slice(0, 8)}</span>`; }
+  function splitImgKey(imgKey) { const [dirDate = "-", fileName = "-"] = imgKey.split("|"); return { dirDate, fileName }; }
+  function showToast(message) {
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
+  }
+  function getHref(page) { return `#${page}`; }
+  function navHtml() {
+    return Object.entries(pages).map(([key, page]) => {
+      const active = currentPage === key || (currentPage === "job-detail" && key === "jobs") ? " active" : "";
+      return `<a class="${active}" href="${getHref(key)}"><span class="nav-icon">${page.index}</span>${page.title}</a>`;
+    }).join("");
+  }
+  function shell(content) {
+    const pageTitle = pages[currentPage]?.title || (currentPage === "job-detail" ? "扫描历史" : "业务系统");
+    document.body.insertAdjacentHTML("afterbegin", `
+      <div class="app">
+        <aside id="sider" class="sider">
+          <div class="brand">
+            <div class="logo-mark">IP</div>
+            <div><b>img-process</b><span>照片治理业务系统</span></div>
+          </div>
+          <nav class="nav" aria-label="主导航">${navHtml()}</nav>
+        </aside>
+        <main class="main">
+          <header class="header">
+            <div class="header-left">
+              <button class="mobile-menu" data-toggle-menu>菜单</button>
+              <div class="header-title"><b>${pageTitle}</b><span>当前用户：admin</span></div>
+            </div>
+            <div class="header-actions">
+              <button data-toast="会话已刷新">刷新会话</button>
+              <button class="danger" data-logout>退出</button>
+            </div>
+          </header>
+          <section class="content">${content}</section>
+        </main>
+      </div>
+      <div id="drawer-backdrop" class="drawer-backdrop"></div>
+      <aside id="drawer" class="drawer" aria-hidden="true">
+        <div class="drawer-head">
+          <h3 id="drawer-title">抽屉</h3>
+          <div class="row"><button class="primary" data-save-drawer>保存</button><button data-close-drawer>关闭</button></div>
+        </div>
+        <div id="drawer-body" class="drawer-body"></div>
+      </aside>
+      <div id="modal-backdrop" class="modal-backdrop"></div>
+      <section id="confirm-modal" class="modal" role="dialog" aria-modal="true">
+        <h3 id="modal-title">确认操作</h3>
+        <p id="modal-text" class="muted">是否继续？</p>
+        <div class="row" style="justify-content:flex-end"><button data-close-modal>取消</button><button class="danger" data-confirm-modal>确认执行</button></div>
+      </section>
+      <div id="toast" class="toast">操作完成</div>
+    `);
+    drawer = document.querySelector("#drawer");
+    drawerBackdrop = document.querySelector("#drawer-backdrop");
+    drawerTitle = document.querySelector("#drawer-title");
+    drawerBody = document.querySelector("#drawer-body");
+    modal = document.querySelector("#confirm-modal");
+    modalBackdrop = document.querySelector("#modal-backdrop");
+    modalTitle = document.querySelector("#modal-title");
+    modalText = document.querySelector("#modal-text");
+    toast = document.querySelector("#toast");
+    sider = document.querySelector("#sider");
+    drawerBackdrop?.addEventListener("click", closeDrawer);
+    modalBackdrop?.addEventListener("click", closeConfirm);
+  }
+
+  function renderDashboard() {
+    shell(`
+      <div class="page-head">
+        <div><div class="page-kicker">Overview</div><h2>工作台</h2><p>聚合最近扫描、待处理动作、计划运行和备份差异，帮助先处理风险最高的任务。</p></div>
+        <div class="row"><button data-toast="数据已刷新">刷新数据</button></div>
+      </div>
+      <div class="stats compact">
+        <div class="stat info"><div class="label">总任务数</div><div class="value mono">128</div><div class="hint">全部扫描任务记录</div></div>
+        <div class="stat warn"><div class="label">运行中任务</div><div class="value mono">1</div><div class="hint">扫描备份目录</div></div>
+        <div class="stat danger"><div class="label">失败任务</div><div class="value mono">2</div><div class="hint">需查看错误日志</div></div>
+      </div>
+      <div class="grid-two">
+        <article class="card">
+          <div class="card-head"><h3>最近任务</h3><button class="link" data-goto="jobs">查看全部</button></div>
+          <div class="table-wrap"><table><thead><tr><th>任务</th><th>来源</th><th>阶段</th><th>状态</th><th>文件数</th><th>待执行</th><th>运行时间</th></tr></thead><tbody id="dashboard-jobs"></tbody></table></div>
+        </article>
+        <article class="card">
+          <div class="card-head"><h3>计划任务</h3><button class="link" data-goto="schedules">配置计划</button></div>
+          <div class="card-body schedule-list" id="dashboard-schedules"></div>
+        </article>
+      </div>
+    `);
+    document.querySelector("#dashboard-jobs").innerHTML = jobs.map((job) => `
+      <tr><td>${shortUuid(job.uuid)}<br><span class="muted">#${job.id}</span></td><td>${job.source}</td><td>${job.phase}</td><td>${tag(job.status, job.statusType)}</td><td class="mono">${job.files.toLocaleString()}</td><td class="mono">${job.pending}</td><td>${job.duration}</td></tr>
+    `).join("");
+    document.querySelector("#dashboard-schedules").innerHTML = schedules.map((item) => `
+      <div class="schedule-item"><div><b>${item.name}</b><div class="muted mono">${item.mode} / ${item.cron}</div></div>${tag(item.enabled ? "启用" : "停用", item.enabled ? "ok" : "")}</div>
+    `).join("");
+  }
+
+  function renderJobs() {
+    shell(`
+      <div class="page-head">
+        <div><div class="page-kicker">Scan Jobs</div><h2>扫描历史</h2><p>查看扫描来源、文件统计、备份差异和可执行动作。危险删除会进入二次确认。</p></div>
+        <button class="primary" data-open-drawer="scan">新建扫描</button>
+      </div>
+      <article class="card job-filter-card">
+        <div class="card-body filters job-filters">
+          <label>状态<select id="job-status-filter"><option>全部状态</option><option>运行中</option><option>成功</option><option>失败</option></select></label>
+          <label>来源<select id="job-source-filter"><option>全部来源</option><option>手动</option><option>计划</option></select></label>
+          <label>关键词<input id="job-keyword" placeholder="任务 UUID / 错误关键词"></label>
+          <button class="primary filter-submit" type="button" data-query-jobs>查询</button>
+        </div>
+      </article>
+      <article class="card">
+        <div class="table-wrap"><table><thead><tr><th>任务ID</th><th>状态</th><th>来源</th><th>总文件夹数</th><th>总文件数</th><th>备份总文件夹数</th><th>备份总文件数</th><th>待执行动作</th><th>已执行动作</th><th>备份多</th><th>备份缺</th><th>开始时间</th><th>执行时长</th><th>操作</th></tr></thead><tbody id="jobs-table"></tbody></table></div>
+      </article>
+    `);
+    bindJobFilters();
+    paintJobs();
+  }
+
+  function paintJobs() {
+    const status = document.querySelector("#job-status-filter")?.value || "全部状态";
+    const source = document.querySelector("#job-source-filter")?.value || "全部来源";
+    const keyword = (document.querySelector("#job-keyword")?.value || "").trim().toLowerCase();
+    const filtered = jobs.filter((job) => (status === "全部状态" || job.status === status) && (source === "全部来源" || job.source === source) && (!keyword || job.uuid.toLowerCase().includes(keyword) || job.phase.toLowerCase().includes(keyword)));
+    document.querySelector("#jobs-table").innerHTML = filtered.map((job) => `
+      <tr>
+        <td>${shortUuid(job.uuid)}<br><span class="muted">#${job.id}</span></td><td>${tag(job.status, job.statusType)}</td><td>${job.source}</td>
+        <td class="mono">${job.folders.toLocaleString()}</td><td class="mono">${job.files.toLocaleString()}</td><td class="mono">${job.backupFolders.toLocaleString()}</td><td class="mono">${job.backupFiles.toLocaleString()}</td>
+        <td class="mono">${job.pending}</td><td class="mono">${job.executed}</td><td class="mono">${job.backupExtra}</td><td class="mono">${job.backupMissing}</td><td>${job.start}</td><td>${job.duration}</td>
+        <td><div class="row"><button class="link" data-goto="job-detail">查看详情</button><button class="link danger" data-confirm="删除任务" data-confirm-text="会删除该任务及其事件、日志和动作明细，是否继续？" data-confirm-message="扫描任务已删除">删除</button></div></td>
+      </tr>
+    `).join("") || `<tr><td colspan="14"><span class="muted">没有匹配的扫描任务。</span></td></tr>`;
+  }
+
+  function bindJobFilters() {
+    ["change", "input"].forEach((eventName) => {
+      document.querySelector("#job-status-filter")?.addEventListener(eventName, paintJobs);
+      document.querySelector("#job-source-filter")?.addEventListener(eventName, paintJobs);
+      document.querySelector("#job-keyword")?.addEventListener(eventName, paintJobs);
+    });
+  }
+
+  function renderSchedules() {
+    shell(`
+      <div class="page-head">
+        <div><div class="page-kicker">Automation</div><h2>计划任务</h2><p>管理周期扫描、备份校验和临时测试计划。</p></div>
+        <button class="primary" data-open-drawer="schedule">新建计划</button>
+      </div>
+      <article class="card"><div class="table-wrap"><table><thead><tr><th>名称</th><th>模式</th><th>Cron</th><th>启用</th><th>下次执行</th><th>最近状态</th><th>操作</th></tr></thead><tbody id="schedule-table"></tbody></table></div></article>
+    `);
+    document.querySelector("#schedule-table").innerHTML = schedules.map((item) => `
+      <tr>
+        <td><b>${item.name}</b></td><td>${item.mode}</td><td class="mono">${item.cron}</td><td>${tag(item.enabled ? "启用" : "停用", item.enabled ? "ok" : "")}</td>
+        <td>${item.next}</td><td>${tag(item.last, item.last === "成功" ? "ok" : "warn")}</td>
+        <td><div class="row"><button class="link" data-open-drawer="schedule">编辑</button><button class="link" data-toast="计划已触发">立即执行</button><button class="link" data-toast="计划状态已切换">${item.enabled ? "停用" : "启用"}</button><button class="link" data-confirm="删除计划" data-confirm-text="删除后不会再自动触发扫描，是否继续？" data-confirm-message="计划已删除">删除</button></div></td>
+      </tr>
+    `).join("");
+  }
+
+  function renderCacheAnalysis() {
+    shell(`
+      <div class="page-head">
+        <div><div class="page-kicker">File Intelligence</div><h2>文件分析</h2><p>基于 img_database 查看拍摄时间、地理信息、文件类型和缓存异常。</p></div>
+        <button data-toast="文件分析数据已刷新">刷新分析</button>
+      </div>
+      <div class="stats four-up">
+        <div class="stat"><div class="label">总缓存文件</div><div class="value mono">43,876</div></div>
+        <div class="stat"><div class="label">有拍摄时间</div><div class="value mono">42,472</div><div class="hint">覆盖率 96.8%</div></div>
+        <div class="stat info"><div class="label">有经纬度</div><div class="value mono">31,762</div><div class="hint">覆盖率 72.4%</div></div>
+        <div class="stat warn"><div class="label">有地址信息</div><div class="value mono">29,418</div><div class="hint">覆盖率 67.1%</div></div>
+      </div>
+      <article class="card">
+        <div class="card-head"><h3>筛选条件</h3><button class="primary" data-toast="已按筛选条件刷新文件明细">筛选</button></div>
+        <div class="card-body filters">
+          <label>文件 key<input placeholder="2024-01-01|IMG_8801.JPG"></label>
+          <label>拍摄时间<select><option>全部</option><option>有拍摄时间</option><option>缺失拍摄时间</option></select></label>
+          <label>地理信息<select><option>全部</option><option>有经纬度和地址</option><option>仅经纬度</option><option>缺失地理信息</option></select></label>
+          <label>地理检索<input placeholder="上海市 / 西湖区"></label>
+          <label>最早时间<input value="2020-01-01"></label>
+          <label>最晚时间<input value="2026-05-23"></label>
+        </div>
+      </article>
+      <div class="analysis-grid">
+        <article class="card"><div class="card-head"><h3>按年份统计</h3><button class="link" data-stat-more="year">更多</button></div><div class="card-body bar-list" id="cache-year-bars"></div></article>
+        <article class="card"><div class="card-head"><h3>文件后缀统计</h3><button class="link" data-stat-more="suffix">更多</button></div><div class="card-body bar-list" id="cache-suffix-bars"></div></article>
+      </div>
+      <article class="card">
+        <div class="card-head"><h3>文件明细</h3><button class="link" data-toast="已导出当前筛选结果">导出</button></div>
+        <div class="table-wrap"><table><thead><tr><th>缩略图</th><th>img_key</th><th>目录日期</th><th>文件名</th><th>shoot_date</th><th>loc_num</th><th>loc_street</th><th>loc_addr</th><th>remark</th><th>更新时间</th><th>操作</th></tr></thead><tbody id="cache-detail-table"></tbody></table></div>
+      </article>
+    `);
+    document.querySelector("#cache-year-bars").innerHTML = yearStats.map((row) => barRow(row[0], row[1], row[2])).join("");
+    document.querySelector("#cache-suffix-bars").innerHTML = suffixStats.map((row) => barRow(row[0], row[1], row[2])).join("");
+    document.querySelector("#cache-detail-table").innerHTML = cacheRows.map((row, index) => {
+      const key = splitImgKey(row.imgKey);
+      return `<tr>
+        <td><div class="photo ${index % 3 === 0 ? "dup" : index % 2 ? "alt" : ""}">文件</div></td>
+        <td class="mono">${row.imgKey}</td><td>${key.dirDate}</td><td>${key.fileName}</td><td>${row.shootDate || '<span class="muted">缺失</span>'}</td><td>${row.locNum || '<span class="muted">缺失</span>'}</td>
+        <td>${row.locStreet || "-"}</td><td>${row.locAddr || "-"}</td><td>${row.remark}</td><td>${row.updatedAt}</td>
+        <td><button class="link" data-cache-detail="${row.imgKey}">明细</button></td>
+      </tr>`;
+    }).join("");
+  }
+
+  function renderJobDetail() {
+    shell(`
+      <div class="page-head">
+        <div><div class="page-kicker">Job Detail</div><h2>扫描详情 #42</h2><p>任务已完成，但仍有 436 条待执行动作。先核对备份差异，再执行删除类动作。</p></div>
+        <button data-goto="jobs">返回扫描历史</button>
+      </div>
+      <div class="alert warn">当前任务没有自动执行危险动作。删除、移动、重命名等操作需要逐项确认或在批量操作中二次确认。</div>
+      <article class="card"><div class="card-body details">
+        <div class="detail"><span>状态</span><b>成功</b></div><div class="detail"><span>来源</span><b>手动</b></div><div class="detail"><span>阶段</span><b>已完成</b></div>
+        <div class="detail"><span>任务UUID</span><b class="mono">8d3f2a91-4e02-4a58-b780-1a2b39f09f20</b></div><div class="detail"><span>扫描UUID</span><b class="mono">scan-20260523-001</b></div><div class="detail"><span>是否执行动作</span><b>否</b></div>
+      </div></article>
+      <div class="stats four-up">
+        <div class="stat info"><div class="label">总文件夹数</div><div class="value mono">1,482</div></div>
+        <div class="stat"><div class="label">总文件数</div><div class="value mono">43,912</div></div>
+        <div class="stat warn"><div class="label">备份多余</div><div class="value mono">12</div></div>
+        <div class="stat danger"><div class="label">备份缺少</div><div class="value mono">36</div></div>
+      </div>
+      <article class="card">
+        <div class="tabs" data-tabs="detail">
+          <button class="active" data-tab="pending">待执行动作 (436)</button><button data-tab="executed">已执行动作 (92)</button><button data-tab="backup-diff">备份对比</button><button data-tab="events">实时事件</button><button data-tab="logs">运行日志</button><button data-tab="stats">统计</button><button data-tab="raw">原始参数</button>
+        </div>
+        <div class="card-body">
+          <div id="detail-pending" class="detail-panel stack"></div><div id="detail-executed" class="detail-panel stack" hidden></div><div id="detail-backup-diff" class="detail-panel stack" hidden></div><div id="detail-events" class="detail-panel" hidden></div><div id="detail-logs" class="detail-panel" hidden></div><div id="detail-stats" class="detail-panel" hidden></div><div id="detail-raw" class="detail-panel" hidden></div>
+        </div>
+      </article>
+    `);
+    renderActions("pending", "delete");
+    renderActions("executed", "delete");
+    renderBackupDiff();
+    renderDetailExtras();
+  }
+
+  function renderSettings() {
+    shell(`
+      <div class="page-head">
+        <div><div class="page-kicker">Runtime Settings</div><h2>系统设置</h2><p>只读配置来自文件，可编辑配置保存到数据库。路径和危险动作默认保持保守。</p></div>
+        <button class="primary" data-toast="设置已保存">保存设置</button>
+      </div>
+      <div class="alert">只读配置：database、server；可编辑配置来源：数据库；启动配置文件：config.yaml。</div>
+      <article class="card"><div class="card-body" id="settings-body"></div></article>
+    `);
+    document.querySelector("#settings-body").innerHTML = configSections.map((section) => `<section class="setting-section ${section.readonly ? "readonly" : ""}"><div class="row"><h3>${section.title}</h3>${section.readonly ? tag("只读", "warn") : tag("可编辑", "ok")}</div>${section.desc ? `<div class="setting-desc">${section.desc}</div>` : ""}${section.layout === "scanArgs" ? renderScanArgSettings(section) : renderDefaultSettings(section)}</section>`).join("");
+  }
+
+  function barRow(label, percent, value) {
+    return `<div class="bar-row"><span>${label}</span><span class="bar-track"><span class="bar-fill" style="width:${percent}%"></span></span><b class="mono">${value}</b></div>`;
+  }
+  function renderActions(tab = "pending", type = "delete") {
+    const target = document.querySelector(`#detail-${tab}`);
+    if (!target) return;
+    const count = actionCounts[tab][type];
+    const buttons = Object.keys(actionLabels).map((key) => `<button class="${key === type ? "active" : ""}" data-action-tab="${tab}" data-action-type="${key}">${actionLabels[key]} (${actionCounts[tab][key]})</button>`).join("");
+    const bulk = tab === "pending" && (type === "delete" || type.includes("duplicate"))
+      ? `<div class="row" style="justify-content:flex-end"><button class="danger" data-confirm="批量执行" data-confirm-text="${type === "delete" ? "将立即执行当前任务下全部待删除文件和待删除空文件夹，是否继续？" : `将按当前建议批量执行 ${actionLabels[type]} 动作，是否继续？`}" data-confirm-message="批量动作已执行">${type === "delete" ? "全部执行删除类动作" : "按建议删除所有照片"}</button></div>` : "";
+    target.innerHTML = `<div class="subtabs">${buttons}</div>${type.includes("duplicate") ? '<div class="alert warn">重复项按 MD5 或 img_key 分组，保留建议需要人工核对后再执行。</div>' : ""}${bulk}<div class="table-wrap">${renderActionTable(tab, type)}</div><div class="muted">共 ${count} 条，当前展示样例数据。</div>`;
+  }
+  function renderActionTable(tab, type) {
+    if (type === "delete_duplicate" || type === "delete_path_duplicate") {
+      const rows = [["1-1", "IMG_8801.JPG", "/Photos/pic-new/2024/2024-01/2024-01-01", "大小：4.2 MB / MD5：匹配", "是"], ["1-2", "IMG_8801-copy.JPG", "/Photos/pic-new/2024/2024-01/新年聚餐", "大小：4.2 MB / MD5：匹配", "-"], ["2-1", "IMG_1240.JPG", "/Photos/pic-new/2023/2023-08/2023-08-19", "img_key：2023-08-19_IMG_1240", "是"]];
+      return `<table><thead><tr><th>组</th><th>照片</th><th>文件名</th><th>位置</th><th>关键字段</th><th>${tab === "pending" ? "建议删除" : "实际操作"}</th><th>操作</th></tr></thead><tbody>${rows.map((row, index) => `<tr><td>${row[0]}</td><td><div class="photo dup">照片</div></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4] === "是" ? tag("是", "danger") : "-"}</td><td>${tab === "pending" && row[4] === "是" ? '<button class="link" data-confirm="确认删除" data-confirm-text="将立即删除这张照片，是否继续？" data-confirm-message="重复项照片已删除">删除</button>' : tag(index === 0 ? "成功" : "-", index === 0 ? "ok" : "")}</td></tr>`).join("")}</tbody></table>`;
+    }
+    const rows = actionRows[type] || actionRows.delete;
+    const history = tab === "pending" ? "" : "<th>状态</th><th>执行时间</th><th>错误</th>";
+    const action = tab === "pending" ? "<th>操作</th>" : history;
+    const photoHead = (type === "delete" || type === "delete_empty_dir") ? "" : "<th>照片</th>";
+    const heads = { delete: "<th>文件名</th><th>位置</th><th>原因</th>", delete_empty_dir: "<th>文件夹</th><th>位置</th><th>原因</th>", move: "<th>文件名</th><th>当前位置</th><th>移动位置</th>", modify_time: "<th>文件名</th><th>目录日期</th><th>文件修改时间</th><th>最小日期</th>", rename: "<th>原文件名</th><th>新文件名</th><th>当前位置</th>" };
+    const body = rows.map((row, index) => {
+      const preview = (type === "delete" || type === "delete_empty_dir") ? "" : `<td><div class="photo ${index % 2 ? "alt" : ""}">照片</div></td>`;
+      const cells = row.map((cell) => `<td>${cell}</td>`).join("");
+      const op = tab === "pending" ? `<td><button class="link" data-confirm="确认变更" data-confirm-text="将立即执行当前 ${actionLabels[type]} 动作，是否继续？" data-confirm-message="${actionLabels[type]}动作已执行">${(type === "delete" || type === "delete_empty_dir") ? "删除" : "变更"}</button></td>` : `<td>${tag("成功", "ok")}</td><td>2026-05-23 08:44:${String(index + 10).padStart(2, "0")}</td><td>-</td>`;
+      return `<tr>${preview}${cells}${op}</tr>`;
+    }).join("");
+    return `<table><thead><tr>${photoHead}${heads[type] || heads.delete}${action}</tr></thead><tbody>${body}</tbody></table>`;
+  }
+  function renderBackupDiff() {
+    document.querySelector("#detail-backup-diff").innerHTML = `<div class="backup-diff-stats">${renderBackupDiffStat(backupDiff.newFiles, "")}${renderBackupDiffStat(backupDiff.deletedFiles, "warn")}</div><div class="artifact-note">点击“查看详情”可按年月日筛选完整文件清单。数据分别来自 ${backupDiff.newFiles.field} 与 ${backupDiff.deletedFiles.field}。</div>`;
+  }
+  function renderBackupDiffStat(group, tone) {
+    const key = group === backupDiff.newFiles ? "newFiles" : "deletedFiles";
+    return `<div class="backup-diff-stat ${tone}"><div class="row"><b>${group.label}</b>${tag(group.field, tone === "warn" ? "warn" : "ok")}</div><div class="value mono">${group.count}</div><div class="muted">${group.note}</div><div class="muted mono">${group.artifactPath}</div><div class="row" style="justify-content:flex-end"><button class="primary" data-backup-diff-detail="${key}">查看详情</button></div></div>`;
+  }
+  function renderDetailExtras() {
+    document.querySelector("#detail-events").innerHTML = `<ul class="timeline"><li><span class="muted mono">08:42:11</span><div><b>任务启动</b><br>扫描任务进入运行队列。</div></li><li><span class="muted mono">08:42:16</span><div><b>扫描主目录</b><br>已处理 43,912 个文件，发现 128 个删除候选。</div></li><li><span class="muted mono">08:42:24</span><div><b>处理重复项</b><br>发现重复项 118 条，文件路径重复项 48 条。</div></li><li><span class="muted mono">08:42:29</span><div><b>任务完成</b><br>结果和动作明细已写入数据库。</div></li></ul>`;
+    document.querySelector("#detail-logs").innerHTML = `<pre class="log-block">[2026-05-23 08:42:11] [信息] [启动中] scan job accepted
+[2026-05-23 08:42:16] [信息] [扫描主目录] processed=43912 folders=1482
+[2026-05-23 08:42:24] [信息] [处理重复项] duplicate=118 path_duplicate=48
+[2026-05-23 08:42:29] [信息] [已完成] artifact saved</pre>`;
+    document.querySelector("#detail-stats").innerHTML = `<div class="table-wrap"><table><thead><tr><th>英文 key</th><th>中文含义</th><th>值</th></tr></thead><tbody><tr><td>FileTotal</td><td>文件总数</td><td class="mono">43912</td></tr><tr><td>DirTotal</td><td>目录总数</td><td class="mono">1482</td></tr><tr><td>DumpFileCnt</td><td>重复文件数</td><td class="mono">118</td></tr><tr><td>PathDuplicateFileCnt</td><td>文件路径重复项数</td><td class="mono">48</td></tr><tr><td>RenameFileCnt</td><td>待重命名文件数</td><td class="mono">25</td></tr></tbody></table></div>`;
+    document.querySelector("#detail-raw").innerHTML = `<pre class="json-block">{
+  "startPath": "/Volumes/photo/pic-new",
+  "startPathBak": "/Volumes/photo-bak/pic-new",
+  "deleteShow": true,
+  "moveFileShow": true,
+  "modifyDateShow": false,
+  "renameFileShow": true,
+  "md5Show": true,
+  "deleteAction": false
+}</pre>`;
+  }
+  function normalizeSettingField(field) { if (field.length >= 4) return { key: field[0], label: field[1], value: field[2], kind: field[3] }; return { key: field[0], label: field[0], value: field[1], kind: typeof field[1] === "boolean" ? "boolean" : "text" }; }
+  function renderSettingControl(field, readonly = false) {
+    if (field.kind === "show" || field.kind === "action" || field.kind === "boolean" || typeof field.value === "boolean") return `<select ${readonly ? "disabled" : ""}><option>${field.value ? "启用" : "停用"}</option><option>${field.value ? "停用" : "启用"}</option></select>`;
+    if (field.kind === "path") return `<span class="path-input"><input ${readonly ? "readonly" : ""} value="${field.value}"><button type="button" ${readonly ? "disabled" : ""} data-toast="已打开系统目录选择窗口">选择目录</button></span>`;
+    return `<input ${readonly ? "readonly" : ""} value="${field.value}">`;
+  }
+  function renderDefaultSettings(section) {
+    return `<div class="form-grid two" style="margin-top:12px">${section.fields.map((rawField) => { const field = normalizeSettingField(rawField); return `<label>${field.label} (${field.key})${renderSettingControl(field, section.readonly)}</label>`; }).join("")}</div>`;
+  }
+  function renderScanArgSettings(section) {
+    return ["path", "show", "action"].map((group) => {
+      const fields = section.fields.map(normalizeSettingField).filter((field) => field.kind === group);
+      return `<div class="setting-scan-row ${group}">${fields.map((field) => `<label>${field.label} (${field.key})${renderSettingControl(field, section.readonly)}</label>`).join("")}</div>`;
+    }).join("");
+  }
+
+  function drawerScan() {
+    drawerTitle.textContent = "新建扫描";
+    drawerBody.innerHTML = `<div class="stack"><label>扫描目录<input value="/Volumes/photo/pic-new"></label><label>备份目录<input value="/Volumes/photo-bak/pic-new"></label><div class="alert">默认只生成候选动作，不自动执行删除、移动、改名。</div><h3>展示动作</h3><div class="check-grid">${["显示待删除", "显示待移动", "显示改时间", "显示重命名", "计算重复文件"].map((item) => `<label class="check"><input type="checkbox" checked>${item}</label>`).join("")}</div><h3>实际执行</h3><div class="check-grid">${["删除文件", "移动文件", "修改时间", "重命名文件"].map((item) => `<label class="check"><input type="checkbox">${item}</label>`).join("")}</div></div>`;
+  }
+  function drawerSchedule() {
+    drawerTitle.textContent = "新建 / 编辑计划";
+    drawerBody.innerHTML = `<div class="stack"><label>名称<input value="每日凌晨扫描"></label><label class="check"><input type="checkbox" checked>启用</label><label>模式<select id="schedule-mode"><option value="hourly">每小时</option><option value="daily" selected>每天</option><option value="weekly">每周</option><option value="monthly">每月</option><option value="custom">高级 Cron</option></select></label><div class="form-grid two"><label>小时<input id="schedule-hour" value="2"></label><label>分钟<input id="schedule-minute" value="30"></label></div><label>高级 Cron<input id="schedule-cron" value="30 2 * * *"></label><div class="alert">Cron 预览：<b id="cron-preview" class="mono">30 2 * * *</b></div><h3>扫描参数</h3><label>扫描目录<input value="/Volumes/photo/pic-new"></label><label>备份目录<input value="/Volumes/photo-bak/pic-new"></label></div>`;
+    const mode = document.querySelector("#schedule-mode"), hour = document.querySelector("#schedule-hour"), minute = document.querySelector("#schedule-minute"), cron = document.querySelector("#schedule-cron"), preview = document.querySelector("#cron-preview");
+    const update = () => { preview.textContent = mode.value === "custom" ? cron.value : `${minute.value || 0} ${hour.value || "*"} ${mode.value === "monthly" ? "1" : "*"} * ${mode.value === "weekly" ? "1" : "*"}`; };
+    [mode, hour, minute, cron].forEach((item) => item.addEventListener("input", update));
+    update();
+  }
+  function openDrawerWithContent(title, html) {
+    drawerTitle.textContent = title;
+    drawerBody.innerHTML = html;
+    drawer.classList.add("open");
+    drawerBackdrop.classList.add("open");
+    drawer.setAttribute("aria-hidden", "false");
+  }
+  function drawerCacheDetail(imgKey) {
+    const row = cacheRows.find((item) => item.imgKey === imgKey) || cacheRows[2];
+    const key = splitImgKey(row.imgKey);
+    openDrawerWithContent("文件明细", `<div class="stack"><div class="cache-preview"><div class="photo dup">文件</div><div><h3>${key.fileName}</h3><div class="muted mono">${row.imgKey}</div><div class="muted">${row.shootDate || "缺失拍摄时间"} / ${row.locAddr || "缺失地理信息"}</div></div></div><div class="alert">数据来源：img_database。该原型仅展示缓存字段，不读取真实接口。</div><div class="details"><div class="detail"><span>目录日期</span><b>${key.dirDate}</b></div><div class="detail"><span>shoot_date</span><b>${row.shootDate || "缺失"}</b></div><div class="detail"><span>loc_num</span><b>${row.locNum || "缺失"}</b></div><div class="detail"><span>更新时间</span><b>${row.updatedAt}</b></div></div><article class="card"><div class="card-head"><h3>地理信息</h3></div><div class="card-body stack"><div><b>loc_street</b><br><span class="muted">${row.locStreet || "缺失"}</span></div><div><b>loc_addr</b><br><span class="muted">${row.locAddr || "缺失"}</span></div></div></article><article class="card"><div class="card-head"><h3>备注 / EXIF 输出</h3></div><div class="card-body"><pre class="json-block light">${row.remark}</pre></div></article></div>`);
+  }
+  function drawerStatMore(type) {
+    const isYear = type === "year";
+    const rows = isYear ? yearStats : suffixStats;
+    openDrawerWithContent(isYear ? "全部年份统计" : "全部文件后缀统计", `<div class="stack"><div class="alert">${isYear ? "展示所有年份的文件数量，用于横向对比年份分布。" : "展示所有文件后缀的数量和占比，用于判断缓存文件类型构成。"}</div><div class="bar-list">${rows.map((row) => barRow(row[0], row[1], row[2])).join("")}</div></div>`);
+  }
+  function getBackupDiffItemDate(item) { const date = String(item.key || "").split("|")[0]; return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : ""; }
+  function buildBackupDiffDateTree(items) {
+    const yearMap = new Map();
+    items.forEach((item) => {
+      const date = getBackupDiffItemDate(item); if (!date) return;
+      const [year, month, day] = date.split("-");
+      if (!yearMap.has(year)) yearMap.set(year, { key: year, label: year, count: 0, months: new Map() });
+      const yearNode = yearMap.get(year); const monthKey = `${year}-${month}`;
+      if (!yearNode.months.has(monthKey)) yearNode.months.set(monthKey, { key: monthKey, label: `${month}月`, count: 0, days: new Map() });
+      const monthNode = yearNode.months.get(monthKey); const dayKey = `${year}-${month}-${day}`;
+      if (!monthNode.days.has(dayKey)) monthNode.days.set(dayKey, { key: dayKey, label: `${day}日`, count: 0 });
+      yearNode.count += 1; monthNode.count += 1; monthNode.days.get(dayKey).count += 1;
+    });
+    return Array.from(yearMap.values()).sort((a, b) => a.key.localeCompare(b.key)).map((year) => ({ ...year, months: Array.from(year.months.values()).sort((a, b) => a.key.localeCompare(b.key)).map((month) => ({ ...month, days: Array.from(month.days.values()).sort((a, b) => a.key.localeCompare(b.key)) })) }));
+  }
+  function filterBackupDiffItems(items, selected) { if (!selected || selected.type === "all") return items; return items.filter((item) => getBackupDiffItemDate(item).startsWith(selected.value)); }
+  function renderDateFilterRow({ level, type, value, label, count, active, expanded, expandable }) {
+    return `<button class="date-filter-row level-${level} ${active ? "active" : ""}" data-date-filter-type="${type}" data-date-filter-value="${value}"><span>${expandable ? (expanded ? "v" : ">") : ""}</span><span class="date-filter-label">${label}</span><span class="date-filter-count">${count}</span></button>`;
+  }
+  function renderBackupDiffDateFilter(group, tree, state) {
+    const rows = [renderDateFilterRow({ level: "all", type: "all", value: "all", label: "全部", count: group.items.length, active: state.selected.type === "all" })];
+    tree.forEach((year) => {
+      const yearExpanded = state.expandedYears.has(year.key);
+      rows.push(renderDateFilterRow({ level: "year", type: "year", value: year.key, label: `${year.label}年`, count: year.count, active: state.selected.type === "year" && state.selected.value === year.key, expanded: yearExpanded, expandable: year.months.length > 0 }));
+      if (!yearExpanded) return;
+      year.months.forEach((month) => {
+        const monthExpanded = state.expandedMonths.has(month.key);
+        rows.push(renderDateFilterRow({ level: "month", type: "month", value: month.key, label: month.label, count: month.count, active: state.selected.type === "month" && state.selected.value === month.key, expanded: monthExpanded, expandable: month.days.length > 0 }));
+        if (!monthExpanded) return;
+        month.days.forEach((day) => rows.push(renderDateFilterRow({ level: "day", type: "day", value: day.key, label: day.label, count: day.count, active: state.selected.type === "day" && state.selected.value === day.key })));
       });
+    });
+    return `<nav class="backup-diff-date-filter" aria-label="按年月日筛选"><div class="backup-diff-date-filter-title">按日期筛选</div>${rows.join("")}</nav>`;
+  }
+  function renderBackupDiffDetailTable(group, tone, items = group.items) {
+    return `<div class="table-wrap"><table><thead><tr><th>文件名 / key</th><th>目录或完整路径</th><th>差异说明</th></tr></thead><tbody>${items.map((item) => `<tr><td><b>${item.fileName}</b><br><span class="muted mono">${item.key}</span></td><td>${item.path}</td><td>${tag(item.reason, tone === "warn" ? "warn" : "ok")}</td></tr>`).join("") || `<tr><td colspan="3"><span class="muted">当前筛选下暂无文件。</span></td></tr>`}</tbody></table></div>`;
+  }
+  function drawerBackupDiffDetail(type) {
+    const isDeleted = type === "deletedFiles";
+    const group = isDeleted ? backupDiff.deletedFiles : backupDiff.newFiles;
+    const dateTree = buildBackupDiffDateTree(group.items);
+    const state = { selected: { type: "all", value: "all" }, expandedYears: new Set(dateTree[0] ? [dateTree[0].key] : []), expandedMonths: new Set(dateTree[0]?.months[0] ? [dateTree[0].months[0].key] : []) };
+    const renderFilteredDetail = () => {
+      const host = drawerBody.querySelector("[data-backup-diff-detail-layout]");
+      if (!host) return;
+      host.innerHTML = `${renderBackupDiffDateFilter(group, dateTree, state)}${renderBackupDiffDetailTable(group, isDeleted ? "warn" : "", filterBackupDiffItems(group.items, state.selected))}`;
+    };
+    openDrawerWithContent(`${group.label}详情`, `<div class="stack"><div class="alert">${group.note}</div><div class="backup-diff-stat ${isDeleted ? "warn" : ""}"><div class="row"><b>${group.label}</b>${tag(group.field, isDeleted ? "warn" : "ok")}</div><div class="value mono">${group.count}</div><div class="muted mono">${group.artifactPath}</div></div><div class="backup-diff-detail-layout" data-backup-diff-detail-layout></div></div>`);
+    renderFilteredDetail();
+    drawerBody.querySelector("[data-backup-diff-detail-layout]").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-date-filter-type]");
+      if (!button) return;
+      const filterType = button.dataset.dateFilterType;
+      const value = button.dataset.dateFilterValue;
+      state.selected = { type: filterType, value };
+      if (filterType === "year") state.expandedYears.has(value) ? state.expandedYears.delete(value) : state.expandedYears.add(value);
+      if (filterType === "month") state.expandedMonths.has(value) ? state.expandedMonths.delete(value) : state.expandedMonths.add(value);
+      renderFilteredDetail();
+    });
+  }
+  function openDrawer(type) {
+    type === "schedule" ? drawerSchedule() : drawerScan();
+    drawer.classList.add("open");
+    drawerBackdrop.classList.add("open");
+    drawer.setAttribute("aria-hidden", "false");
+  }
+  function closeDrawer() { drawer?.classList.remove("open"); drawerBackdrop?.classList.remove("open"); drawer?.setAttribute("aria-hidden", "true"); }
+  function openConfirm(title, text, message) {
+    confirmMessage = message || "操作已完成";
+    modalTitle.textContent = title || "确认操作";
+    modalText.textContent = text || "是否继续？";
+    modal.classList.add("open");
+    modalBackdrop.classList.add("open");
+  }
+  function closeConfirm() { modal?.classList.remove("open"); modalBackdrop?.classList.remove("open"); }
+  function gotoPage(page) {
+    if (page === "login") {
+      window.history.pushState("", document.title, window.location.pathname + window.location.search);
+      renderAppFromHash();
+      return;
+    }
+    if (page === "job-detail" || pages[page]) {
+      const nextHash = `#${page}`;
+      if (window.location.hash === nextHash) renderAppFromHash();
+      else window.location.hash = page;
+    }
+  }
+  function bindEvents() {
+    document.addEventListener("click", (event) => {
+      const target = event.target.closest("button");
+      if (!target) return;
+      if (target.dataset.logout !== undefined) { gotoPage("login"); return; }
+      if (target.dataset.goto) gotoPage(target.dataset.goto);
+      if (target.dataset.toggleMenu !== undefined) sider.classList.toggle("open");
+      if (target.dataset.toast) showToast(target.dataset.toast);
+      if (target.dataset.openDrawer) openDrawer(target.dataset.openDrawer);
+      if (target.dataset.cacheDetail) drawerCacheDetail(target.dataset.cacheDetail);
+      if (target.dataset.statMore) drawerStatMore(target.dataset.statMore);
+      if (target.dataset.backupDiffDetail) drawerBackupDiffDetail(target.dataset.backupDiffDetail);
+      if (target.dataset.closeDrawer !== undefined) closeDrawer();
+      if (target.dataset.saveDrawer !== undefined) { closeDrawer(); showToast(drawerTitle.textContent.includes("扫描") ? "扫描任务已创建" : "计划已保存"); }
+      if (target.dataset.closeModal !== undefined) closeConfirm();
+      if (target.dataset.confirmModal !== undefined) { closeConfirm(); showToast(confirmMessage); }
+      if (target.dataset.confirm) openConfirm(target.dataset.confirm, target.dataset.confirmText, target.dataset.confirmMessage);
+      if (target.dataset.queryJobs !== undefined) paintJobs();
+      if (target.dataset.tab) {
+        const tab = target.dataset.tab;
+        document.querySelectorAll('[data-tabs="detail"] button').forEach((item) => item.classList.toggle("active", item.dataset.tab === tab));
+        document.querySelectorAll(".detail-panel").forEach((item) => { item.hidden = item.id !== `detail-${tab}`; });
+      }
+      if (target.dataset.actionType) renderActions(target.dataset.actionTab, target.dataset.actionType);
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeDrawer();
+        closeConfirm();
+        sider?.classList.remove("open");
+      }
+    });
+  }
 
-      button.addEventListener('click', enterDashboard);
-      user.addEventListener('input', clearError);
-      pass.addEventListener('input', clearError);
-    })();
+  function initLogin() {
+    const button = document.getElementById("login-button");
+    const form = document.getElementById("login-form");
+    const enterDashboard = () => { gotoPage("dashboard"); };
+    form?.addEventListener("submit", (event) => { event.preventDefault(); enterDashboard(); });
+    button?.addEventListener("click", enterDashboard);
+  }
+
+  const renderers = { dashboard: renderDashboard, jobs: renderJobs, "job-detail": renderJobDetail, "cache-analysis": renderCacheAnalysis, schedules: renderSchedules, settings: renderSettings };
+  let eventsBound = false;
+
+  function pageFromHash() {
+    const page = decodeURIComponent(window.location.hash.replace(/^#/, "")).trim();
+    return renderers[page] ? page : "";
+  }
+
+  function renderLogin() {
+    currentPage = "";
+    document.title = "img-process 管理台登录";
+    document.body.className = "login-page";
+    document.body.removeAttribute("data-page");
+    document.body.innerHTML = `  <main class="login-shell" data-od-id="path-0">
+    <section class="form-panel" aria-label="登录">
+      <div class="login-stack">
+        <form class="login-card" id="login-form">
+          <div class="card-head">
+            <div class="brand-lockup" aria-label="img-process">
+              <div class="login-logo">IP</div>
+              <div class="brand-text">
+                <strong>img-process</strong>
+                <span>图片治理与扫描任务管理</span>
+              </div>
+            </div>
+          </div>
+          <div class="login-form">
+            <label for="username">
+              用户名
+              <input id="username" name="username" autocomplete="username" placeholder="请输入用户名">
+            </label>
+            <label for="password">
+              密码
+              <input id="password" name="password" type="password" autocomplete="current-password" placeholder="请输入密码">
+            </label>
+            <div class="row">
+              <label class="remember" for="remember">
+                <input id="remember" type="checkbox" checked>
+                记住登录状态
+              </label>
+            </div>
+            <div class="error" id="error" role="alert">请输入用户名和密码后继续。</div>
+            <button class="primary" id="login-button" type="button">登录工作台</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>`;
+    initLogin();
+  }
+
+  function renderAppFromHash() {
+    const nextPage = pageFromHash();
+    if (!nextPage) {
+      renderLogin();
+      return;
+    }
+    currentPage = nextPage;
+    document.title = (pages[currentPage]?.title || (currentPage === "job-detail" ? "扫描详情" : "业务系统")) + " - img-process";
+    document.body.className = "";
+    document.body.dataset.page = currentPage;
+    document.body.innerHTML = "";
+    renderers[currentPage]();
+    if (!eventsBound) {
+      bindEvents();
+      eventsBound = true;
+    }
+  }
+
+  window.addEventListener("hashchange", renderAppFromHash);
+  renderAppFromHash();
+})();
+
   </script>
-
-
-</body></html>
+</body>
+</html>
