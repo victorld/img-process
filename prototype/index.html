@@ -1,2130 +1,310 @@
 <!doctype html>
-<html lang="zh-CN">
-<head>
+<html lang="zh-CN"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>img-process 原型系统</title>
+  <title>img-process 管理台登录</title>
   <style>
     :root {
-      --bg: #f5f7f6;
-      --panel: #ffffff;
-      --panel-soft: #f8faf9;
-      --line: #dce4df;
-      --line-strong: #c4d2cb;
-      --text: #1f2a33;
-      --muted: #68776f;
-      --brand: #2f7d62;
-      --brand-strong: #24624d;
-      --brand-soft: #e6f3ed;
-      --danger: #c43e3e;
-      --danger-soft: #fdeaea;
-      --warn: #a06a1b;
-      --warn-soft: #fff4df;
-      --ok: #2c7a4b;
-      --ok-soft: #e8f5ee;
-      --shadow: 0 16px 40px rgba(31, 42, 51, 0.08);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-      color: var(--text);
-      background: var(--bg);
+      --bg: oklch(97.5% 0.008 245);
+      --surface: oklch(100% 0 0);
+      --surface-soft: oklch(98.2% 0.006 245);
+      --fg: oklch(20% 0.025 250);
+      --muted: oklch(52% 0.02 250);
+      --border: oklch(89% 0.01 250);
+      --accent: oklch(56% 0.13 158);
+      --accent-strong: oklch(43% 0.12 158);
+      --accent-soft: oklch(94% 0.035 158);
+      --danger: oklch(58% 0.16 28);
+      --nav: oklch(21% 0.035 250);
+      --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --font-mono: "SFMono-Regular", ui-monospace, Menlo, monospace;
     }
 
-    * {
-      box-sizing: border-box;
-    }
-
-    [hidden] {
-      display: none !important;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
       min-width: 320px;
-      background: linear-gradient(180deg, #eef5f1 0%, #f8faf7 100%);
+      min-height: 100vh;
+      color: var(--fg);
+      font: 14px/1.55 var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      background:
+        linear-gradient(135deg, color-mix(in oklch, var(--bg), white 70%) 0%, var(--bg) 52%, oklch(95% 0.014 235) 100%),
+        radial-gradient(circle at 30% 18%, color-mix(in oklch, var(--accent-soft), transparent 4%), transparent 31%),
+        radial-gradient(circle at 76% 72%, color-mix(in oklch, oklch(92% 0.035 230), transparent 16%), transparent 34%),
+        var(--bg);
     }
 
-    button,
-    input,
-    select {
-      font: inherit;
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(color-mix(in oklch, var(--border), transparent 54%) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in oklch, var(--border), transparent 54%) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: radial-gradient(circle at center, black, transparent 72%);
+      opacity: 0.36;
     }
 
-    button {
-      border: 1px solid var(--line-strong);
-      border-radius: 6px;
-      padding: 7px 12px;
-      background: #fff;
-      color: var(--text);
-      cursor: pointer;
-      transition: 0.16s ease;
-      min-height: 34px;
-    }
-
-    button:hover {
-      border-color: var(--brand);
-      color: var(--brand-strong);
-    }
-
-    button.primary {
-      border-color: var(--brand);
-      background: var(--brand);
-      color: #fff;
-    }
-
-    button.primary:hover {
-      background: var(--brand-strong);
-      color: #fff;
-    }
-
-    button.danger {
-      border-color: #e4aaaa;
-      color: var(--danger);
-      background: #fff;
-    }
-
-    button.link {
-      border: 0;
-      background: transparent;
-      padding: 4px 0;
-      color: var(--brand-strong);
-      min-height: auto;
-    }
-
-    button:disabled {
-      cursor: not-allowed;
-      color: #a1aaa5;
-      border-color: var(--line);
-      background: #f4f6f5;
-    }
-
-    input,
-    select {
-      width: 100%;
-      border: 1px solid var(--line-strong);
-      border-radius: 6px;
-      padding: 8px 10px;
-      background: #fff;
-      color: var(--text);
-      min-height: 36px;
-    }
-
-    label {
-      display: grid;
-      gap: 6px;
-      color: var(--muted);
-      font-size: 13px;
-    }
+    button, input { font: inherit; }
 
     .login-shell {
       min-height: 100vh;
       display: grid;
       place-items: center;
-      padding: 24px;
+      padding: clamp(22px, 4vw, 44px);
     }
 
-    .login-card {
-      width: min(420px, 100%);
-      padding: 30px;
-      background: rgba(255, 255, 255, 0.9);
-      border: 1px solid rgba(220, 228, 223, 0.9);
+    .form-panel {
+      width: min(488px, 100%);
+      display: grid;
+      justify-items: center;
+      gap: 22px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .login-stack {
+      width: 100%;
+      display: grid;
+      justify-items: center;
+      gap: 22px;
+    }
+
+    .brand-lockup {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--fg);
+      width: 100%;
+    }
+
+    .login-logo {
+      flex: 0 0 auto;
+      width: 46px;
+      height: 46px;
       border-radius: 8px;
-      box-shadow: var(--shadow);
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--accent), oklch(59% 0.13 230));
+      color: white;
+      font: 850 14px/1 var(--font-mono);
+      box-shadow: 0 12px 28px rgba(30, 115, 91, 0.18);
     }
 
-    .login-card h1 {
-      margin: 0 0 8px;
-      font-size: 26px;
+    .brand-text {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .brand-text strong {
+      font: 850 20px/1.1 var(--font-display);
       letter-spacing: 0;
     }
 
-    .login-card p {
-      margin: 0 0 24px;
+    .brand-text span {
       color: var(--muted);
-      line-height: 1.6;
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1.35;
     }
 
-    .app {
-      min-height: 100vh;
+    .login-card {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: color-mix(in oklch, var(--surface), transparent 2%);
+      box-shadow: 0 24px 70px rgba(20, 30, 45, 0.12);
+      overflow: hidden;
+    }
+
+    .card-head {
       display: grid;
-      grid-template-columns: 220px minmax(0, 1fr);
-    }
-
-    .sider {
-      background: rgba(255, 255, 255, 0.88);
-      border-right: 1px solid var(--line);
-      position: sticky;
-      top: 0;
-      height: 100vh;
-      padding: 18px 12px;
-    }
-
-    .brand {
-      padding: 4px 12px 18px;
-      font-size: 20px;
-      font-weight: 700;
-    }
-
-    .nav {
-      display: grid;
-      gap: 6px;
-    }
-
-    .nav button,
-    .nav a {
-      display: block;
+      justify-items: start;
       text-align: left;
-      border: 0;
-      background: transparent;
+      padding: 30px 34px 24px;
+      border-bottom: 1px solid var(--border);
+      background:
+        linear-gradient(180deg, color-mix(in oklch, white, var(--accent-soft) 12%), var(--surface-soft)),
+        linear-gradient(90deg, var(--accent), oklch(58% 0.13 225));
+      background-size: 100% 100%, 100% 4px;
+      background-repeat: no-repeat;
+      background-position: 0 0, 0 0;
+    }
+
+    .card-head h2 {
+      margin: 0;
+      font: 850 25px/1.15 var(--font-display);
+      letter-spacing: 0;
+    }
+
+    .card-head p {
+      margin: 10px auto 0;
+      color: var(--muted);
+      max-width: 25em;
+    }
+
+    .login-form {
+      display: grid;
+      gap: 17px;
+      padding: 30px 34px 34px;
+    }
+
+    label {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    input {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
       padding: 10px 12px;
-      color: var(--text);
-      border-radius: 6px;
-      text-decoration: none;
-      font: inherit;
+      background: white;
+      color: var(--fg);
+      outline: 0;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
 
-    .nav button.active,
-    .nav a.active {
-      color: var(--brand-strong);
-      background: var(--brand-soft);
-      font-weight: 700;
-    }
-
-    .main {
-      min-width: 0;
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
-    }
-
-    .header {
-      height: 64px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 0 24px;
-      background: rgba(255, 255, 255, 0.82);
-      border-bottom: 1px solid var(--line);
-      position: sticky;
-      top: 0;
-      z-index: 5;
-    }
-
-    .content {
-      padding: 24px;
-      min-width: 0;
-    }
-
-    .content > .page {
-      display: none;
-    }
-
-    .content > .page.active {
-      display: grid;
-    }
-
-    .stack {
-      display: grid;
-      gap: 16px;
+    input:focus {
+      border-color: color-mix(in oklch, var(--accent), white 18%);
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent-soft), transparent 20%);
     }
 
     .row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    h2 {
-      margin: 0;
-      font-size: 24px;
-      letter-spacing: 0;
-    }
-
-    h3 {
-      margin: 0;
-      font-size: 16px;
-      letter-spacing: 0;
-    }
-
-    .muted {
-      color: var(--muted);
-    }
-
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      box-shadow: 0 8px 22px rgba(31, 42, 51, 0.04);
-      min-width: 0;
-    }
-
-    .card-head {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--line);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .card-body {
-      padding: 16px;
-      min-width: 0;
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .stat {
-      padding: 16px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-    }
-
-    .stat .label {
-      color: var(--muted);
-      font-size: 13px;
-      margin-bottom: 8px;
-    }
-
-    .stat .value {
-      font-size: 28px;
-      font-weight: 700;
-    }
-
-    .grid-two {
-      display: grid;
-      grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.7fr);
-      gap: 16px;
-    }
-
-    .analysis-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .bar-list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .bar-row {
-      display: grid;
-      grid-template-columns: 72px minmax(0, 1fr) 92px;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-    }
-
-    .bar-track {
-      height: 10px;
-      border-radius: 999px;
-      background: #e6eeea;
-      overflow: hidden;
-    }
-
-    .bar-fill {
-      display: block;
-      height: 100%;
-      border-radius: inherit;
-      background: var(--brand);
-    }
-
-    .metric-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .metric-item {
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--panel-soft);
-    }
-
-    tr.clickable-row {
-      cursor: pointer;
-    }
-
-    tr.clickable-row:hover td {
-      background: #eef7f2;
-    }
-
-    .filters,
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .form-grid.two {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .check-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px 14px;
-    }
-
-    .check {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text);
-      font-size: 14px;
-    }
-
-    .check input {
-      width: auto;
-      min-height: auto;
-    }
-
-    .table-wrap {
-      width: 100%;
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 780px;
-      font-size: 14px;
-    }
-
-    th,
-    td {
-      padding: 11px 12px;
-      border-bottom: 1px solid var(--line);
-      text-align: left;
-      vertical-align: top;
-      word-break: break-word;
-      overflow-wrap: anywhere;
-    }
-
-    th {
-      color: #4d5f56;
-      font-weight: 700;
-      background: var(--panel-soft);
-      white-space: nowrap;
-    }
-
-    tr:last-child td {
-      border-bottom: 0;
-    }
-
-    .tag {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 24px;
-      padding: 2px 8px;
-      border-radius: 6px;
-      border: 1px solid var(--line-strong);
-      background: #fff;
-      color: #52645b;
-      font-size: 12px;
-      white-space: nowrap;
-    }
-
-    .tag.ok {
-      color: var(--ok);
-      background: var(--ok-soft);
-      border-color: #b7dec6;
-    }
-
-    .tag.warn {
-      color: var(--warn);
-      background: var(--warn-soft);
-      border-color: #eed3a2;
-    }
-
-    .tag.danger {
-      color: var(--danger);
-      background: var(--danger-soft);
-      border-color: #efbbbb;
-    }
-
-    .tabs {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      border-bottom: 1px solid var(--line);
-      padding: 0 16px;
-    }
-
-    .tabs button {
-      border: 0;
-      border-bottom: 2px solid transparent;
-      border-radius: 0;
-      background: transparent;
-      padding: 12px 4px 10px;
-      color: var(--muted);
-    }
-
-    .tabs button.active {
-      color: var(--brand-strong);
-      border-bottom-color: var(--brand);
-      font-weight: 700;
-    }
-
-    .subtabs {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .subtabs button.active {
-      border-color: var(--brand);
-      background: var(--brand-soft);
-      color: var(--brand-strong);
-      font-weight: 700;
-    }
-
-    .details {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px 18px;
-    }
-
-    .detail {
-      min-width: 0;
-    }
-
-    .detail span {
-      display: block;
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 4px;
-    }
-
-    .alert {
-      border: 1px solid #b9d8ca;
-      background: #edf8f2;
-      color: #275744;
-      padding: 12px 14px;
-      border-radius: 8px;
-      line-height: 1.6;
-    }
-
-    .timeline {
-      display: grid;
-      gap: 12px;
-      padding: 0;
-      margin: 0;
-      list-style: none;
-    }
-
-    .timeline li {
-      display: grid;
-      grid-template-columns: 120px minmax(0, 1fr);
-      gap: 12px;
-      align-items: start;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .log-block,
-    .json-block {
-      margin: 0;
-      padding: 14px;
-      max-height: 460px;
-      overflow: auto;
-      border-radius: 8px;
-      background: #f1f5f3;
-      color: #2f3b35;
-      line-height: 1.7;
-      font-size: 12px;
-      white-space: pre-wrap;
-    }
-
-    .backup-diff-stats {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .backup-diff-stat {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 14px;
-      background: #fbfdfb;
-      display: grid;
-      grid-template-rows: auto auto auto auto 1fr auto;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    .backup-diff-stat.warn {
-      background: #fffaf0;
-      border-color: #edd7a4;
-    }
-
-    .backup-diff-stat .value {
-      font-size: 28px;
-      font-weight: 800;
-      color: var(--ink);
-      line-height: 1.1;
-    }
-
-    .artifact-note {
-      display: block;
-      padding: 10px 12px;
-      border-radius: 8px;
-      background: #f1f5f3;
-      color: #3c4c44;
-      word-break: break-word;
-      overflow-wrap: anywhere;
-    }
-
-    .backup-diff-detail-table td {
-      vertical-align: top;
-      word-break: break-word;
-      overflow-wrap: anywhere;
-    }
-
-    .backup-diff-detail-table .tag {
-      white-space: normal;
-      line-height: 1.4;
-    }
-
-    .backup-diff-detail-layout {
-      display: grid;
-      grid-template-columns: 220px minmax(0, 1fr);
       gap: 14px;
-      align-items: start;
     }
 
-    .backup-diff-date-filter {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fbfdfb;
-      padding: 10px;
-      display: grid;
-      gap: 4px;
-      min-width: 0;
-    }
-
-    .backup-diff-date-filter-title {
-      padding: 0 2px 6px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .date-filter-row {
-      width: 100%;
-      min-height: 32px;
-      border: 0;
-      border-radius: 6px;
-      background: transparent;
-      color: var(--ink);
-      display: grid;
-      grid-template-columns: 20px minmax(0, 1fr) auto;
-      gap: 6px;
-      align-items: center;
-      padding: 6px 8px;
-      text-align: left;
-      cursor: pointer;
-    }
-
-    .date-filter-row.level-month {
-      padding-left: 22px;
-    }
-
-    .date-filter-row.level-day {
-      padding-left: 40px;
-    }
-
-    .date-filter-row:hover,
-    .date-filter-row.active {
-      background: #e8f3ed;
-    }
-
-    .date-filter-row.active {
-      color: var(--brand-strong);
-      font-weight: 700;
-    }
-
-    .date-filter-toggle {
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1;
-    }
-
-    .date-filter-label {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .date-filter-count {
-      min-width: 28px;
-      border-radius: 999px;
-      padding: 2px 7px;
-      background: #eef4f1;
-      color: var(--muted);
-      font-size: 12px;
-      text-align: center;
-    }
-
-    .photo {
-      width: 72px;
-      height: 72px;
-      border-radius: 6px;
-      overflow: hidden;
-      border: 1px solid #d3ddd8;
-      display: grid;
-      place-items: end start;
-      padding: 6px;
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-      background:
-        linear-gradient(135deg, rgba(24, 49, 65, 0.1), rgba(24, 49, 65, 0.3)),
-        linear-gradient(160deg, #7bb898 0%, #e5b86f 52%, #6582a4 100%);
-    }
-
-    .photo.alt {
-      background:
-        linear-gradient(135deg, rgba(24, 49, 65, 0.12), rgba(24, 49, 65, 0.28)),
-        linear-gradient(160deg, #79a7c5 0%, #d7cc80 48%, #7ba06d 100%);
-    }
-
-    .photo.dup {
-      background:
-        linear-gradient(135deg, rgba(24, 49, 65, 0.12), rgba(24, 49, 65, 0.3)),
-        linear-gradient(160deg, #ba7a69 0%, #d8c172 46%, #4f8d8b 100%);
-    }
-
-    .drawer-backdrop,
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(23, 34, 42, 0.28);
-      display: none;
-      z-index: 20;
-    }
-
-    .drawer-backdrop.open,
-    .modal-backdrop.open {
-      display: block;
-    }
-
-    .drawer {
-      position: fixed;
-      top: 0;
-      right: 0;
-      height: 100vh;
-      width: min(560px, 100%);
-      background: #fff;
-      box-shadow: -18px 0 42px rgba(31, 42, 51, 0.16);
-      transform: translateX(100%);
-      transition: 0.2s ease;
-      z-index: 21;
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
-    }
-
-    .drawer.open {
-      transform: translateX(0);
-    }
-
-    .drawer-head {
-      padding: 16px 18px;
+    .remember {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .drawer-body {
-      overflow: auto;
-      padding: 18px;
-    }
-
-    .modal {
-      width: min(420px, calc(100% - 32px));
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: var(--shadow);
-      padding: 18px;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      display: none;
-      z-index: 31;
-    }
-
-    .modal.open {
-      display: block;
-    }
-
-    .toast {
-      position: fixed;
-      top: 18px;
-      right: 18px;
-      padding: 10px 14px;
-      border-radius: 8px;
-      color: #fff;
-      background: var(--brand-strong);
-      box-shadow: var(--shadow);
-      opacity: 0;
-      transform: translateY(-10px);
-      pointer-events: none;
-      transition: 0.2s ease;
-      z-index: 40;
-    }
-
-    .toast.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .section-title {
-      margin: 18px 0 10px;
-      font-weight: 700;
-    }
-
-    .setting-section + .setting-section {
-      margin-top: 16px;
-    }
-
-    .setting-desc {
-      margin-top: 4px;
+      gap: 8px;
       color: var(--muted);
       font-size: 13px;
+      font-weight: 600;
     }
 
-    .setting-scan-row {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(160px, 1fr));
-      gap: 12px 18px;
-      margin-top: 12px;
-      justify-items: start;
+    .remember input {
+      width: 16px;
+      height: 16px;
+      min-height: 16px;
+      accent-color: var(--accent-strong);
     }
 
-    .setting-scan-row.path {
-      grid-template-columns: minmax(280px, 760px);
-    }
-
-    .path-input {
-      display: flex;
-      gap: 8px;
-    }
-
-    .path-input input {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .switch-control {
-      width: 58px;
-      min-height: 24px;
+    .primary {
+      min-height: 46px;
       border: 0;
-      border-radius: 999px;
-      padding: 2px;
-      background: #d5ded9;
-      display: inline-flex;
-      align-items: center;
-      justify-content: flex-start;
-      color: #fff;
-      font-size: 12px;
+      border-radius: 7px;
+      color: white;
+      background: var(--accent-strong);
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s, background 0.15s;
     }
 
-    .switch-control.on {
-      justify-content: flex-end;
-      background: var(--brand);
+    .primary:hover {
+      transform: translateY(-1px);
+      background: color-mix(in oklch, var(--accent-strong), black 8%);
     }
 
-    .switch-control span {
-      min-width: 28px;
-      height: 20px;
-      border-radius: 999px;
-      display: grid;
-      place-items: center;
-      background: #fff;
-      color: var(--muted);
-      box-shadow: 0 1px 3px rgba(31, 42, 51, 0.16);
-    }
-
-    .switch-control.on span {
-      color: var(--brand-strong);
-    }
-
-    .number-input {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 30px;
-      border: 1px solid var(--line-strong);
-      border-radius: 6px;
-      overflow: hidden;
-      background: #fff;
-      min-height: 36px;
-    }
-
-    .number-input input {
-      border: 0;
-      border-radius: 0;
-      min-height: 34px;
-    }
-
-    .number-input span {
-      display: grid;
-      place-items: center;
-      color: var(--muted);
-      border-left: 1px solid var(--line);
-      font-size: 12px;
-      line-height: 1;
-    }
-
-    .setting-section.readonly input {
-      background: #f3f5f4;
-      color: #808a85;
-    }
-
-    .mobile-menu {
+    .error {
       display: none;
+      border: 1px solid color-mix(in oklch, var(--danger), white 38%);
+      border-radius: 8px;
+      padding: 11px 12px;
+      background: color-mix(in oklch, var(--danger), white 88%);
+      color: color-mix(in oklch, var(--danger), black 12%);
+      font-size: 13px;
+      font-weight: 700;
     }
 
-    @media (max-width: 960px) {
-      .app {
-        grid-template-columns: 1fr;
-      }
+    .error.visible { display: block; }
 
-      .sider {
-        position: fixed;
-        inset: 0 auto 0 0;
-        width: 240px;
-        z-index: 15;
-        transform: translateX(-100%);
-        transition: 0.2s ease;
-        box-shadow: var(--shadow);
-      }
-
-      .sider.open {
-        transform: translateX(0);
-      }
-
-      .mobile-menu {
-        display: inline-flex;
-      }
-
-      .content {
-        padding: 16px;
-      }
-
-      .stats,
-      .grid-two,
-      .analysis-grid,
-      .backup-diff-stats,
-      .backup-diff-detail-layout,
-      .filters,
-      .form-grid,
-      .form-grid.two,
-      .details {
-        grid-template-columns: 1fr;
-      }
-
-      .header {
-        padding: 0 16px;
-      }
-
-      .timeline li {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width: 860px) {
+      body { background: var(--bg); }
+      .login-shell { padding: 22px; }
+      .login-stack { gap: 18px; }
+      .brand-lockup { justify-content: flex-start; }
+      .card-head { padding: 26px 24px 22px; }
+      .login-form { padding: 24px; }
     }
   </style>
 </head>
 <body>
-  <div id="login" class="login-shell">
-    <section class="login-card">
-      <h1>img-process 管理台</h1>
-      <p>扫描历史、实时过程、计划任务和系统配置统一查看与控制。</p>
-      <div class="stack">
-        <label>用户名<input value="admin" autocomplete="username"></label>
-        <label>密码<input value="prototype" type="password" autocomplete="current-password"></label>
-        <button class="primary" data-login>登录</button>
+  <main class="login-shell" data-od-id="path-0">
+    <section class="form-panel" aria-label="登录">
+      <div class="login-stack">
+        <form class="login-card" id="login-form">
+          <div class="card-head">
+            <div class="brand-lockup" aria-label="img-process">
+              <div class="login-logo">IP</div>
+              <div class="brand-text">
+                <strong>img-process</strong>
+                <span>图片治理与扫描任务管理</span>
+              </div>
+            </div>
+          </div>
+          <div class="login-form">
+            <label for="username">
+              用户名
+              <input id="username" name="username" autocomplete="username" placeholder="请输入用户名">
+            </label>
+            <label for="password">
+              密码
+              <input id="password" name="password" type="password" autocomplete="current-password" placeholder="请输入密码">
+            </label>
+            <div class="row">
+              <label class="remember" for="remember">
+                <input id="remember" type="checkbox" checked>
+                记住登录状态
+              </label>
+            </div>
+            <div class="error" id="error" role="alert">请输入用户名和密码后继续。</div>
+            <button class="primary" id="login-button" type="button">登录工作台</button>
+          </div>
+        </form>
       </div>
     </section>
-  </div>
-
-  <div id="app" class="app" hidden>
-    <aside id="sider" class="sider">
-      <div class="brand">img-process</div>
-      <nav class="nav" id="nav">
-        <a class="active" data-page="dashboard" href="#dashboard">仪表盘</a>
-        <a data-page="jobs" href="#jobs">扫描历史</a>
-        <a data-page="cache-analysis" href="#cache-analysis">文件分析</a>
-        <a data-page="schedules" href="#schedules">计划任务</a>
-        <a data-page="settings" href="#settings">系统设置</a>
-      </nav>
-    </aside>
-    <main class="main">
-      <header class="header">
-        <div class="row">
-          <button class="mobile-menu" data-toggle-menu>菜单</button>
-          <span>当前用户：admin</span>
-        </div>
-        <div class="row">
-          <button data-toast="会话已刷新">刷新会话</button>
-          <button class="danger" data-logout>退出</button>
-        </div>
-      </header>
-
-      <section class="content">
-        <div id="dashboard" class="page active stack">
-          <h2>仪表盘</h2>
-          <div class="stats">
-            <div class="stat"><div class="label">最近任务数</div><div class="value">128</div></div>
-            <div class="stat"><div class="label">运行中任务</div><div class="value">1</div></div>
-            <div class="stat"><div class="label">最近失败任务</div><div class="value">2</div></div>
-          </div>
-          <div class="grid-two">
-            <article class="card">
-            <div class="card-head"><h3>最近任务</h3><button class="link" data-page-link="jobs">查看全部</button></div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>任务ID</th><th>任务类型</th><th>阶段</th><th>状态</th><th>运行时间</th><th>操作</th></tr></thead>
-                  <tbody id="dashboard-jobs"></tbody>
-                </table>
-              </div>
-            </article>
-            <article class="card">
-              <div class="card-head"><h3>最近计划任务</h3></div>
-              <div class="card-body stack" id="dashboard-schedules"></div>
-            </article>
-          </div>
-        </div>
-
-        <div id="jobs" class="page stack">
-          <div class="row">
-            <h2>扫描历史</h2>
-            <button class="primary" data-open-drawer="scan">新建扫描</button>
-          </div>
-          <article class="card">
-            <div class="card-body filters">
-              <label>状态<select><option>全部状态</option><option>运行中</option><option>成功</option><option>失败</option></select></label>
-              <label>来源<select><option>全部来源</option><option>手动</option><option>计划</option></select></label>
-              <label>关键词<input placeholder="任务UUID / 错误关键词"></label>
-            </div>
-          </article>
-          <article class="card">
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>任务ID</th><th>状态</th><th>来源</th><th>总文件夹数</th><th>总文件数</th><th>备份总文件夹数</th><th>备份总文件数</th><th>待执行动作</th><th>已执行动作</th><th>备份多</th><th>备份缺</th><th>开始时间</th><th>执行时长</th><th>操作</th></tr></thead>
-                <tbody id="jobs-table"></tbody>
-              </table>
-            </div>
-          </article>
-        </div>
-
-        <div id="job-detail" class="page stack">
-          <h2>扫描详情 #42</h2>
-          <div class="alert">当前任务已完成，仍有 436 条待执行动作。可逐项执行，也可在删除类动作中批量执行。</div>
-          <article class="card">
-            <div class="card-body details">
-              <div class="detail"><span>状态</span><b>成功</b></div>
-              <div class="detail"><span>来源</span><b>手动</b></div>
-              <div class="detail"><span>阶段</span><b>已完成</b></div>
-              <div class="detail"><span>任务UUID</span><b>8d3f2a91-4e02-4a58-b780-1a2b39f09f20</b></div>
-              <div class="detail"><span>扫描UUID</span><b>scan-20260523-001</b></div>
-              <div class="detail"><span>是否执行动作</span><b>否</b></div>
-              <div class="detail"><span>开始时间</span><b>2026-05-23 08:42:11</b></div>
-              <div class="detail"><span>结束时间</span><b>2026-05-23 08:42:29</b></div>
-              <div class="detail"><span>执行时长</span><b>18 秒</b></div>
-              <div class="detail"><span>最近心跳</span><b>2026-05-23 08:42:29</b></div>
-            </div>
-          </article>
-          <div class="stats">
-            <div class="stat"><div class="label">总文件夹数</div><div class="value">1,482</div></div>
-            <div class="stat"><div class="label">总文件数</div><div class="value">43,912</div></div>
-            <div class="stat"><div class="label">备份总文件夹数</div><div class="value">1,477</div></div>
-            <div class="stat"><div class="label">备份总文件数</div><div class="value">43,876</div></div>
-          </div>
-          <article class="card">
-            <div class="tabs" data-tabs="detail">
-              <button class="active" data-tab="pending">待执行动作 (436)</button>
-              <button data-tab="executed">已执行动作 (92)</button>
-              <button data-tab="backup-diff">备份对比（新增 36 / 缺少 12）</button>
-              <button data-tab="events">实时事件</button>
-              <button data-tab="logs">运行日志</button>
-              <button data-tab="stats">统计</button>
-              <button data-tab="raw">原始参数</button>
-            </div>
-            <div class="card-body">
-              <div id="detail-pending" class="detail-panel stack"></div>
-              <div id="detail-executed" class="detail-panel stack" hidden></div>
-              <div id="detail-events" class="detail-panel" hidden></div>
-              <div id="detail-logs" class="detail-panel" hidden></div>
-              <div id="detail-backup-diff" class="detail-panel stack" hidden></div>
-              <div id="detail-stats" class="detail-panel" hidden></div>
-              <div id="detail-raw" class="detail-panel" hidden></div>
-            </div>
-          </article>
-        </div>
-
-        <div id="cache-analysis" class="page stack">
-          <div class="row">
-            <div>
-              <h2>文件分析</h2>
-              <div class="muted">基于 img_database 表查看文件拍摄时间、地理信息和缓存信息。</div>
-            </div>
-            <button data-toast="文件分析数据已刷新">刷新分析</button>
-          </div>
-          <div class="stats">
-            <div class="stat"><div class="label">总缓存文件数</div><div class="value">43,876</div></div>
-            <div class="stat"><div class="label">有拍摄时间文件数</div><div class="value">42,472</div><div class="muted">覆盖率 96.8%</div></div>
-            <div class="stat"><div class="label">有经纬度文件数</div><div class="value">31,762</div><div class="muted">覆盖率 72.4%</div></div>
-            <div class="stat"><div class="label">有地址信息文件数</div><div class="value">29,418</div><div class="muted">覆盖率 67.1%</div></div>
-          </div>
-          <article class="card">
-            <div class="card-head">
-              <h3>筛选条件</h3>
-              <button class="primary" data-toast="已按筛选条件刷新文件明细">筛选</button>
-            </div>
-            <div class="card-body filters">
-              <label>文件 key<input placeholder="文件 key，支持模糊搜索 img_key"></label>
-              <label>拍摄时间状态<select><option>全部</option><option>有拍摄时间</option><option>缺失拍摄时间</option></select></label>
-              <label>地理信息状态<select><option>全部</option><option>有经纬度和地址</option><option>仅有经纬度</option><option>缺失地理信息</option></select></label>
-              <label>地理信息检索<input placeholder="地理信息检索，模糊搜索 loc_addr"></label>
-              <label>文件拍摄日期最早时间<input placeholder="文件拍摄日期最早时间"></label>
-              <label>文件拍摄日期最晚时间<input placeholder="文件拍摄日期最晚时间"></label>
-            </div>
-          </article>
-          <div class="analysis-grid">
-            <article class="card">
-              <div class="card-head"><h3>按年份统计</h3><button class="link" data-stat-more="year">更多</button></div>
-              <div class="card-body bar-list" id="cache-year-bars"></div>
-            </article>
-            <article class="card">
-              <div class="card-head"><h3>文件后缀统计</h3><button class="link" data-stat-more="suffix">更多</button></div>
-              <div class="card-body bar-list" id="cache-suffix-bars"></div>
-            </article>
-          </div>
-          <article class="card">
-            <div class="card-head">
-              <h3>文件明细</h3>
-              <button class="link" data-toast="已导出当前筛选结果">导出</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>缩略图</th><th>img_key</th><th>目录日期</th><th>文件名</th><th>shoot_date</th><th>loc_num</th><th>loc_street</th><th>loc_addr</th><th>remark</th><th>更新时间</th><th>操作</th></tr></thead>
-                <tbody id="cache-detail-table"></tbody>
-              </table>
-            </div>
-          </article>
-        </div>
-
-        <div id="schedules" class="page stack">
-          <div class="row">
-            <h2>计划任务</h2>
-            <button class="primary" data-open-drawer="schedule">新建计划</button>
-          </div>
-          <article class="card">
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>名称</th><th>模式</th><th>Cron</th><th>时区</th><th>启用</th><th>下次执行</th><th>最近状态</th><th>操作</th></tr></thead>
-                <tbody id="schedule-table"></tbody>
-              </table>
-            </div>
-          </article>
-        </div>
-
-        <div id="settings" class="page stack">
-          <div class="row">
-            <h2>系统设置</h2>
-            <button class="primary" data-toast="设置已保存">保存设置</button>
-          </div>
-          <div class="alert">文件配置只读，运行配置保存到数据库。只读配置：database、server；可编辑配置来源：数据库；启动配置文件：/app/config.yaml。</div>
-          <article class="card">
-            <div class="card-body" id="settings-body"></div>
-          </article>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <div id="drawer-backdrop" class="drawer-backdrop"></div>
-  <aside id="drawer" class="drawer" aria-hidden="true">
-    <div class="drawer-head">
-      <h3 id="drawer-title">抽屉</h3>
-      <div class="row">
-        <button class="primary" data-save-drawer>保存</button>
-        <button data-close-drawer>关闭</button>
-      </div>
-    </div>
-    <div id="drawer-body" class="drawer-body"></div>
-  </aside>
-
-  <div id="modal-backdrop" class="modal-backdrop"></div>
-  <section id="confirm-modal" class="modal">
-    <h3 id="modal-title">确认操作</h3>
-    <p id="modal-text" class="muted">是否继续？</p>
-    <div class="row">
-      <span></span>
-      <div class="row">
-        <button data-close-modal>取消</button>
-        <button class="danger" data-confirm-modal>确认</button>
-      </div>
-    </div>
-  </section>
-  <div id="toast" class="toast">操作完成</div>
+  </main>
 
   <script>
-    const jobs = [
-      { id: 42, uuid: "8d3f2a91-4e02-4a58-b780-1a2b39f09f20", status: "成功", statusType: "ok", source: "手动", phase: "已完成", folders: 1482, files: 43912, backupFolders: 1477, backupFiles: 43876, pending: 436, executed: 92, backupExtra: 12, backupMissing: 36, start: "2026-05-23 08:42:11", duration: "18 秒" },
-      { id: 41, uuid: "a13d7b5c-9856-4d7e-8d60-6e7341b7d813", status: "运行中", statusType: "warn", source: "计划", phase: "扫描备份目录", folders: 932, files: 27160, backupFolders: 0, backupFiles: 0, pending: 0, executed: 0, backupExtra: 0, backupMissing: 0, start: "2026-05-23 07:30:00", duration: "12 秒" },
-      { id: 40, uuid: "cc3a6e90-2f83-49d5-bc6d-b237d7d8d101", status: "失败", statusType: "danger", source: "手动", phase: "处理重复项", folders: 601, files: 18620, backupFolders: 0, backupFiles: 0, pending: 0, executed: 0, backupExtra: 0, backupMissing: 0, start: "2026-05-22 21:18:03", duration: "7 秒" },
-      { id: 39, uuid: "e6046f01-1bb4-41f7-b373-4c9395873ef0", status: "成功", statusType: "ok", source: "计划", phase: "已完成", folders: 1478, files: 43876, backupFolders: 1474, backupFiles: 43845, pending: 12, executed: 615, backupExtra: 3, backupMissing: 8, start: "2026-05-22 03:00:00", duration: "16 秒" }
-    ];
+    (function () {
+      var form = document.getElementById('login-form');
+      var user = document.getElementById('username');
+      var pass = document.getElementById('password');
+      var error = document.getElementById('error');
+      var button = document.getElementById('login-button');
 
-    const schedules = [
-      { id: 1, name: "每日凌晨扫描", mode: "每天", cron: "30 2 * * *", timezone: "Asia/Shanghai", enabled: true, next: "2026-05-24 02:30:00", last: "成功" },
-      { id: 2, name: "每周备份校验", mode: "每周", cron: "15 3 * * 1", timezone: "Asia/Shanghai", enabled: true, next: "2026-05-25 03:15:00", last: "成功" },
-      { id: 3, name: "高频测试扫描", mode: "高级 Cron", cron: "*/10 * * * *", timezone: "Asia/Shanghai", enabled: false, next: "-", last: "已跳过" }
-    ];
-
-    const actionCounts = {
-      pending: { delete: 104, delete_empty_dir: 24, move: 64, modify_time: 53, delete_duplicate: 118, delete_path_duplicate: 48, rename: 25 },
-      executed: { delete: 28, delete_empty_dir: 6, move: 18, modify_time: 10, delete_duplicate: 22, delete_path_duplicate: 6, rename: 2 }
-    };
-
-    const actionLabels = {
-      delete: "删除",
-      delete_empty_dir: "删除空文件夹",
-      move: "移动",
-      modify_time: "修改时间",
-      delete_duplicate: "重复项",
-      delete_path_duplicate: "文件路径重复项",
-      rename: "重命名"
-    };
-
-    const actionRows = {
-      delete: [
-        ["DSC_0000.tmp", "/Photos/pic-new/2024/2024-01/2024-01-18", "文件大小为 0"],
-        [".DS_Store", "/Photos/pic-new/2024/2024-02", "文件名以 . 开头"],
-        ["IMG_E9381.JPG", "/Photos/pic-new/2023/2023-11/2023-11-02", "文件名以 IMG_E 开头"]
-      ],
-      delete_empty_dir: [
-        ["2024-01-18", "/Photos/pic-new/2024/2024-01/2024-01-18", "空目录"],
-        ["未命名文件夹", "/Photos/pic-new/2024/2024-02/未命名文件夹", "空目录"],
-        ["export", "/Photos/pic-new/2023/2023-11/export", "空目录"]
-      ],
-      move: [
-        ["IMG_8912.HEIC", "/Photos/pic-new/2025/2025-03/2025-03-21", "/Photos/pic-new/2024/2024-12/2024-12-31"],
-        ["MVI_3312.MP4", "/Photos/pic-new/2022/2022-09/2022-09-02", "/Photos/pic-new/2022/2022-08/2022-08-30"]
-      ],
-      modify_time: [
-        ["IMG_2268.JPG", "目录 2023-08-19", "修改时间 2026-05-20", "最小日期 2023-08-19"],
-        ["PXL_20221105.jpg", "EXIF 2022-11-05", "修改时间 2024-01-01", "最小日期 2022-11-05"]
-      ],
-      rename: [
-        ["IMG_20240202_093012.JPG", "2024-02-02_093012.JPG", "/Photos/pic-new/2024/2024-02/2024-02-02"],
-        ["VID_20240101_210010.MP4", "2024-01-01_210010.MP4", "/Photos/pic-new/2024/2024-01/2024-01-01"]
-      ]
-    };
-
-    const backupDiff = {
-      newFiles: {
-        label: "主目录新增，备份缺少",
-        field: "bak_new_file",
-        count: 36,
-        artifactPath: "/Users/ld/my-file/workspace/personal/img-process/log/dump_delete_file/scan-20260523-001/bak_new_file_list",
-        note: "这些文件已在主目录出现，但备份目录还没有匹配记录，后续需要补齐备份。",
-        items: [
-          {
-            key: "2026-05-18|IMG_6120.HEIC",
-            fileName: "IMG_6120.HEIC",
-            path: "/Photos/pic-new/2026/2026-05/2026-05-18",
-            reason: "备份目录未找到同名 img_key"
-          },
-          {
-            key: "2026-05-18|IMG_6121.HEIC",
-            fileName: "IMG_6121.HEIC",
-            path: "/Photos/pic-new/2026/2026-05/2026-05-18",
-            reason: "主目录扫描新增"
-          },
-          {
-            key: "2025-12-31|VID_203012.MP4",
-            fileName: "VID_203012.MP4",
-            path: "/Photos/pic-new/2025/2025-12/跨年",
-            reason: "备份目录缺少该视频"
-          },
-          {
-            key: "2025-05-02|IMG_4508.JPG",
-            fileName: "IMG_4508.JPG",
-            path: "/Photos/pic-new/2025/2025-05/苏州",
-            reason: "主目录新增照片"
-          },
-          {
-            key: "2024-10-06|PXL_20241006_080212.jpg",
-            fileName: "PXL_20241006_080212.jpg",
-            path: "/Photos/pic-new/2024/2024-10/2024-10-06",
-            reason: "备份目录未同步"
-          },
-          {
-            key: "2024-02-02|IMG_20240202_093012.JPG",
-            fileName: "IMG_20240202_093012.JPG",
-            path: "/Photos/pic-new/2024/2024-02/2024-02-02",
-            reason: "备份缺少重命名后文件"
-          }
-        ]
-      },
-      deletedFiles: {
-        label: "备份多余，主目录缺少",
-        field: "bak_delete_file",
-        count: 12,
-        artifactPath: "/Users/ld/my-file/workspace/personal/img-process/log/dump_delete_file/scan-20260523-001/bak_delete_file_list",
-        note: "这些文件仍在备份目录，但主目录已经没有匹配记录，建议人工核对后再处理。",
-        items: [
-          {
-            key: "2021-02-14|IMG_0901.JPG",
-            fileName: "IMG_0901.JPG",
-            path: "/Volumes/photo-bak/pic-new/2021/2021-02/2021-02-14",
-            reason: "主目录缺少该 img_key"
-          },
-          {
-            key: "2020-09-30|MOV_2218.MOV",
-            fileName: "MOV_2218.MOV",
-            path: "/Volumes/photo-bak/pic-new/2020/2020-09/旧整理",
-            reason: "仅备份目录存在"
-          },
-          {
-            key: "2019-07-08|DSC_4400.JPG",
-            fileName: "DSC_4400.JPG",
-            path: "/Volumes/photo-bak/pic-new/2019/2019-07/2019-07-08",
-            reason: "主目录对比缺失"
-          },
-          {
-            key: "2018-11-21|IMG_0012.JPG",
-            fileName: "IMG_0012.JPG",
-            path: "/Volumes/photo-bak/pic-new/2018/2018-11/旧手机导入",
-            reason: "备份目录历史残留"
-          },
-          {
-            key: "2017-04-30|VID_0044.MP4",
-            fileName: "VID_0044.MP4",
-            path: "/Volumes/photo-bak/pic-new/2017/2017-04/2017-04-30",
-            reason: "主目录未匹配到视频"
-          },
-          {
-            key: "2016-01-01|DSC_8890.JPG",
-            fileName: "DSC_8890.JPG",
-            path: "/Volumes/photo-bak/pic-new/2016/2016-01/2016-01-01",
-            reason: "仅备份目录保留"
-          }
-        ]
-      }
-    };
-
-    const cacheRows = [
-      {
-        imgKey: "2024-01-01|IMG_8801.JPG",
-        shootDate: "2024:01:01 19:32:18",
-        locNum: "31.230416,121.473701",
-        locStreet: "黄浦区中山东一路",
-        locAddr: "上海市黄浦区外滩街道",
-        state: 1,
-        remark: "exiftool: DateTimeOriginal",
-        updatedAt: "2026-05-23 08:42:20"
-      },
-      {
-        imgKey: "2023-08-19|IMG_1240.JPG",
-        shootDate: "2023:08:19 09:12:04",
-        locNum: "",
-        locStreet: "",
-        locAddr: "",
-        state: 1,
-        remark: "EXIF 无 GPS 信息",
-        updatedAt: "2026-05-23 08:42:21"
-      },
-      {
-        imgKey: "2022-11-05|PXL_20221105.jpg",
-        shootDate: "",
-        locNum: "30.274084,120.155070",
-        locStreet: "西湖区北山街",
-        locAddr: "浙江省杭州市西湖区",
-        state: 2,
-        remark: "go-exif 未读取到拍摄时间",
-        updatedAt: "2026-05-23 08:42:22"
-      },
-      {
-        imgKey: "2021-06-12|VID_0091.MP4",
-        shootDate: "2021:06:12 14:08:51",
-        locNum: "",
-        locStreet: "",
-        locAddr: "",
-        state: 1,
-        remark: "视频文件无地理信息",
-        updatedAt: "2026-05-23 08:42:23"
-      },
-      {
-        imgKey: "2020-09-30|MOV_2218.MOV",
-        shootDate: "2020:09:30 17:20:10",
-        locNum: "22.543099,114.057868",
-        locStreet: "福田区深南大道",
-        locAddr: "广东省深圳市福田区",
-        state: 1,
-        remark: "video metadata: creation_time",
-        updatedAt: "2026-05-23 08:42:24"
-      },
-      {
-        imgKey: "2020-02-01|IMG_BROKEN.JPG",
-        shootDate: "",
-        locNum: "",
-        locStreet: "",
-        locAddr: "",
-        state: 0,
-        remark: "EXIF 解析失败：invalid format",
-        updatedAt: "2026-05-23 08:42:25"
-      }
-    ];
-
-    const yearStats = [
-      ["2026", 22, "2,984"],
-      ["2025", 58, "7,612"],
-      ["2024", 95, "12,430"],
-      ["2023", 78, "10,286"],
-      ["2022", 61, "8,012"],
-      ["2021", 39, "5,104"],
-      ["2020", 32, "4,218"],
-      ["2019", 18, "2,361"],
-      ["2018", 16, "2,105"],
-      ["2017", 13, "1,724"],
-      ["2016", 11, "1,382"],
-      ["2015", 9, "1,108"],
-      ["2014", 7, "824"],
-      ["2013", 5, "612"]
-    ];
-
-    const suffixStats = [
-      [".jpg", 88, "25,640 / 58.4%"],
-      [".heic", 46, "9,214 / 21.0%"],
-      [".mp4", 24, "4,806 / 11.0%"],
-      [".png", 12, "2,316 / 5.3%"],
-      [".mov", 10, "1,900 / 4.3%"],
-      [".jpeg", 7, "1,160 / 2.6%"],
-      [".dng", 4, "620 / 1.4%"],
-      [".gif", 2, "220 / 0.5%"],
-      [".avi", 1, "82 / 0.2%"],
-      [".webp", 1, "56 / 0.1%"],
-      [".tif", 1, "42 / 0.1%"]
-    ];
-
-    const configSections = [
-      { title: "database 数据库参数", readonly: true, fields: [["DbUsername", "数据库用户名", "root"], ["DbPassword", "数据库密码", "r***", "secret"], ["DbHost", "数据库主机", "host.docker.internal"], ["DbPort", "数据库端口", "33060"], ["DbName", "数据库名称", "img"], ["DbConfig", "数据库连接参数", "charset=utf8&parseTime=True&loc=Local"]] },
-      { title: "server Web 服务参数", readonly: true, fields: [["HttpPort", "HTTP 端口", "8081"], ["HttpUsername", "HTTP 用户名", "admin"], ["HttpPassword", "HTTP 密码", "a****", "secret"]] },
-      { title: "scanArgs 默认扫描参数", desc: "用于调整扫描任务默认的值填写", layout: "scanArgs", fields: [["StartPath", "扫描目录", "/Volumes/photo/pic-new", "path"], ["DeleteShow", "显示删除项", true, "show"], ["MoveFileShow", "显示移动项", true, "show"], ["ModifyDateShow", "显示修改时间项", false, "show"], ["RenameFileShow", "显示重命名项", true, "show"], ["Md5Show", "计算 MD5", true, "show"], ["DeleteAction", "执行删除", false, "action"], ["MoveFileAction", "执行移动", false, "action"], ["ModifyDateAction", "执行修改时间", false, "action"], ["RenameFileAction", "执行重命名", false, "action"]] },
-      { title: "basic 基础配置", fields: [["ColorOutput", "彩色日志", true, "boolean"], ["SqlDebug", "SQL 调试", false, "boolean"]] },
-      { title: "cache 缓存配置", fields: [["ImgCache", "图片缓存", true, "boolean"], ["SyncTable", "同步表数据", true, "boolean"], ["TruncateTable", "清空表数据", false, "boolean"]] },
-      { title: "dump 扫描执行配置", fields: [["PoolSize", 12], ["Md5Retry", 2], ["Md5CountLength", 1048576]] },
-      { title: "bak 备份配置", fields: [["StartPathBak", "显示的默认备份目录", "/Volumes/photo-bak/pic-new", "path"]] },
-      { title: "gis 地理编码配置", fields: [["key", "高德 Key", "******", "secret"]] },
-      { title: "batch 批处理配置", fields: [["IDInsertBatchSize", "图片记录插入批次", 1000, "number"], ["IDDeleteBatchSize", "图片记录删除批次", 300, "number"], ["GDUpdateBatchSize", "地理数据更新批次", 1000, "number"]] }
-    ];
-
-    const pageButtons = document.querySelectorAll("[data-page]");
-    const pages = document.querySelectorAll(".page");
-    const toast = document.querySelector("#toast");
-    const drawer = document.querySelector("#drawer");
-    const drawerBackdrop = document.querySelector("#drawer-backdrop");
-    const drawerTitle = document.querySelector("#drawer-title");
-    const drawerBody = document.querySelector("#drawer-body");
-    const modal = document.querySelector("#confirm-modal");
-    const modalBackdrop = document.querySelector("#modal-backdrop");
-    const modalTitle = document.querySelector("#modal-title");
-    const modalText = document.querySelector("#modal-text");
-    const sider = document.querySelector("#sider");
-    let confirmMessage = "操作已完成";
-
-    function tag(text, type = "") {
-      return `<span class="tag ${type}">${text}</span>`;
-    }
-
-    function shortUuid(uuid) {
-      return `<span title="${uuid}">${uuid.slice(0, 8)}</span>`;
-    }
-
-    function splitImgKey(imgKey) {
-      const [dirDate = "-", fileName = "-"] = imgKey.split("|");
-      return { dirDate, fileName };
-    }
-
-    function stateTag(state) {
-      if (state === 1) return tag("启用", "ok");
-      if (state === 2) return tag("备用解析", "warn");
-      return tag("异常", "danger");
-    }
-
-    function showToast(message) {
-      toast.textContent = message;
-      toast.classList.add("show");
-      clearTimeout(showToast.timer);
-      showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
-    }
-
-    function activatePage(page) {
-      pages.forEach((item) => item.classList.toggle("active", item.id === page));
-      pageButtons.forEach((button) => {
-        const activePage = page === "job-detail" ? "jobs" : page;
-        button.classList.toggle("active", button.dataset.page === activePage);
-      });
-      sider.classList.remove("open");
-    }
-
-    function switchPage(page) {
-      activatePage(page);
-      if (location.hash !== `#${page}`) {
-        history.replaceState(null, "", `#${page}`);
-      }
-    }
-
-    function pageFromHash() {
-      const page = location.hash.replace(/^#/, "");
-      return page && document.getElementById(page) ? page : "dashboard";
-    }
-
-    function renderDashboard() {
-      document.querySelector("#dashboard-jobs").innerHTML = jobs.slice(0, 4).map((job) => `
-        <tr>
-          <td><span title="${job.uuid}">${job.id}</span></td><td>${job.source}</td><td>${job.phase}</td><td>${tag(job.status, job.statusType)}</td><td>${job.duration}</td>
-          <td><button class="link" data-page-link="job-detail">查看详情</button></td>
-        </tr>
-      `).join("");
-
-      document.querySelector("#dashboard-schedules").innerHTML = schedules.map((item) => `
-        <div class="row">
-          <div><b>${item.name}</b><div class="muted">${item.mode} / ${item.cron}</div></div>
-          ${tag(item.enabled ? "启用" : "停用", item.enabled ? "ok" : "")}
-        </div>
-      `).join("");
-    }
-
-    function renderJobs() {
-      document.querySelector("#jobs-table").innerHTML = jobs.map((job) => `
-        <tr>
-          <td><span title="${job.uuid}">${job.id}</span></td><td>${tag(job.status, job.statusType)}</td><td>${job.source}</td>
-          <td>${job.folders}</td><td>${job.files}</td><td>${job.backupFolders}</td><td>${job.backupFiles}</td><td>${job.pending}</td><td>${job.executed}</td><td>${job.backupExtra}</td><td>${job.backupMissing}</td><td>${job.start}</td><td>${job.duration}</td>
-          <td>
-            <button class="link" data-page-link="job-detail">查看详情</button>
-            <button class="link" data-confirm="删除任务" data-confirm-text="会删除该任务及其事件、日志和动作明细，是否继续？" data-confirm-message="扫描任务已删除">删除</button>
-          </td>
-        </tr>
-      `).join("");
-    }
-
-    function renderSchedules() {
-      document.querySelector("#schedule-table").innerHTML = schedules.map((item) => `
-        <tr>
-          <td>${item.name}</td><td>${item.mode}</td><td>${item.cron}</td><td>${item.timezone}</td><td>${item.enabled ? "是" : "否"}</td>
-          <td>${item.next}</td><td>${item.last}</td>
-          <td>
-            <button class="link" data-open-drawer="schedule">编辑</button>
-            <button class="link" data-toast="计划已触发">立即执行</button>
-            <button class="link" data-toast="计划状态已切换">${item.enabled ? "停用" : "启用"}</button>
-            <button class="link" data-confirm="删除计划" data-confirm-text="删除后不会再自动触发扫描，是否继续？" data-confirm-message="计划已删除">删除</button>
-          </td>
-        </tr>
-      `).join("");
-    }
-
-    function barRow(label, percent, value) {
-      return `
-        <div class="bar-row">
-          <span>${label}</span>
-          <span class="bar-track"><span class="bar-fill" style="width:${percent}%"></span></span>
-          <b>${value}</b>
-        </div>`;
-    }
-
-    function renderCacheAnalysis() {
-      document.querySelector("#cache-year-bars").innerHTML = yearStats.slice(0, 10).map((row) => barRow(row[0], row[1], row[2])).join("");
-
-      document.querySelector("#cache-suffix-bars").innerHTML = suffixStats.slice(0, 10).map((row) => barRow(row[0], row[1], row[2])).join("");
-
-      const sortedRows = [...cacheRows].sort((left, right) => {
-        const leftKey = splitImgKey(left.imgKey).dirDate;
-        const rightKey = splitImgKey(right.imgKey).dirDate;
-        if (leftKey !== rightKey) return leftKey.localeCompare(rightKey);
-        const leftShoot = left.shootDate || "9999-12-31 23:59:59";
-        const rightShoot = right.shootDate || "9999-12-31 23:59:59";
-        return leftShoot.localeCompare(rightShoot);
-      });
-      document.querySelector("#cache-detail-table").innerHTML = sortedRows.map((row, index) => {
-        const key = splitImgKey(row.imgKey);
-        const geoText = row.locNum ? row.locNum : '<span class="muted">缺失</span>';
-        const shootText = row.shootDate ? row.shootDate : '<span class="muted">缺失</span>';
-        return `
-          <tr>
-            <td><div class="photo ${index % 3 === 0 ? "dup" : index % 2 ? "alt" : ""}" data-toast="已打开文件预览">文件</div></td>
-            <td>${row.imgKey}</td><td>${key.dirDate}</td><td>${key.fileName}</td><td>${shootText}</td><td>${geoText}</td>
-            <td>${row.locStreet || "-"}</td><td>${row.locAddr || "-"}</td><td>${row.remark}</td><td>${row.updatedAt}</td>
-            <td><button class="link" data-cache-detail="${row.imgKey}">明细</button></td>
-          </tr>
-        `;
-      }).join("");
-    }
-
-    function renderActions(tab = "pending", type = "delete") {
-      const target = document.querySelector(`#detail-${tab}`);
-      const count = actionCounts[tab][type];
-      const buttons = Object.keys(actionLabels).map((key) =>
-        `<button class="${key === type ? "active" : ""}" data-action-tab="${tab}" data-action-type="${key}">${actionLabels[key]} (${actionCounts[tab][key]})</button>`
-      ).join("");
-      const bulk = tab === "pending" && (type === "delete" || type.includes("duplicate"))
-        ? `<div class="row"><span></span><button class="danger" data-confirm="批量执行" data-confirm-text="${type === "delete" ? "将立即执行当前任务下全部待删除文件和待删除空文件夹，是否继续？" : `将按当前建议批量执行 ${actionLabels[type]} 动作，是否继续？`}" data-confirm-message="批量动作已执行">${type === "delete" ? "全部执行删除类动作" : "按建议删除所有照片"}</button></div>`
-        : "";
-
-      target.innerHTML = `
-        <div class="subtabs">${buttons}</div>
-        ${type === "delete_duplicate" ? '<div class="alert">重复项按 MD5 匹配展示，建议删除侧可逐张确认。</div>' : ""}
-        ${type === "delete_path_duplicate" ? '<div class="alert">文件路径重复项按 img_key 分组，优先保留目录日期更早或目录名带描述的照片。</div>' : ""}
-        ${bulk}
-        <div class="table-wrap">${renderActionTable(tab, type)}</div>
-        <div class="muted">共 ${count} 条，当前展示沟通样例 3 条。</div>
-      `;
-    }
-
-    function renderActionTable(tab, type) {
-      if (type === "delete_duplicate" || type === "delete_path_duplicate") {
-        const rows = [
-          ["1-1", "IMG_8801.JPG", "/Photos/pic-new/2024/2024-01/2024-01-01", "大小：4.2 MB / MD5：匹配", "是"],
-          ["1-2", "IMG_8801-copy.JPG", "/Photos/pic-new/2024/2024-01/新年聚餐", "大小：4.2 MB / MD5：匹配", "-"],
-          ["2-1", "IMG_1240.JPG", "/Photos/pic-new/2023/2023-08/2023-08-19", "img_key：2023-08-19_IMG_1240", "是"]
-        ];
-        return `
-          <table>
-            <thead><tr><th>组</th><th>照片</th><th>照片文件名</th><th>照片位置</th><th>关键字段</th><th>${tab === "pending" ? "建议删除" : "实际操作"}</th><th>操作</th></tr></thead>
-            <tbody>${rows.map((row, index) => `
-              <tr>
-                <td>${row[0]}</td><td><div class="photo dup">照片</div></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td>
-                <td>${row[4] === "是" ? '<b style="color:#c43e3e">是</b>' : "-"}</td>
-                <td>${tab === "pending" && row[4] === "是" ? '<button class="link" data-confirm="确认删除" data-confirm-text="将立即删除这张照片，是否继续？" data-confirm-message="重复项照片已删除">删除</button>' : tag(index === 0 ? "成功" : "", index === 0 ? "ok" : "")}</td>
-              </tr>`).join("")}</tbody>
-          </table>`;
+      function enterDashboard() {
+        window.location.assign('screens/dashboard.html');
       }
 
-      const rows = actionRows[type] || actionRows.delete;
-      const history = tab === "pending" ? "" : "<th>状态</th><th>执行时间</th><th>错误</th>";
-      const action = tab === "pending" ? "<th>操作</th>" : history;
-      const body = rows.map((row, index) => {
-        const preview = (type === "delete" || type === "delete_empty_dir") ? "" : `<td><div class="photo ${index % 2 ? "alt" : ""}">照片</div></td>`;
-        const cells = row.map((cell) => `<td>${cell}</td>`).join("");
-        const op = tab === "pending"
-          ? `<td><button class="link" data-confirm="确认变更" data-confirm-text="将立即执行当前 ${actionLabels[type]} 动作，是否继续？" data-confirm-message="${actionLabels[type]}动作已执行">${(type === "delete" || type === "delete_empty_dir") ? "删除" : "变更"}</button></td>`
-          : `<td>${tag("成功", "ok")}</td><td>2026-05-23 08:44:${String(index + 10).padStart(2, "0")}</td><td>-</td>`;
-        return `<tr>${preview}${cells}${op}</tr>`;
-      }).join("");
-      const photoHead = (type === "delete" || type === "delete_empty_dir") ? "" : "<th>照片</th>";
-      const heads = {
-        delete: "<th>文件名</th><th>位置</th><th>原因</th>",
-        delete_empty_dir: "<th>文件夹名</th><th>位置</th><th>原因</th>",
-        move: "<th>文件名</th><th>当前位置</th><th>移动位置</th>",
-        modify_time: "<th>文件名</th><th>目录日期</th><th>文件修改时间</th><th>最小日期</th>",
-        rename: "<th>原文件名</th><th>新文件名</th><th>当前位置</th>"
-      };
-      return `<table><thead><tr>${photoHead}${heads[type] || heads.delete}${action}</tr></thead><tbody>${body}</tbody></table>`;
-    }
-
-    function renderBackupDiff() {
-      const newFiles = backupDiff.newFiles;
-      const deletedFiles = backupDiff.deletedFiles;
-      document.querySelector("#detail-backup-diff").innerHTML = `
-        <div class="backup-diff-stats">
-          ${renderBackupDiffStat(newFiles, "")}
-          ${renderBackupDiffStat(deletedFiles, "warn")}
-        </div>
-        <div class="artifact-note">
-          当前页只展示差异汇总。点击“查看详情”可打开完整文件清单，完整数据分别来自 ${newFiles.field} 和 ${deletedFiles.field}。
-        </div>
-      `;
-    }
-
-    function renderBackupDiffStat(group, tone) {
-      const key = group === backupDiff.newFiles ? "newFiles" : "deletedFiles";
-      return `
-        <div class="backup-diff-stat ${tone}">
-          <div class="row"><b>${group.label}</b>${tag(group.field, tone === "warn" ? "warn" : "ok")}</div>
-          <div class="value">${group.count}</div>
-          <div class="muted">${group.note}</div>
-          <div class="muted">详情清单共 ${group.count} 条，原型中展示完整列表结构。</div>
-          <div class="muted">${group.artifactPath}</div>
-          <div></div>
-          <div class="row"><span></span><button class="primary" data-backup-diff-detail="${key}">查看详情</button></div>
-        </div>
-      `;
-    }
-
-    function renderBackupDiffDetailTable(group, tone, items = group.items) {
-      return `
-        <div class="table-wrap backup-diff-detail-table">
-          <table>
-            <thead><tr><th>文件名 / key</th><th>目录或完整路径</th><th>差异说明</th></tr></thead>
-            <tbody>${items.map((item) => `
-              <tr>
-                <td><b>${item.fileName}</b><br><span class="muted">${item.key}</span></td>
-                <td>${item.path}</td>
-                <td>${tag(item.reason, tone === "warn" ? "warn" : "ok")}</td>
-              </tr>
-            `).join("") || `<tr><td colspan="3"><span class="muted">当前筛选下暂无文件。</span></td></tr>`}</tbody>
-          </table>
-        </div>
-      `;
-    }
-
-    function getBackupDiffItemDate(item) {
-      const date = String(item.key || "").split("|")[0];
-      return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
-    }
-
-    function buildBackupDiffDateTree(items) {
-      const yearMap = new Map();
-      items.forEach((item) => {
-        const date = getBackupDiffItemDate(item);
-        if (!date) return;
-        const [year, month, day] = date.split("-");
-        if (!yearMap.has(year)) {
-          yearMap.set(year, { key: year, label: year, count: 0, months: new Map() });
-        }
-        const yearNode = yearMap.get(year);
-        const monthKey = `${year}-${month}`;
-        if (!yearNode.months.has(monthKey)) {
-          yearNode.months.set(monthKey, { key: monthKey, label: `${month}月`, count: 0, days: new Map() });
-        }
-        const monthNode = yearNode.months.get(monthKey);
-        const dayKey = `${year}-${month}-${day}`;
-        if (!monthNode.days.has(dayKey)) {
-          monthNode.days.set(dayKey, { key: dayKey, label: `${day}日`, count: 0 });
-        }
-        yearNode.count += 1;
-        monthNode.count += 1;
-        monthNode.days.get(dayKey).count += 1;
-      });
-
-      return Array.from(yearMap.values())
-        .sort((a, b) => a.key.localeCompare(b.key))
-        .map((year) => ({
-          ...year,
-          months: Array.from(year.months.values())
-            .sort((a, b) => a.key.localeCompare(b.key))
-            .map((month) => ({
-              ...month,
-              days: Array.from(month.days.values()).sort((a, b) => a.key.localeCompare(b.key))
-            }))
-        }));
-    }
-
-    function filterBackupDiffItems(items, selected) {
-      if (!selected || selected.type === "all") return items;
-      return items.filter((item) => getBackupDiffItemDate(item).startsWith(selected.value));
-    }
-
-    function renderDateFilterRow({ level, type, value, label, count, active, expanded, expandable }) {
-      return `
-        <button class="date-filter-row level-${level} ${active ? "active" : ""}" data-date-filter-type="${type}" data-date-filter-value="${value}">
-          <span class="date-filter-toggle">${expandable ? (expanded ? "▾" : "▸") : ""}</span>
-          <span class="date-filter-label">${label}</span>
-          <span class="date-filter-count">${count}</span>
-        </button>
-      `;
-    }
-
-    function renderBackupDiffDateFilter(group, tree, state) {
-      const rows = [
-        renderDateFilterRow({
-          level: "all",
-          type: "all",
-          value: "all",
-          label: "全部",
-          count: group.items.length,
-          active: state.selected.type === "all"
-        })
-      ];
-
-      tree.forEach((year) => {
-        const yearExpanded = state.expandedYears.has(year.key);
-        rows.push(renderDateFilterRow({
-          level: "year",
-          type: "year",
-          value: year.key,
-          label: `${year.label}年`,
-          count: year.count,
-          active: state.selected.type === "year" && state.selected.value === year.key,
-          expanded: yearExpanded,
-          expandable: year.months.length > 0
-        }));
-        if (!yearExpanded) return;
-
-        year.months.forEach((month) => {
-          const monthExpanded = state.expandedMonths.has(month.key);
-          rows.push(renderDateFilterRow({
-            level: "month",
-            type: "month",
-            value: month.key,
-            label: month.label,
-            count: month.count,
-            active: state.selected.type === "month" && state.selected.value === month.key,
-            expanded: monthExpanded,
-            expandable: month.days.length > 0
-          }));
-          if (!monthExpanded) return;
-
-          month.days.forEach((day) => {
-            rows.push(renderDateFilterRow({
-              level: "day",
-              type: "day",
-              value: day.key,
-              label: day.label,
-              count: day.count,
-              active: state.selected.type === "day" && state.selected.value === day.key
-            }));
-          });
-        });
-      });
-
-      return `
-        <nav class="backup-diff-date-filter" aria-label="按年月日筛选">
-          <div class="backup-diff-date-filter-title">按日期筛选</div>
-          ${rows.join("")}
-        </nav>
-      `;
-    }
-
-    function renderDetailExtras() {
-      document.querySelector("#detail-events").innerHTML = `
-        <ul class="timeline">
-          <li><span class="muted">08:42:11</span><div><b>任务启动</b><br>扫描任务进入运行队列。</div></li>
-          <li><span class="muted">08:42:16</span><div><b>扫描主目录</b><br>已处理 43,912 个文件，发现 128 个删除候选。</div></li>
-          <li><span class="muted">08:42:24</span><div><b>处理重复项</b><br>发现重复项 118 条，文件路径重复项 48 条。</div></li>
-          <li><span class="muted">08:42:29</span><div><b>任务完成</b><br>结果和动作明细已写入数据库。</div></li>
-        </ul>`;
-      document.querySelector("#detail-logs").innerHTML = `<pre class="log-block">[2026-05-23 08:42:11] [信息] [启动中] scan job accepted
-[2026-05-23 08:42:16] [信息] [扫描主目录] processed=43912 folders=1482
-[2026-05-23 08:42:24] [信息] [处理重复项] duplicate=118 path_duplicate=48
-[2026-05-23 08:42:29] [信息] [已完成] artifact saved</pre>`;
-      document.querySelector("#detail-stats").innerHTML = `
-        <div class="table-wrap"><table><thead><tr><th>英文 key</th><th>中文含义</th><th>值</th></tr></thead><tbody>
-          <tr><td>FileTotal</td><td>文件总数</td><td>43912</td></tr>
-          <tr><td>DirTotal</td><td>目录总数</td><td>1482</td></tr>
-          <tr><td>DumpFileCnt</td><td>重复文件数</td><td>118</td></tr>
-          <tr><td>PathDuplicateFileCnt</td><td>文件路径重复项数</td><td>48</td></tr>
-          <tr><td>RenameFileCnt</td><td>待重命名文件数</td><td>25</td></tr>
-        </tbody></table></div>`;
-      document.querySelector("#detail-raw").innerHTML = `<pre class="json-block">{
-  "startPath": "/Volumes/photo/pic-new",
-  "startPathBak": "/Volumes/photo-bak/pic-new",
-  "deleteShow": true,
-  "moveFileShow": true,
-  "modifyDateShow": false,
-  "renameFileShow": true,
-  "md5Show": true,
-  "deleteAction": false,
-  "database": { "DbHost": "127.0.0.1", "DbPassword": "******" },
-  "server": { "HttpPort": "8081", "HttpPassword": "******" }
-}</pre>`;
-    }
-
-    function renderSettings() {
-      document.querySelector("#settings-body").innerHTML = configSections.map((section) => `
-        <section class="setting-section ${section.readonly ? "readonly" : ""}">
-          <div class="row"><h3>${section.title}</h3>${section.readonly ? tag("只读", "warn") : tag("可编辑", "ok")}</div>
-          ${section.desc ? `<div class="setting-desc">${section.desc}</div>` : ""}
-          ${section.layout === "scanArgs" ? renderScanArgSettings(section) : renderDefaultSettings(section)}
-        </section>
-      `).join("");
-    }
-
-    function normalizeSettingField(field) {
-      if (field.length >= 4) return { key: field[0], label: field[1], value: field[2], kind: field[3] };
-      return { key: field[0], label: field[0], value: field[1], kind: typeof field[1] === "boolean" ? "boolean" : "text" };
-    }
-
-    function renderSettingControl(field, readonly = false) {
-      if (field.kind === "show" || field.kind === "action" || field.kind === "boolean" || typeof field.value === "boolean") {
-        return `<button type="button" class="switch-control ${field.value ? "on" : ""}" ${readonly ? "disabled" : ""} data-toast="${field.label}已切换"><span>${field.value ? "启用" : "停用"}</span></button>`;
+      function clearError() {
+        error.classList.remove('visible');
       }
-      if (field.kind === "path") {
-        return `<span class="path-input"><input ${readonly ? "readonly" : ""} value="${field.value}"><button type="button" ${readonly ? "disabled" : ""} data-toast="已打开系统目录选择窗口，取消不会修改当前路径">📁 选择目录</button></span>`;
-      }
-      if (field.kind === "number" || typeof field.value === "number") {
-        return `<span class="number-input"><input ${readonly ? "readonly" : ""} value="${field.value}"><span>⌃<br>⌄</span></span>`;
-      }
-      return `<input ${readonly ? "readonly" : ""} value="${field.value}">`;
-    }
 
-    function renderDefaultSettings(section) {
-      return `<div class="form-grid two" style="margin-top:12px">
-        ${section.fields.map((rawField) => {
-          const field = normalizeSettingField(rawField);
-          return `<label>${field.label} (${field.key})${renderSettingControl(field, section.readonly)}</label>`;
-        }).join("")}
-      </div>`;
-    }
-
-    function renderScanArgSettings(section) {
-      return ["path", "show", "action"].map((group) => {
-        const fields = section.fields.map(normalizeSettingField).filter((field) => field.kind === group);
-        return `<div class="setting-scan-row ${group}">
-          ${fields.map((field) => `<label>${field.label} (${field.key})${renderSettingControl(field, section.readonly)}</label>`).join("")}
-        </div>`;
-      }).join("");
-    }
-
-    function drawerScan() {
-      drawerTitle.textContent = "新建扫描";
-      drawerBody.innerHTML = `
-        <div class="stack">
-          <label>扫描目录<input value="/Volumes/photo/pic-new"></label>
-          <label>备份目录<input value="/Volumes/photo-bak/pic-new"></label>
-          <div class="section-title">展示动作</div>
-          <div class="check-grid">
-            ${["显示待删除", "显示待移动", "显示改时间", "显示重命名", "计算重复文件"].map((item) => `<label class="check"><input type="checkbox" checked>${item}</label>`).join("")}
-          </div>
-          <div class="section-title">实际执行</div>
-          <div class="check-grid">
-            ${["删除文件", "移动文件", "修改时间", "重命名文件"].map((item) => `<label class="check"><input type="checkbox">${item}</label>`).join("")}
-          </div>
-        </div>`;
-    }
-
-    function drawerSchedule() {
-      drawerTitle.textContent = "新建 / 编辑计划";
-      drawerBody.innerHTML = `
-        <div class="stack">
-          <label>名称<input value="每日凌晨扫描"></label>
-          <label class="check"><input type="checkbox" checked>启用</label>
-          <label>模式<select id="schedule-mode"><option value="hourly">每小时</option><option value="daily" selected>每天</option><option value="weekly">每周</option><option value="monthly">每月</option><option value="custom">高级 Cron</option></select></label>
-          <div class="form-grid two">
-            <label>小时<input id="schedule-hour" value="2"></label>
-            <label>分钟<input id="schedule-minute" value="30"></label>
-          </div>
-          <label>高级 Cron<input id="schedule-cron" value="30 2 * * *"></label>
-          <div class="alert">Cron 预览：<b id="cron-preview">30 2 * * *</b></div>
-          <div class="section-title">扫描参数</div>
-          <label>扫描目录<input value="/Volumes/photo/pic-new"></label>
-          <label>备份目录<input value="/Volumes/photo-bak/pic-new"></label>
-          <div class="check-grid">
-            ${["显示待删除", "显示待移动", "显示改时间", "显示重命名", "计算重复文件"].map((item) => `<label class="check"><input type="checkbox" checked>${item}</label>`).join("")}
-          </div>
-        </div>`;
-      const mode = document.querySelector("#schedule-mode");
-      const hour = document.querySelector("#schedule-hour");
-      const minute = document.querySelector("#schedule-minute");
-      const cron = document.querySelector("#schedule-cron");
-      const preview = document.querySelector("#cron-preview");
-      const update = () => {
-        const value = mode.value === "custom" ? cron.value : `${minute.value || 0} ${hour.value || "*"} ${mode.value === "monthly" ? "1" : "*"} * ${mode.value === "weekly" ? "1" : "*"}`;
-        preview.textContent = value;
-      };
-      [mode, hour, minute, cron].forEach((item) => item.addEventListener("input", update));
-      update();
-    }
-
-    function drawerCacheDetail(imgKey) {
-      const row = cacheRows.find((item) => item.imgKey === imgKey) || cacheRows[2];
-      const key = splitImgKey(row.imgKey);
-      drawerTitle.textContent = "文件明细";
-      drawerBody.innerHTML = `
-        <div class="stack">
-          <div class="alert">数据来源：img_database。该原型仅展示文件缓存字段，不读取真实接口。</div>
-          <div class="details">
-            <div class="detail"><span>img_key</span><b>${row.imgKey}</b></div>
-            <div class="detail"><span>目录日期</span><b>${key.dirDate}</b></div>
-            <div class="detail"><span>文件名</span><b>${key.fileName}</b></div>
-            <div class="detail"><span>shoot_date</span><b>${row.shootDate || "缺失"}</b></div>
-            <div class="detail"><span>loc_num</span><b>${row.locNum || "缺失"}</b></div>
-            <div class="detail"><span>更新时间</span><b>${row.updatedAt}</b></div>
-          </div>
-          <article class="card">
-            <div class="card-head"><h3>地理信息</h3></div>
-            <div class="card-body stack">
-              <div><b>loc_street</b><br><span class="muted">${row.locStreet || "缺失"}</span></div>
-              <div><b>loc_addr</b><br><span class="muted">${row.locAddr || "缺失"}</span></div>
-            </div>
-          </article>
-          <article class="card">
-            <div class="card-head"><h3>备注 / EXIF 输出</h3></div>
-            <div class="card-body"><pre class="json-block">${row.remark}</pre></div>
-          </article>
-        </div>`;
-      drawer.classList.add("open");
-      drawerBackdrop.classList.add("open");
-      drawer.setAttribute("aria-hidden", "false");
-    }
-
-    function drawerStatMore(type) {
-      const isYear = type === "year";
-      const rows = isYear ? yearStats : suffixStats;
-      drawerTitle.textContent = isYear ? "全部年份统计" : "全部文件后缀统计";
-      drawerBody.innerHTML = `
-        <div class="stack">
-          <div class="alert">${isYear ? "展示所有年份的文件数量，用于横向对比年份分布。" : "展示所有文件后缀的数量和占比，用于判断缓存文件类型构成。"}</div>
-          <div class="bar-list">
-            ${rows.map((row) => barRow(row[0], row[1], row[2])).join("")}
-          </div>
-        </div>`;
-      drawer.classList.add("open");
-      drawerBackdrop.classList.add("open");
-      drawer.setAttribute("aria-hidden", "false");
-    }
-
-    function drawerBackupDiffDetail(type) {
-      const isDeleted = type === "deletedFiles";
-      const group = isDeleted ? backupDiff.deletedFiles : backupDiff.newFiles;
-      const dateTree = buildBackupDiffDateTree(group.items);
-      const state = {
-        selected: { type: "all", value: "all" },
-        expandedYears: new Set(dateTree[0] ? [dateTree[0].key] : []),
-        expandedMonths: new Set(dateTree[0]?.months[0] ? [dateTree[0].months[0].key] : [])
-      };
-      const renderFilteredDetail = () => {
-        const filteredItems = filterBackupDiffItems(group.items, state.selected);
-        const host = drawerBody.querySelector("[data-backup-diff-detail-layout]");
-        if (!host) return;
-        host.innerHTML = `
-          ${renderBackupDiffDateFilter(group, dateTree, state)}
-          ${renderBackupDiffDetailTable(group, isDeleted ? "warn" : "", filteredItems)}
-        `;
-      };
-      drawerTitle.textContent = `${group.label}详情`;
-      drawerBody.innerHTML = `
-        <div class="stack">
-          <div class="alert">${group.note}</div>
-          <div class="backup-diff-stat ${isDeleted ? "warn" : ""}">
-            <div class="row"><b>${group.label}</b>${tag(group.field, isDeleted ? "warn" : "ok")}</div>
-            <div class="value">${group.count}</div>
-            <div class="muted">完整清单产物路径</div>
-            <div class="muted">${group.artifactPath}</div>
-          </div>
-          <div class="backup-diff-detail-layout" data-backup-diff-detail-layout></div>
-        </div>`;
-      renderFilteredDetail();
-      drawerBody.querySelector("[data-backup-diff-detail-layout]").addEventListener("click", (event) => {
-        const button = event.target.closest("[data-date-filter-type]");
-        if (!button) return;
-        const filterType = button.dataset.dateFilterType;
-        const value = button.dataset.dateFilterValue;
-        state.selected = { type: filterType, value };
-        if (filterType === "year") {
-          state.expandedYears.has(value) ? state.expandedYears.delete(value) : state.expandedYears.add(value);
-        }
-        if (filterType === "month") {
-          state.expandedMonths.has(value) ? state.expandedMonths.delete(value) : state.expandedMonths.add(value);
-        }
-        renderFilteredDetail();
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        enterDashboard();
       });
-      drawer.classList.add("open");
-      drawerBackdrop.classList.add("open");
-      drawer.setAttribute("aria-hidden", "false");
-    }
 
-    function openDrawer(type) {
-      type === "schedule" ? drawerSchedule() : drawerScan();
-      drawer.classList.add("open");
-      drawerBackdrop.classList.add("open");
-      drawer.setAttribute("aria-hidden", "false");
-    }
-
-    function closeDrawer() {
-      drawer.classList.remove("open");
-      drawerBackdrop.classList.remove("open");
-      drawer.setAttribute("aria-hidden", "true");
-    }
-
-    function openConfirm(title, text, message) {
-      confirmMessage = message || "操作已完成";
-      modalTitle.textContent = title || "确认操作";
-      modalText.textContent = text || "是否继续？";
-      modal.classList.add("open");
-      modalBackdrop.classList.add("open");
-    }
-
-    function closeConfirm() {
-      modal.classList.remove("open");
-      modalBackdrop.classList.remove("open");
-    }
-
-    function bindEvents() {
-      pageButtons.forEach((link) => {
-        link.addEventListener("click", (event) => {
-          event.preventDefault();
-          switchPage(link.dataset.page);
-        });
-      });
-      window.addEventListener("hashchange", () => activatePage(pageFromHash()));
-      document.addEventListener("click", (event) => {
-        const target = event.target.closest("button");
-        if (!target) return;
-        if (target.dataset.login !== undefined) {
-          document.querySelector("#login").hidden = true;
-          document.querySelector("#app").hidden = false;
-          showToast("登录成功");
-        }
-        if (target.dataset.logout !== undefined) {
-          document.querySelector("#login").hidden = false;
-          document.querySelector("#app").hidden = true;
-        }
-        if (target.dataset.page) switchPage(target.dataset.page);
-        if (target.dataset.pageLink) switchPage(target.dataset.pageLink);
-        if (target.dataset.toggleMenu !== undefined) sider.classList.toggle("open");
-        if (target.dataset.toast) showToast(target.dataset.toast);
-        if (target.dataset.openDrawer) openDrawer(target.dataset.openDrawer);
-        if (target.dataset.cacheDetail) {
-          event.stopPropagation();
-          drawerCacheDetail(target.dataset.cacheDetail);
-        }
-        if (target.dataset.statMore) drawerStatMore(target.dataset.statMore);
-        if (target.dataset.backupDiffDetail) drawerBackupDiffDetail(target.dataset.backupDiffDetail);
-        if (target.dataset.closeDrawer !== undefined) closeDrawer();
-        if (target.dataset.saveDrawer !== undefined) {
-          closeDrawer();
-          showToast(drawerTitle.textContent.includes("扫描") ? "扫描任务已创建" : "计划已保存");
-        }
-        if (target.dataset.closeModal !== undefined) closeConfirm();
-        if (target.dataset.confirmModal !== undefined) {
-          closeConfirm();
-          showToast(confirmMessage);
-        }
-        if (target.dataset.confirm) openConfirm(target.dataset.confirm, target.dataset.confirmText, target.dataset.confirmMessage);
-        if (target.dataset.tab) {
-          const tab = target.dataset.tab;
-          document.querySelectorAll('[data-tabs="detail"] button').forEach((item) => item.classList.toggle("active", item.dataset.tab === tab));
-          document.querySelectorAll(".detail-panel").forEach((item) => item.hidden = item.id !== `detail-${tab}`);
-        }
-        if (target.dataset.actionType) {
-          renderActions(target.dataset.actionTab, target.dataset.actionType);
-        }
-      });
-      document.addEventListener("click", (event) => {
-        const row = event.target.closest("tr[data-cache-detail]");
-        if (!row || event.target.closest("button")) return;
-        drawerCacheDetail(row.dataset.cacheDetail);
-      });
-      drawerBackdrop.addEventListener("click", closeDrawer);
-      modalBackdrop.addEventListener("click", closeConfirm);
-    }
-
-    renderDashboard();
-    renderJobs();
-    renderSchedules();
-    renderCacheAnalysis();
-    renderActions("pending", "delete");
-    renderActions("executed", "delete");
-    renderBackupDiff();
-    renderDetailExtras();
-    renderSettings();
-    bindEvents();
-    activatePage(pageFromHash());
+      button.addEventListener('click', enterDashboard);
+      user.addEventListener('input', clearError);
+      pass.addEventListener('input', clearError);
+    })();
   </script>
-</body>
-</html>
+
+
+</body></html>
