@@ -168,15 +168,21 @@
       gap: 6px;
     }
 
-    .nav button {
+    .nav button,
+    .nav a {
+      display: block;
       text-align: left;
       border: 0;
       background: transparent;
       padding: 10px 12px;
       color: var(--text);
+      border-radius: 6px;
+      text-decoration: none;
+      font: inherit;
     }
 
-    .nav button.active {
+    .nav button.active,
+    .nav a.active {
       color: var(--brand-strong);
       background: var(--brand-soft);
       font-weight: 700;
@@ -822,6 +828,65 @@
       min-width: 0;
     }
 
+    .switch-control {
+      width: 58px;
+      min-height: 24px;
+      border: 0;
+      border-radius: 999px;
+      padding: 2px;
+      background: #d5ded9;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      color: #fff;
+      font-size: 12px;
+    }
+
+    .switch-control.on {
+      justify-content: flex-end;
+      background: var(--brand);
+    }
+
+    .switch-control span {
+      min-width: 28px;
+      height: 20px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: #fff;
+      color: var(--muted);
+      box-shadow: 0 1px 3px rgba(31, 42, 51, 0.16);
+    }
+
+    .switch-control.on span {
+      color: var(--brand-strong);
+    }
+
+    .number-input {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 30px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      overflow: hidden;
+      background: #fff;
+      min-height: 36px;
+    }
+
+    .number-input input {
+      border: 0;
+      border-radius: 0;
+      min-height: 34px;
+    }
+
+    .number-input span {
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      border-left: 1px solid var(--line);
+      font-size: 12px;
+      line-height: 1;
+    }
+
     .setting-section.readonly input {
       background: #f3f5f4;
       color: #808a85;
@@ -897,11 +962,11 @@
     <aside id="sider" class="sider">
       <div class="brand">img-process</div>
       <nav class="nav" id="nav">
-        <button class="active" data-page="dashboard">仪表盘</button>
-        <button data-page="jobs">扫描历史</button>
-        <button data-page="cache-analysis">文件分析</button>
-        <button data-page="schedules">计划任务</button>
-        <button data-page="settings">系统设置</button>
+        <a class="active" data-page="dashboard" href="#dashboard">仪表盘</a>
+        <a data-page="jobs" href="#jobs">扫描历史</a>
+        <a data-page="cache-analysis" href="#cache-analysis">文件分析</a>
+        <a data-page="schedules" href="#schedules">计划任务</a>
+        <a data-page="settings" href="#settings">系统设置</a>
       </nav>
     </aside>
     <main class="main">
@@ -918,19 +983,15 @@
 
       <section class="content">
         <div id="dashboard" class="page active stack">
-          <div class="row">
-            <h2>仪表盘</h2>
-            <button data-toast="数据已刷新">刷新数据</button>
-          </div>
+          <h2>仪表盘</h2>
           <div class="stats">
             <div class="stat"><div class="label">最近任务数</div><div class="value">128</div></div>
             <div class="stat"><div class="label">运行中任务</div><div class="value">1</div></div>
             <div class="stat"><div class="label">最近失败任务</div><div class="value">2</div></div>
-            <div class="stat"><div class="label">待执行动作</div><div class="value">436</div></div>
           </div>
           <div class="grid-two">
             <article class="card">
-              <div class="card-head"><h3>最近任务</h3><button class="link" data-page-link="jobs">查看全部</button></div>
+            <div class="card-head"><h3>最近任务</h3><button class="link" data-page-link="jobs">查看全部</button></div>
               <div class="table-wrap">
                 <table>
                   <thead><tr><th>任务ID</th><th>任务类型</th><th>阶段</th><th>状态</th><th>运行时间</th><th>操作</th></tr></thead>
@@ -939,7 +1000,7 @@
               </div>
             </article>
             <article class="card">
-              <div class="card-head"><h3>最近计划任务</h3><button class="link" data-page-link="schedules">配置计划</button></div>
+              <div class="card-head"><h3>最近计划任务</h3></div>
               <div class="card-body stack" id="dashboard-schedules"></div>
             </article>
           </div>
@@ -960,7 +1021,7 @@
           <article class="card">
             <div class="table-wrap">
               <table>
-                <thead><tr><th>任务ID</th><th>状态</th><th>来源</th><th>总文件夹数</th><th>总文件数</th><th>待执行动作</th><th>已执行动作</th><th>备份多</th><th>备份缺</th><th>开始时间</th><th>执行时长</th><th>操作</th></tr></thead>
+                <thead><tr><th>任务ID</th><th>状态</th><th>来源</th><th>总文件夹数</th><th>总文件数</th><th>备份总文件夹数</th><th>备份总文件数</th><th>待执行动作</th><th>已执行动作</th><th>备份多</th><th>备份缺</th><th>开始时间</th><th>执行时长</th><th>操作</th></tr></thead>
                 <tbody id="jobs-table"></tbody>
               </table>
             </div>
@@ -968,10 +1029,7 @@
         </div>
 
         <div id="job-detail" class="page stack">
-          <div class="row">
-            <h2>扫描详情 #42</h2>
-            <button data-page-link="jobs">返回扫描历史</button>
-          </div>
+          <h2>扫描详情 #42</h2>
           <div class="alert">当前任务已完成，仍有 436 条待执行动作。可逐项执行，也可在删除类动作中批量执行。</div>
           <article class="card">
             <div class="card-body details">
@@ -984,6 +1042,7 @@
               <div class="detail"><span>开始时间</span><b>2026-05-23 08:42:11</b></div>
               <div class="detail"><span>结束时间</span><b>2026-05-23 08:42:29</b></div>
               <div class="detail"><span>执行时长</span><b>18 秒</b></div>
+              <div class="detail"><span>最近心跳</span><b>2026-05-23 08:42:29</b></div>
             </div>
           </article>
           <div class="stats">
@@ -1034,12 +1093,12 @@
               <button class="primary" data-toast="已按筛选条件刷新文件明细">筛选</button>
             </div>
             <div class="card-body filters">
-              <label>文件 key<input placeholder="目录日期|文件名，例如 2024-01-01|IMG_8801.JPG"></label>
+              <label>文件 key<input placeholder="文件 key，支持模糊搜索 img_key"></label>
               <label>拍摄时间状态<select><option>全部</option><option>有拍摄时间</option><option>缺失拍摄时间</option></select></label>
               <label>地理信息状态<select><option>全部</option><option>有经纬度和地址</option><option>仅有经纬度</option><option>缺失地理信息</option></select></label>
-              <label>地理信息检索<input placeholder="模糊搜索 loc_addr，例如 上海市 / 西湖区"></label>
-              <label>文件拍摄日期最早时间<input value="2020-01-01"></label>
-              <label>文件拍摄日期最晚时间<input value="2026-05-23"></label>
+              <label>地理信息检索<input placeholder="地理信息检索，模糊搜索 loc_addr"></label>
+              <label>文件拍摄日期最早时间<input placeholder="文件拍摄日期最早时间"></label>
+              <label>文件拍摄日期最晚时间<input placeholder="文件拍摄日期最晚时间"></label>
             </div>
           </article>
           <div class="analysis-grid">
@@ -1057,7 +1116,6 @@
               <h3>文件明细</h3>
               <button class="link" data-toast="已导出当前筛选结果">导出</button>
             </div>
-            <div class="card-body muted">缩略图按当前扫描目录和备份目录最佳努力定位文件，找不到时显示占位。</div>
             <div class="table-wrap">
               <table>
                 <thead><tr><th>缩略图</th><th>img_key</th><th>目录日期</th><th>文件名</th><th>shoot_date</th><th>loc_num</th><th>loc_street</th><th>loc_addr</th><th>remark</th><th>更新时间</th><th>操作</th></tr></thead>
@@ -1087,7 +1145,7 @@
             <h2>系统设置</h2>
             <button class="primary" data-toast="设置已保存">保存设置</button>
           </div>
-          <div class="alert">文件配置只读，运行配置保存到数据库。只读配置：database、server；可编辑配置来源：数据库；启动配置文件：config.yaml。</div>
+          <div class="alert">文件配置只读，运行配置保存到数据库。只读配置：database、server；可编辑配置来源：数据库；启动配置文件：/app/config.yaml。</div>
           <article class="card">
             <div class="card-body" id="settings-body"></div>
           </article>
@@ -1124,10 +1182,10 @@
 
   <script>
     const jobs = [
-      { id: 42, uuid: "8d3f2a91-4e02-4a58-b780-1a2b39f09f20", status: "成功", statusType: "ok", source: "手动", phase: "已完成", folders: 1482, files: 43912, pending: 436, executed: 92, backupExtra: 12, backupMissing: 36, start: "2026-05-23 08:42:11", duration: "18 秒" },
-      { id: 41, uuid: "a13d7b5c-9856-4d7e-8d60-6e7341b7d813", status: "运行中", statusType: "warn", source: "计划", phase: "扫描备份目录", folders: 932, files: 27160, pending: 0, executed: 0, backupExtra: 0, backupMissing: 0, start: "2026-05-23 07:30:00", duration: "12 秒" },
-      { id: 40, uuid: "cc3a6e90-2f83-49d5-bc6d-b237d7d8d101", status: "失败", statusType: "danger", source: "手动", phase: "处理重复项", folders: 601, files: 18620, pending: 0, executed: 0, backupExtra: 0, backupMissing: 0, start: "2026-05-22 21:18:03", duration: "7 秒" },
-      { id: 39, uuid: "e6046f01-1bb4-41f7-b373-4c9395873ef0", status: "成功", statusType: "ok", source: "计划", phase: "已完成", folders: 1478, files: 43876, pending: 12, executed: 615, backupExtra: 3, backupMissing: 8, start: "2026-05-22 03:00:00", duration: "16 秒" }
+      { id: 42, uuid: "8d3f2a91-4e02-4a58-b780-1a2b39f09f20", status: "成功", statusType: "ok", source: "手动", phase: "已完成", folders: 1482, files: 43912, backupFolders: 1477, backupFiles: 43876, pending: 436, executed: 92, backupExtra: 12, backupMissing: 36, start: "2026-05-23 08:42:11", duration: "18 秒" },
+      { id: 41, uuid: "a13d7b5c-9856-4d7e-8d60-6e7341b7d813", status: "运行中", statusType: "warn", source: "计划", phase: "扫描备份目录", folders: 932, files: 27160, backupFolders: 0, backupFiles: 0, pending: 0, executed: 0, backupExtra: 0, backupMissing: 0, start: "2026-05-23 07:30:00", duration: "12 秒" },
+      { id: 40, uuid: "cc3a6e90-2f83-49d5-bc6d-b237d7d8d101", status: "失败", statusType: "danger", source: "手动", phase: "处理重复项", folders: 601, files: 18620, backupFolders: 0, backupFiles: 0, pending: 0, executed: 0, backupExtra: 0, backupMissing: 0, start: "2026-05-22 21:18:03", duration: "7 秒" },
+      { id: 39, uuid: "e6046f01-1bb4-41f7-b373-4c9395873ef0", status: "成功", statusType: "ok", source: "计划", phase: "已完成", folders: 1478, files: 43876, backupFolders: 1474, backupFiles: 43845, pending: 12, executed: 615, backupExtra: 3, backupMissing: 8, start: "2026-05-22 03:00:00", duration: "16 秒" }
     ];
 
     const schedules = [
@@ -1364,12 +1422,15 @@
     ];
 
     const configSections = [
-      { title: "database 数据库参数", readonly: true, fields: [["DbUsername", "img_user"], ["DbPassword", "******"], ["DbHost", "127.0.0.1"], ["DbPort", "3306"], ["DbName", "img_process"]] },
-      { title: "server Web 服务参数", readonly: true, fields: [["HttpPort", "8081"], ["HttpUsername", "admin"], ["HttpPassword", "******"]] },
+      { title: "database 数据库参数", readonly: true, fields: [["DbUsername", "数据库用户名", "root"], ["DbPassword", "数据库密码", "r***", "secret"], ["DbHost", "数据库主机", "host.docker.internal"], ["DbPort", "数据库端口", "33060"], ["DbName", "数据库名称", "img"], ["DbConfig", "数据库连接参数", "charset=utf8&parseTime=True&loc=Local"]] },
+      { title: "server Web 服务参数", readonly: true, fields: [["HttpPort", "HTTP 端口", "8081"], ["HttpUsername", "HTTP 用户名", "admin"], ["HttpPassword", "HTTP 密码", "a****", "secret"]] },
       { title: "scanArgs 默认扫描参数", desc: "用于调整扫描任务默认的值填写", layout: "scanArgs", fields: [["StartPath", "扫描目录", "/Volumes/photo/pic-new", "path"], ["DeleteShow", "显示删除项", true, "show"], ["MoveFileShow", "显示移动项", true, "show"], ["ModifyDateShow", "显示修改时间项", false, "show"], ["RenameFileShow", "显示重命名项", true, "show"], ["Md5Show", "计算 MD5", true, "show"], ["DeleteAction", "执行删除", false, "action"], ["MoveFileAction", "执行移动", false, "action"], ["ModifyDateAction", "执行修改时间", false, "action"], ["RenameFileAction", "执行重命名", false, "action"]] },
+      { title: "basic 基础配置", fields: [["ColorOutput", "彩色日志", true, "boolean"], ["SqlDebug", "SQL 调试", false, "boolean"]] },
+      { title: "cache 缓存配置", fields: [["ImgCache", "图片缓存", true, "boolean"], ["SyncTable", "同步表数据", true, "boolean"], ["TruncateTable", "清空表数据", false, "boolean"]] },
       { title: "dump 扫描执行配置", fields: [["PoolSize", 12], ["Md5Retry", 2], ["Md5CountLength", 1048576]] },
       { title: "bak 备份配置", fields: [["StartPathBak", "显示的默认备份目录", "/Volumes/photo-bak/pic-new", "path"]] },
-      { title: "gis 地理编码配置", fields: [["key", "******"]] }
+      { title: "gis 地理编码配置", fields: [["key", "高德 Key", "******", "secret"]] },
+      { title: "batch 批处理配置", fields: [["IDInsertBatchSize", "图片记录插入批次", 1000, "number"], ["IDDeleteBatchSize", "图片记录删除批次", 300, "number"], ["GDUpdateBatchSize", "地理数据更新批次", 1000, "number"]] }
     ];
 
     const pageButtons = document.querySelectorAll("[data-page]");
@@ -1412,13 +1473,25 @@
       showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
     }
 
-    function switchPage(page) {
+    function activatePage(page) {
       pages.forEach((item) => item.classList.toggle("active", item.id === page));
       pageButtons.forEach((button) => {
         const activePage = page === "job-detail" ? "jobs" : page;
         button.classList.toggle("active", button.dataset.page === activePage);
       });
       sider.classList.remove("open");
+    }
+
+    function switchPage(page) {
+      activatePage(page);
+      if (location.hash !== `#${page}`) {
+        history.replaceState(null, "", `#${page}`);
+      }
+    }
+
+    function pageFromHash() {
+      const page = location.hash.replace(/^#/, "");
+      return page && document.getElementById(page) ? page : "dashboard";
     }
 
     function renderDashboard() {
@@ -1441,7 +1514,7 @@
       document.querySelector("#jobs-table").innerHTML = jobs.map((job) => `
         <tr>
           <td><span title="${job.uuid}">${job.id}</span></td><td>${tag(job.status, job.statusType)}</td><td>${job.source}</td>
-          <td>${job.folders}</td><td>${job.files}</td><td>${job.pending}</td><td>${job.executed}</td><td>${job.backupExtra}</td><td>${job.backupMissing}</td><td>${job.start}</td><td>${job.duration}</td>
+          <td>${job.folders}</td><td>${job.files}</td><td>${job.backupFolders}</td><td>${job.backupFiles}</td><td>${job.pending}</td><td>${job.executed}</td><td>${job.backupExtra}</td><td>${job.backupMissing}</td><td>${job.start}</td><td>${job.duration}</td>
           <td>
             <button class="link" data-page-link="job-detail">查看详情</button>
             <button class="link" data-confirm="删除任务" data-confirm-text="会删除该任务及其事件、日志和动作明细，是否继续？" data-confirm-message="扫描任务已删除">删除</button>
@@ -1778,10 +1851,13 @@
 
     function renderSettingControl(field, readonly = false) {
       if (field.kind === "show" || field.kind === "action" || field.kind === "boolean" || typeof field.value === "boolean") {
-        return `<select ${readonly ? "disabled" : ""}><option>${field.value ? "启用" : "停用"}</option><option>${field.value ? "停用" : "启用"}</option></select>`;
+        return `<button type="button" class="switch-control ${field.value ? "on" : ""}" ${readonly ? "disabled" : ""} data-toast="${field.label}已切换"><span>${field.value ? "启用" : "停用"}</span></button>`;
       }
       if (field.kind === "path") {
-        return `<span class="path-input"><input ${readonly ? "readonly" : ""} value="${field.value}"><button type="button" ${readonly ? "disabled" : ""} data-toast="已打开系统目录选择窗口，取消不会修改当前路径">选择目录</button></span>`;
+        return `<span class="path-input"><input ${readonly ? "readonly" : ""} value="${field.value}"><button type="button" ${readonly ? "disabled" : ""} data-toast="已打开系统目录选择窗口，取消不会修改当前路径">📁 选择目录</button></span>`;
+      }
+      if (field.kind === "number" || typeof field.value === "number") {
+        return `<span class="number-input"><input ${readonly ? "readonly" : ""} value="${field.value}"><span>⌃<br>⌄</span></span>`;
       }
       return `<input ${readonly ? "readonly" : ""} value="${field.value}">`;
     }
@@ -1979,6 +2055,13 @@
     }
 
     function bindEvents() {
+      pageButtons.forEach((link) => {
+        link.addEventListener("click", (event) => {
+          event.preventDefault();
+          switchPage(link.dataset.page);
+        });
+      });
+      window.addEventListener("hashchange", () => activatePage(pageFromHash()));
       document.addEventListener("click", (event) => {
         const target = event.target.closest("button");
         if (!target) return;
@@ -2041,6 +2124,7 @@
     renderDetailExtras();
     renderSettings();
     bindEvents();
+    activatePage(pageFromHash());
   </script>
 </body>
 </html>
