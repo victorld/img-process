@@ -1196,3 +1196,15 @@
 #### 数据库变化
 
 - 本次没有新增表、字段或数据库连接配置变化。
+
+### 2026-05-27 14:25:13 +0800 | `uncommitted` | 恢复默认配置文件入库
+
+#### 功能变化
+
+- 根目录恢复提交 `config.yaml`，补齐 Docker 构建、容器挂载和默认启动所需配置，避免新环境拉取代码后因缺少配置文件无法启动。
+- `.gitignore` 取消忽略 `/config.yaml`，后续默认配置变更会随代码同步。
+- 默认扫描目录和备份目录配置为容器内路径 `/data/pic-new` 与 `/data/pic-new-bak`，和 `docker-compose.yml` 的挂载目标保持一致。
+
+#### 数据库变化
+
+- 数据库连接配置变更：恢复默认连接 `host.docker.internal:33060`，用户名 `root`，密码 `root`，数据库名 `img`，连接参数 `charset=utf8&parseTime=True&loc=Local`；本次没有新增、修改或删除表字段。
