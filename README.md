@@ -56,8 +56,8 @@
 
 配置说明：
 
-1. 默认使用 macOS 本机运行模式，根目录 `config.yaml` 使用宿主机可直接访问的照片目录和 SMB 备份目录。
-2. 生产或共享环境如需独立配置，建议通过 `IMG_PROCESS_CONFIG` 或 `IMG_PROCESS_CONFIG_DIR` 指定外部配置文件。
+1. 根目录 `config.yaml` 是仓库默认启动配置，Docker 构建和 `docker-compose.yml` 默认都会使用它。
+2. macOS 本机常驻服务脚本默认读取根目录 `config.yaml`；如果本机照片目录和容器挂载路径不同，需要先把 `scanArgs.StartPath` 和 `bak.StartPathBak` 调整为本机可访问路径。
 3. `basic.SqlDebug` 默认关闭，只有排查数据库问题时再临时开启
 
 ## Web 管理台
@@ -120,9 +120,17 @@ curl -I http://127.0.0.1:8081/
 8. `.playwright-cli`、临时日志、抓图、测试产物等调试文件不进入主时间线，只允许在附注中说明已排除。
 9. 文案必须用中文，优先写用户可感知或系统行为层面的事实，不写空泛描述。
 
-## 本机运行
+## 本地启动场景
+
+适用场景：日常开发、前端/后端功能验收、需要直接访问 macOS 本机照片目录或 SMB 挂载目录。该模式由本机 `monit` 守护 `bin/img-process-web`，避免 Docker Desktop 对外部目录的二次文件共享开销。
 
 详细脚本说明见 [scripts/README.md](scripts/README.md)。
+
+配置文件：
+
+1. 默认读取根目录 `config.yaml`。
+2. 本机模式下，`scripts/start-local-web.sh` 会把 `IMG_PROCESS_CONFIG` 固定为根目录 `config.yaml`。
+3. 本机专用配置中的 `scanArgs.StartPath` 和 `bak.StartPathBak` 应填写 macOS 可直接访问的绝对路径。
 
 构建并重启本机服务：
 
@@ -149,17 +157,26 @@ npm run dev
 
 前端开发服务器默认代理到 `http://localhost:8081`。
 
-## Docker 运行（可选）
+## Docker 启动场景
+
+适用场景：验证容器镜像、部署到 Docker 环境、确认仓库默认配置可以从零启动。该模式使用 `docker-compose.yml` 构建多阶段镜像，并把宿主机照片目录挂载到容器内路径。
 
 项目已提供 `docker-compose.yml` 和多阶段构建镜像：
 
 ```bash
-docker compose -f /Users/ld/my-file/workspace/cestc/public/docker-compose.yml up -d
 docker compose up -d --build app
 ```
 
-当前 `config.yaml` 已切换为本机路径，Docker 运行不再是默认生效环境。如果需要恢复 Docker 运行，建议单独维护 Docker 专用配置文件，并通过 `IMG_PROCESS_CONFIG` 指向容器内配置路径。
+Docker 默认配置：
+
+1. 根目录 `config.yaml` 会复制进镜像，并通过 compose 挂载到 `/app/config.yaml`。
+2. 默认数据库连接为 `host.docker.internal:33060`，需要宿主机或其他容器已经对外提供 MySQL。
+3. 默认扫描目录为 `/data/pic-new`，对应 `docker-compose.yml` 中的宿主机照片目录挂载。
+4. 默认备份目录为 `/data/pic-new-bak`，对应 `docker-compose.yml` 中的备份目录挂载；如果宿主机无法挂载该目录，需要先调整 compose 中的 volume。
+
+查看服务状态并验证访问：
 
 ```bash
-docker compose up -d --build app
+docker compose ps
+curl -I http://127.0.0.1:8081/
 ```

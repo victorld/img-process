@@ -1208,3 +1208,14 @@
 #### 数据库变化
 
 - 数据库连接配置变更：恢复默认连接 `host.docker.internal:33060`，用户名 `root`，密码 `root`，数据库名 `img`，连接参数 `charset=utf8&parseTime=True&loc=Local`；本次没有新增、修改或删除表字段。
+
+### 2026-05-27 14:33:44 +0800 | `uncommitted` | 补充本地和 Docker 启动说明
+
+#### 功能变化
+
+- README 将启动方式拆分为“本地启动场景”和“Docker 启动场景”，分别说明适用场景、配置文件来源、启动命令和验收方式。
+- README 补充本地模式需要把根目录 `config.yaml` 调整为本机可访问路径，Docker 模式默认使用仓库根目录 `config.yaml` 和 compose 挂载路径。
+
+#### 数据库变化
+
+- 本次没有新增表、字段或数据库连接配置变化。
