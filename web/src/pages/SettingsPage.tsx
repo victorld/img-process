@@ -206,10 +206,14 @@ export function SettingsPage() {
   }
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space className="page-stack settings-page" direction="vertical" size={16} style={{ width: '100%' }}>
       {contextHolder}
-      <div className="settings-header">
-        <Typography.Title level={3}>系统设置</Typography.Title>
+      <div className="page-head settings-header">
+        <div>
+          <div className="page-kicker">Runtime Settings</div>
+          <Typography.Title level={2}>系统设置</Typography.Title>
+          <Typography.Paragraph>只读配置来自文件，可编辑配置保存到数据库。路径和危险动作默认保持保守。</Typography.Paragraph>
+        </div>
         <Button
           type="primary"
           icon={<SaveOutlined />}

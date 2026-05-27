@@ -21,7 +21,7 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { configSections, type ConfigSectionKey } from "../configSections";
 import type {
@@ -290,6 +290,7 @@ const rawArgColumns: ColumnsType<RawArgTableRow> = [
 
 export function JobDetailPage() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("pending");
@@ -540,9 +541,18 @@ export function JobDetailPage() {
   );
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+    <Space className="page-stack job-detail-page" direction="vertical" size={16} style={{ width: "100%" }}>
       {contextHolder}
-      <Typography.Title level={3}>扫描详情 #{id}</Typography.Title>
+      <div className="page-head">
+        <div>
+          <div className="page-kicker">Job Detail</div>
+          <Typography.Title level={2}>扫描详情 #{id}</Typography.Title>
+          <Typography.Paragraph>
+            查看任务状态、动作明细、备份差异、事件日志和原始参数。
+          </Typography.Paragraph>
+        </div>
+        <Button onClick={() => navigate("/jobs")}>返回扫描历史</Button>
+      </div>
 
       {job?.errorMessage ? (
         <Alert
@@ -553,7 +563,7 @@ export function JobDetailPage() {
         />
       ) : null}
 
-      <Card>
+      <Card className="detail-card">
         <Descriptions column={3}>
           <Descriptions.Item label="状态">
             <Tag>{formatJobStatus(job?.status)}</Tag>
@@ -586,19 +596,19 @@ export function JobDetailPage() {
         </Descriptions>
       </Card>
 
-      <Row gutter={[16, 16]}>
+      <Row className="stats four-up" gutter={[16, 16]}>
         <Col xs={24} sm={12} xl={6}>
-          <Card>
+          <Card className="stat info">
             <Statistic title="总文件夹数" value={totalDirectoryCount} />
           </Card>
         </Col>
         <Col xs={24} sm={12} xl={6}>
-          <Card>
+          <Card className="stat">
             <Statistic title="总文件数" value={job?.totalCount ?? 0} />
           </Card>
         </Col>
         <Col xs={24} sm={12} xl={6}>
-          <Card>
+          <Card className="stat warn">
             <Statistic
               title="备份总文件夹数"
               value={totalBackupDirectoryCount}
@@ -606,7 +616,7 @@ export function JobDetailPage() {
           </Card>
         </Col>
         <Col xs={24} sm={12} xl={6}>
-          <Card>
+          <Card className="stat danger">
             <Statistic title="备份总文件数" value={totalBackupFileCount} />
           </Card>
         </Col>

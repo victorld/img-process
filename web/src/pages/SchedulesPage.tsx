@@ -290,10 +290,14 @@ export function SchedulesPage() {
   )
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space className="page-stack schedules-page" direction="vertical" size={16} style={{ width: '100%' }}>
       {contextHolder}
-      <Row justify="space-between">
-        <Typography.Title level={3}>计划任务</Typography.Title>
+      <div className="page-head">
+        <div>
+          <div className="page-kicker">Automation</div>
+          <Typography.Title level={2}>计划任务</Typography.Title>
+          <Typography.Paragraph>管理周期扫描、备份校验和临时测试计划。</Typography.Paragraph>
+        </div>
         <Button type="primary" onClick={async () => {
           const status = systemStatusQuery.data ?? (await systemStatusQuery.refetch()).data
           setEditing(null)
@@ -306,7 +310,7 @@ export function SchedulesPage() {
         }}>
           新建计划
         </Button>
-      </Row>
+      </div>
       <div className={NO_SCROLL_TABLE_CLASS}>
         <Table rowKey="id" tableLayout="fixed" columns={columns} dataSource={schedulesQuery.data?.list ?? []} />
       </div>

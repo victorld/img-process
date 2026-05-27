@@ -738,7 +738,7 @@ body[data-page="job-detail"] .detail {
       <aside id="drawer" class="drawer" aria-hidden="true">
         <div class="drawer-head">
           <h3 id="drawer-title">抽屉</h3>
-          <div class="row"><button class="primary" data-save-drawer>保存</button><button data-close-drawer>关闭</button></div>
+          <div class="row"><button data-close-drawer>关闭</button></div>
         </div>
         <div id="drawer-body" class="drawer-body"></div>
       </aside>
@@ -1145,7 +1145,6 @@ body[data-page="job-detail"] .detail {
       if (target.dataset.statMore) drawerStatMore(target.dataset.statMore);
       if (target.dataset.backupDiffDetail) drawerBackupDiffDetail(target.dataset.backupDiffDetail);
       if (target.dataset.closeDrawer !== undefined) closeDrawer();
-      if (target.dataset.saveDrawer !== undefined) { closeDrawer(); showToast(drawerTitle.textContent.includes("扫描") ? "扫描任务已创建" : "计划已保存"); }
       if (target.dataset.closeModal !== undefined) closeConfirm();
       if (target.dataset.confirmModal !== undefined) { closeConfirm(); showToast(confirmMessage); }
       if (target.dataset.confirm) openConfirm(target.dataset.confirm, target.dataset.confirmText, target.dataset.confirmMessage);

@@ -73,7 +73,7 @@ function StatBars({ items }: { items: FileAnalysisStatItem[] }) {
 
 function CoverageCard({ title, value, coverage }: { title: string; value?: number; coverage?: number }) {
   return (
-    <Card>
+    <Card className="stat">
       <Statistic title={title} value={value ?? 0} />
       <Typography.Text className="file-coverage-text" type="secondary">
         覆盖率 {formatPercent(coverage)}
@@ -191,35 +191,36 @@ export function FilesPage() {
   )
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space className="page-stack files-page" direction="vertical" size={16} style={{ width: '100%' }}>
       {contextHolder}
-      <Row justify="space-between" align="middle">
-        <Col>
-          <Typography.Title level={3}>文件分析</Typography.Title>
-          <Typography.Text type="secondary">基于 img_database 表查看文件拍摄时间、地理信息和缓存信息。</Typography.Text>
-        </Col>
-        <Col>
+      <div className="page-head">
+        <div>
+          <div className="page-kicker">File Intelligence</div>
+          <Typography.Title level={2}>文件分析</Typography.Title>
+          <Typography.Paragraph>基于 img_database 查看拍摄时间、地理信息、文件类型和缓存异常。</Typography.Paragraph>
+        </div>
+        <div className="row">
           <Button onClick={() => query.refetch()}>刷新分析</Button>
-        </Col>
-      </Row>
+        </div>
+      </div>
 
-      <Row gutter={[16, 16]}>
+      <Row className="stats four-up" gutter={[16, 16]}>
         <Col xs={24} sm={12} xl={6}>
-          <Card><Statistic title="总缓存文件数" value={summary?.totalCount ?? 0} /></Card>
+          <Card className="stat"><Statistic title="总缓存文件" value={summary?.totalCount ?? 0} /></Card>
         </Col>
         <Col xs={24} sm={12} xl={6}>
-          <CoverageCard title="有拍摄时间文件数" value={summary?.withShootDateCount} coverage={summary?.shootDateCoverage} />
+          <CoverageCard title="有拍摄时间" value={summary?.withShootDateCount} coverage={summary?.shootDateCoverage} />
         </Col>
         <Col xs={24} sm={12} xl={6}>
-          <CoverageCard title="有经纬度文件数" value={summary?.withLocNumCount} coverage={summary?.locNumCoverage} />
+          <CoverageCard title="有经纬度" value={summary?.withLocNumCount} coverage={summary?.locNumCoverage} />
         </Col>
         <Col xs={24} sm={12} xl={6}>
-          <CoverageCard title="有地址信息文件数" value={summary?.withLocAddrCount} coverage={summary?.locAddrCoverage} />
+          <CoverageCard title="有地址信息" value={summary?.withLocAddrCount} coverage={summary?.locAddrCoverage} />
         </Col>
       </Row>
 
       <Card title="筛选条件" extra={<Button type="primary" onClick={() => setFilters({ ...draft, page: 1 })}>筛选</Button>}>
-        <Row gutter={[12, 12]}>
+        <Row className="filters" gutter={[12, 12]}>
           <Col xs={24} md={8}>
             <Input placeholder="文件 key，支持模糊搜索 img_key" value={draft.fileKey} onChange={(event) => setDraft((prev) => ({ ...prev, fileKey: event.target.value }))} />
           </Col>
@@ -262,7 +263,7 @@ export function FilesPage() {
         </Row>
       </Card>
 
-      <Row gutter={[16, 16]}>
+      <Row className="analysis-grid-row" gutter={[16, 16]}>
         <Col xs={24} xl={12}>
           <Card title="按年份统计" extra={<Button type="link" onClick={() => setStatDrawer({ title: '全部年份统计', items: yearStats })}>更多</Button>}>
             <StatBars items={yearStats.slice(0, 10)} />
@@ -279,7 +280,7 @@ export function FilesPage() {
         downloadCSV(rows)
         messageApi.success('已导出当前页数据')
       }}>导出</Button>}>
-        <div className="file-analysis-table">
+        <div className="file-analysis-table app-table">
           <Table
             rowKey="id"
             loading={query.isLoading}

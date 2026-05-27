@@ -144,13 +144,15 @@ export function JobsPage() {
   )
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space className="page-stack jobs-page" direction="vertical" size={16} style={{ width: '100%' }}>
       {contextHolder}
-      <Row justify="space-between" align="middle">
-        <Col>
-          <Typography.Title level={3}>扫描历史</Typography.Title>
-        </Col>
-        <Col>
+      <div className="page-head">
+        <div>
+          <div className="page-kicker">Scan Jobs</div>
+          <Typography.Title level={2}>扫描历史</Typography.Title>
+          <Typography.Paragraph>查看扫描来源、文件统计、备份差异和可执行动作。危险删除会进入二次确认。</Typography.Paragraph>
+        </div>
+        <div className="row">
           <Button
             type="primary"
             onClick={async () => {
@@ -163,12 +165,12 @@ export function JobsPage() {
           >
             新建扫描
           </Button>
-        </Col>
-      </Row>
+        </div>
+      </div>
 
-      <Card>
-        <Row gutter={12}>
-          <Col span={6}>
+      <Card className="job-filter-card">
+        <Row className="filters job-filters" gutter={12}>
+          <Col xs={24} md={6}>
             <Select
               placeholder="状态"
               allowClear
@@ -177,7 +179,7 @@ export function JobsPage() {
               options={['pending', 'running', 'succeeded', 'failed', 'interrupted', 'skipped'].map((value) => ({ label: formatJobStatus(value), value }))}
             />
           </Col>
-          <Col span={6}>
+          <Col xs={24} md={6}>
             <Select
               placeholder="来源"
               allowClear
@@ -186,7 +188,7 @@ export function JobsPage() {
               options={['manual', 'schedule'].map((value) => ({ label: formatJobSource(value), value }))}
             />
           </Col>
-          <Col span={8}>
+          <Col xs={24} md={8}>
             <Input.Search
               placeholder="任务UUID / 错误关键词"
               allowClear
